@@ -496,6 +496,63 @@ export default function Home() {
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Redirigiendo...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <NotificationPermissionPrompt />
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>DogCatiFy</Text>
+      </View>
+
+      <ScrollView 
+        style={styles.content} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Cargando feed...</Text>
+          </View>
+        ) : feedItems.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyTitle}>{t('noPostsYet')}</Text>
+            <Text style={styles.emptySubtitle}>
+              {t('beFirstToPost')}
+            </Text>
+          </View>
+        ) : (
+          feedItems.map((item, index) => {
+            if (item.type === 'promotion') {
+              return (
+                <PromotionWrapper
+                  key={`promotion-${item.data.id}`}
+                  promotion={item.data}
+                  onPress={() => handlePromotionPress(item.data)}
+                  onLike={handlePromotionLike}
+                />
+              );
+            } else {
+              return (
+                <PostCard
+                  key={`post-${item.data.id}`}
+                  post={item.data}
+                  onLike={handleLike}
+                  onComment={handleComment}
+                  onShare={handleShare}
+                />
+              );
+            }
+          })
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
 
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -556,57 +613,6 @@ export default function Index() {
 
   // Fallback loading (no debería llegar aquí normalmente)
   return (
-    <SafeAreaView style={styles.container}>
-      <NotificationPermissionPrompt />
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>DogCatiFy</Text>
-      </View>
-
-      <ScrollView 
-        style={styles.content} 
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Cargando feed...</Text>
-          </View>
-        ) : feedItems.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyTitle}>{t('noPostsYet')}</Text>
-            <Text style={styles.emptySubtitle}>
-              {t('beFirstToPost')}
-            </Text>
-          </View>
-        ) : (
-          feedItems.map((item, index) => {
-            if (item.type === 'promotion') {
-              return (
-                <PromotionWrapper
-                  key={`promotion-${item.data.id}`}
-                  promotion={item.data}
-                  onPress={() => handlePromotionPress(item.data)}
-                  onLike={handlePromotionLike}
-                />
-              );
-            } else {
-              return (
-                <PostCard
-                  key={`post-${item.data.id}`}
-                  post={item.data}
-                  onLike={handleLike}
-                  onComment={handleComment}
-                  onShare={handleShare}
-                />
-              );
-            }
-          })
-        )}
-      </ScrollView>
-    </SafeAreaView>
-
     <View style={styles.container}>
       <ActivityIndicator size="large" color="#2D6A6F" />
     </View>
@@ -685,7 +691,6 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 24,
-
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#F9FAFB',
