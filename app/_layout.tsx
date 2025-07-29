@@ -14,21 +14,9 @@ export default function RootLayout() {
   return (
     <LanguageProvider>
       <AuthProvider>
-
         <BiometricProvider>
           <NotificationProvider>
             <CartProvider>
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="+not-found" />
-              </Stack>
-              <StatusBar style="auto" />
-            </CartProvider>
-          </NotificationProvider>
-        </BiometricProvider>
-
-        <NotificationProvider>
-          <CartProvider>
-            <BiometricProvider>
               <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="auth/login" />
@@ -37,9 +25,9 @@ export default function RootLayout() {
                 <Stack.Screen name="+not-found" />
               </Stack>
               <StatusBar style="auto" />
-            </BiometricProvider>
-          </CartProvider>
-        </NotificationProvider>
+            </CartProvider>
+          </NotificationProvider>
+        </BiometricProvider>
       </AuthProvider>
     </LanguageProvider>
   );
