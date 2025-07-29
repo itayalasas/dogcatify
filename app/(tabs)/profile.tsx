@@ -515,7 +515,7 @@ export default function AdminPromotions() {
                       <Text style={styles.imageActionText}>ðŸ“· Tomar foto</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.imageActionButton} onPress={handleSelectImage}>
-                      <Text style={styles.imageActionText}>ðŸ–¼ï¸?GalerÃ­a</Text>
+                      <Text style={styles.imageActionText}>ðŸ–¼ï¿½?GalerÃ­a</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -618,7 +618,7 @@ export default function AdminPromotions() {
             <View style={styles.partnerModalHeader}>
               <Text style={styles.partnerModalTitle}>Seleccionar Aliado</Text>
               <TouchableOpacity onPress={() => setShowPartnerSelector(false)}>
-                <Text style={styles.partnerModalClose}>âœ?/Text>
+                <Text style={styles.partnerModalClose}>ï¿½?/Text>
               </TouchableOpacity>
             </View>
             
@@ -664,7 +664,7 @@ export default function AdminPromotions() {
                       </View>
                     </View>
                     {selectedPartnerId === partner.id && (
-                      <Text style={styles.selectedIndicator}>âœ?/Text>
+                      <Text style={styles.selectedIndicator}>ï¿½?/Text>
                     )}
                   </TouchableOpacity>
                 ))
