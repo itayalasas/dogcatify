@@ -9,8 +9,7 @@ module.exports = function(api) {
         {
           root: ['./'],
           alias: {
-            '@': './',
-            'html2canvas': './src/mocks/html2canvas.js'
+            '@': './'
           }
         }
       ]
