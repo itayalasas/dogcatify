@@ -618,7 +618,7 @@ export default function AdminPromotions() {
             <View style={styles.partnerModalHeader}>
               <Text style={styles.partnerModalTitle}>Seleccionar Aliado</Text>
               <TouchableOpacity onPress={() => setShowPartnerSelector(false)}>
-                <Text style={styles.partnerModalClose}>�?/Text>
+                <Text style={styles.partnerModalClose}>✕</Text>
               </TouchableOpacity>
             </View>
             
