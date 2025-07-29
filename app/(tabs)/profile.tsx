@@ -252,10 +252,6 @@ export default function AdminPromotions() {
           onPress={() => setShowPromotionModal(true)}
         >
           <Plus size={24} color="#FFFFFF" />
-      <View style={styles.headerContainer}>
-        <Text style={styles.headerTitle}>{t('profile')}</Text>
-        <TouchableOpacity style={styles.settingsButton} onPress={handleSettings}>
-          <Settings size={22} color="#6B7280" />
         </TouchableOpacity>
       </View>
 
@@ -270,56 +266,8 @@ export default function AdminPromotions() {
             <View style={styles.profileInfo}>
               <Text style={styles.profileName}>{currentUser?.displayName || 'Amante de las mascotas'}</Text>
               <Text style={styles.profileEmail}>{currentUser?.email}</Text>
-              <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
-                <Edit3 size={16} color="#3B82F6" />
-                <Text style={styles.editButtonText}>{t('editProfile')}</Text>
-              </TouchableOpacity>
             </View>
           </View>
-        </Card>
-
-        <Card style={styles.modeCard}>
-          <View style={styles.modeHeader}>
-            <Text style={styles.modeTitle}>
-              {currentUser?.email === 'admin@dogcatify.com' ? t('adminMode') : t('partnerMode')}
-            </Text>
-            {currentUser?.email === 'admin@dogcatify.com' ? (
-              <Button
-                title={t('goToAdmin')}
-                onPress={handlePartnerModeToggle}
-                size="small"
-              />
-            ) : partnerStatus === 'verified' ? (
-              <Switch
-                value={isPartnerMode}
-                onValueChange={handlePartnerModeToggle}
-                trackColor={{ false: '#E5E7EB', true: '#FF6B35' }}
-                thumbColor={isPartnerMode ? '#FFFFFF' : '#FFFFFF'}
-              />
-            ) : (
-              <View style={styles.partnerStatusBadge}>
-                <Text style={styles.partnerStatusText}>
-                  {partnerStatus === 'pending' ? t('pendingVerification') : t('noBusinessRegistered')}
-                </Text>
-              </View>
-            )}
-          </View>
-          <Text style={styles.modeDescription}>
-            {currentUser?.email === 'admin@dogcatify.com'
-              ? t('adminModeDescription')
-              : partnerStatus !== 'none'
-                ? (partnerStatus === 'verified'
-                    ? (isPartnerMode ? t('partnerModeOn') : t('partnerModeOff'))
-                    : t('requestUnderReview')
-                  )
-                : t('canRegisterBusiness')
-            }
-          </Text>
-          {partnerStatus === 'verified' && currentUser?.email !== 'admin@dogcatify.com' && (
-            <View style={styles.partnerInfo}>
-              {/* Partner info content */}
-            </View>
-          )}
         </Card>
 
         <Card style={styles.statsCard}>
@@ -515,7 +463,7 @@ export default function AdminPromotions() {
                       <Text style={styles.imageActionText}>📷 Tomar foto</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.imageActionButton} onPress={handleSelectImage}>
-                      <Text style={styles.imageActionText}>🖼�?Galería</Text>
+                      <Text style={styles.imageActionText}>🖼️ Galería</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -664,7 +612,7 @@ export default function AdminPromotions() {
                       </View>
                     </View>
                     {selectedPartnerId === partner.id && (
-                      <Text style={styles.selectedIndicator}>�?/Text>
+                      <Text style={styles.selectedIndicator}>✓</Text>
                     )}
                   </TouchableOpacity>
                 ))
@@ -705,6 +653,33 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  profileCard: {
+    margin: 16,
+    marginBottom: 8,
+  },
+  profileHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginRight: 16,
+  },
+  profileInfo: {
+    flex: 1,
+  },
+  profileName: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: '#111827',
+  },
+  profileEmail: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
   },
   statsCard: {
     margin: 16,
