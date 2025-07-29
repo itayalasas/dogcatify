@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, Alert, RefreshControl } from 'react-native';
-
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView, Alert, RefreshControl, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { Platform, Linking } from 'react-native';
 import PostCard from '../components/PostCard';
