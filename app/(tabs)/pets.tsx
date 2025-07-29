@@ -64,17 +64,6 @@ export default function PetsTab() {
         return;
       }
 
-      )
-      .subscribe();
-    
-    return () => {
-      if (subscription && typeof subscription.unsubscribe === 'function') {
-        subscription.unsubscribe();
-      }
-    };
-  }, [currentUser]);
-
-
       setPets(data || []);
     } catch (error) {
       console.error('Error fetching pets:', error);
