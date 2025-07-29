@@ -7,10 +7,13 @@ import { supabaseClient } from '../lib/supabase';
 
 interface BiometricContextType {
   isBiometricAvailable: boolean;
+  isBiometricSupported: boolean;
   isBiometricEnabled: boolean;
+  biometricType: string | null;
+  checkBiometricStatus: () => Promise<void>;
   enableBiometric: (email: string, password: string) => Promise<boolean>;
   disableBiometric: () => Promise<void>;
-  authenticateWithBiometric: () => Promise<boolean>;
+  authenticateWithBiometric: () => Promise<{ email: string; password: string } | null>;
   getStoredCredentials: () => Promise<{ email: string; password: string } | null>;
 }
 
@@ -26,7 +29,9 @@ export const useBiometric = () => {
 
 export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isBiometricAvailable, setIsBiometricAvailable] = useState(false);
+  const [isBiometricSupported, setIsBiometricSupported] = useState(false);
   const [isBiometricEnabled, setIsBiometricEnabled] = useState(false);
+  const [biometricType, setBiometricType] = useState<string | null>(null);
   const { currentUser } = useAuth();
 
   useEffect(() => {
@@ -38,10 +43,25 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try {
       const compatible = await LocalAuthentication.hasHardwareAsync();
       const enrolled = await LocalAuthentication.isEnrolledAsync();
-      setIsBiometricAvailable(compatible && enrolled);
+      const available = compatible && enrolled;
+      setIsBiometricAvailable(available);
+      setIsBiometricSupported(available);
+      
+      if (available) {
+        const supportedTypes = await LocalAuthentication.supportedAuthenticationTypesAsync();
+        if (supportedTypes.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
+          setBiometricType('Face ID');
+        } else if (supportedTypes.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
+          setBiometricType('Touch ID');
+        } else {
+          setBiometricType('biometría');
+        }
+      }
     } catch (error) {
       console.error('Error checking biometric availability:', error);
       setIsBiometricAvailable(false);
+      setIsBiometricSupported(false);
+      setBiometricType(null);
     }
   };
 
@@ -73,6 +93,11 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       console.error('Error checking biometric enabled:', error);
       setIsBiometricEnabled(false);
     }
+  };
+
+  const checkBiometricStatus = async () => {
+    await checkBiometricAvailability();
+    await checkBiometricEnabled();
   };
 
   const enableBiometric = async (email: string, password: string): Promise<boolean> => {
@@ -174,10 +199,10 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  const authenticateWithBiometric = async (): Promise<boolean> => {
+  const authenticateWithBiometric = async (): Promise<{ email: string; password: string } | null> => {
     try {
       if (!isBiometricAvailable || !isBiometricEnabled) {
-        return false;
+        return null;
       }
 
       const result = await LocalAuthentication.authenticateAsync({
@@ -186,10 +211,14 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         fallbackLabel: 'Usar contraseña',
       });
 
-      return result.success;
+      if (result.success) {
+        return await getStoredCredentials();
+      }
+      
+      return null;
     } catch (error) {
       console.error('Error authenticating with biometric:', error);
-      return false;
+      return null;
     }
   };
 
@@ -213,7 +242,10 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     <BiometricContext.Provider
       value={{
         isBiometricAvailable,
+        isBiometricSupported,
         isBiometricEnabled,
+        biometricType,
+        checkBiometricStatus,
         enableBiometric,
         disableBiometric,
         authenticateWithBiometric,
