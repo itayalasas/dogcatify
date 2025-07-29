@@ -183,10 +183,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           },
           body: JSON.stringify(notifications),
         });
-    } catch (error) {
+          } catch (error) {
       console.error('Error sending notification to admin:', error);
     }
-  };
+      };
+  }
 
   return (
     <NotificationContext.Provider
