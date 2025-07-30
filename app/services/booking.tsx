@@ -584,6 +584,7 @@ const ServiceBooking = () => {
       </ScrollView>
     </SafeAreaView>
   );
+};
 
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat('es-AR', {
@@ -829,3 +830,5 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
 });
+
+export default ServiceBooking;
