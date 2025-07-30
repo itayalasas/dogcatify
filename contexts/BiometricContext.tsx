@@ -80,6 +80,12 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         .single();
 
       if (error) {
+        // If column doesn't exist, gracefully handle it
+        if (error.code === '42703') {
+          console.log('Biometric column not yet available in database');
+          setIsBiometricEnabled(false);
+          return;
+        }
         console.error('Error checking biometric status:', error);
         setIsBiometricEnabled(false);
         return;
