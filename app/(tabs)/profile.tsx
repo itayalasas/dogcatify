@@ -1,23 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, Image, Switch } from 'react-native';
 import { router } from 'expo-router';
-import { 
-  User, 
-  Settings, 
-  Heart, 
-  ShoppingBag, 
-  Calendar, 
-  LogOut, 
-  Edit, 
-  Bell, 
-  Shield, 
-  HelpCircle, 
-  Globe,
-  Building,
-  CreditCard,
-  Fingerprint,
-  ChevronRight
-} from 'lucide-react-native';
+import { User, Settings, Heart, ShoppingBag, Calendar, LogOut, CreditCard as Edit, Bell, Shield, CircleHelp as HelpCircle, Globe, Building, CreditCard, Fingerprint, ChevronRight } from 'lucide-react-native';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../contexts/AuthContext';
