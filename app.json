@@ -37,14 +37,17 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.dogcatify.app",
+      "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "NSCameraUsageDescription": "Esta aplicación necesita acceso a la cámara para tomar fotos de mascotas.",
         "NSPhotoLibraryUsageDescription": "Esta aplicación necesita acceso a la galería para seleccionar fotos de mascotas.",
+        "NSFaceIDUsageDescription": "Esta aplicación usa Face ID para un acceso rápido y seguro.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "com.dogcatify.app",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/logo.jpg",
         "backgroundColor": "#FFFFFF"
@@ -52,7 +55,9 @@
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE"
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.USE_FINGERPRINT",
+        "android.permission.USE_BIOMETRIC"
       ]
     },
     "web": {

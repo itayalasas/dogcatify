@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity, Image } from 'react-native';
 import { Link, router, useLocalSearchParams } from 'expo-router';
-import { Mail, Lock, Eye, EyeOff, Check } from 'lucide-react-native';
+import { Mail, Lock, Eye, EyeOff, Check, Fingerprint } from 'lucide-react-native';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useBiometric } from '../../contexts/BiometricContext'; 
+import * as LocalAuthentication from 'expo-local-authentication';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function Login() {
@@ -15,9 +16,11 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [rememberPassword, setRememberPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [biometricLoading, setBiometricLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showBiometricOption, setShowBiometricOption] = useState(false);
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const { t } = useLanguage();
   const { 
     isBiometricSupported, 
@@ -27,6 +30,21 @@ export default function Login() {
     authenticateWithBiometric,
     checkBiometricStatus
   } = useBiometric();
+
+  // Check for biometric availability on component mount
+  React.useEffect(() => {
+    checkBiometricAvailability();
+  }, []);
+
+  const checkBiometricAvailability = async () => {
+    try {
+      const compatible = await LocalAuthentication.hasHardwareAsync();
+      const enrolled = await LocalAuthentication.isEnrolledAsync();
+      console.log('Biometric availability:', { compatible, enrolled });
+    } catch (error) {
+      console.error('Error checking biometric availability:', error);
+    }
+  };
 
   // Cargar credenciales guardadas al iniciar
   React.useEffect(() => {
@@ -97,6 +115,69 @@ export default function Login() {
 
     // Proceed with credential login
     await handleCredentialLogin();
+  };
+
+  const handleGoogleLogin = async () => {
+    setGoogleLoading(true);
+    try {
+      console.log('Starting Google login...');
+      const result = await loginWithGoogle();
+      
+      if (result) {
+        // Redirect based on user type
+        const isAdmin = result?.email?.toLowerCase() === 'admin@dogcatify.com';
+        if (isAdmin) {
+          router.replace('/(admin-tabs)/requests');
+        } else {
+          if (redirectTo) {
+            router.replace(`/${redirectTo}` as any);
+          } else {
+            router.replace('/(tabs)');
+          }
+        }
+      }
+    } catch (error: any) {
+      console.error('Google login error:', error);
+      Alert.alert('Error', 'No se pudo iniciar sesión con Google. Intenta nuevamente.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleBiometricLogin = async () => {
+    if (!isBiometricEnabled || !isBiometricSupported) {
+      Alert.alert('Biometría no disponible', 'La autenticación biométrica no está configurada o no está disponible en este dispositivo.');
+      return;
+    }
+
+    setBiometricLoading(true);
+    try {
+      console.log('Starting biometric login...');
+      const credentials = await authenticateWithBiometric();
+      
+      if (credentials) {
+        console.log('Biometric authentication successful, logging in...');
+        const result = await login(credentials.email, credentials.password);
+        
+        if (result) {
+          const isAdmin = result?.email?.toLowerCase() === 'admin@dogcatify.com';
+          if (isAdmin) {
+            router.replace('/(admin-tabs)/requests');
+          } else {
+            if (redirectTo) {
+              router.replace(`/${redirectTo}` as any);
+            } else {
+              router.replace('/(tabs)');
+            }
+          }
+        }
+      }
+    } catch (error: any) {
+      console.error('Biometric login error:', error);
+      Alert.alert('Error', 'No se pudo autenticar con biometría. Intenta con tu correo y contraseña.');
+    } finally {
+      setBiometricLoading(false);
+    }
   };
 
   const handleCredentialLogin = async () => {
@@ -342,6 +423,46 @@ export default function Login() {
           size="large"
         />
 
+        {/* Social Login Options */}
+        <View style={styles.socialLoginSection}>
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>o continúa con</Text>
+            <View style={styles.dividerLine} />
+          </View>
+          
+          <View style={styles.socialButtons}>
+            {/* Google Login */}
+            <TouchableOpacity
+              style={styles.socialButton}
+              onPress={handleGoogleLogin}
+              disabled={googleLoading}
+            >
+              <Image
+                source={{ uri: 'https://developers.google.com/identity/images/g-logo.png' }}
+                style={styles.googleIcon}
+              />
+              <Text style={styles.socialButtonText}>
+                {googleLoading ? 'Conectando...' : 'Google'}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Biometric Login */}
+            {isBiometricSupported && isBiometricEnabled && (
+              <TouchableOpacity
+                style={styles.socialButton}
+                onPress={handleBiometricLogin}
+                disabled={biometricLoading}
+              >
+                <Fingerprint size={20} color="#6B7280" />
+                <Text style={styles.socialButtonText}>
+                  {biometricLoading ? 'Autenticando...' : biometricType || 'Biometría'}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
         {/* Biometric Setup Option */}
         {showBiometricOption && (
           <View style={styles.biometricSetup}>
@@ -472,6 +593,52 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-Medium',
     color: '#3B82F6',
+  },
+  socialLoginSection: {
+    marginTop: 24,
+    marginBottom: 12,
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E5E7EB',
+  },
+  dividerText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    paddingHorizontal: 16,
+  },
+  socialButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  socialButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  googleIcon: {
+    width: 20,
+    height: 20,
+  },
+  socialButtonText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
   },
   biometricSetup: {
     backgroundColor: '#F0F9FF',

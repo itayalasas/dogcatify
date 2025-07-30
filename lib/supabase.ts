@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import Constants from 'expo-constants';
 
 // Supabase configuration
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -12,7 +13,8 @@ export const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    detectSessionInUrl: true,
+    flowType: 'pkce',
   },
 });
 

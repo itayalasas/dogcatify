@@ -1,11 +1,17 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import * as AuthSession from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
 import { supabaseClient, getUserProfile, updateUserProfile, signIn as supabaseSignIn, signUp as supabaseSignUp, signOut as supabaseSignOut } from '../lib/supabase';
 import { User } from '../types';
+
+// Complete the auth session for web
+WebBrowser.maybeCompleteAuthSession();
 
 interface AuthContextType {
   currentUser: User | null;
   loading: boolean; 
   login: (email: string, password: string) => Promise<User | null>;
+  loginWithGoogle: () => Promise<User | null>;
   register: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => Promise<void>;
   isEmailConfirmed: boolean;
@@ -271,6 +277,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const loginWithGoogle = async (): Promise<User | null> => {
+    try {
+      console.log('AuthContext - Starting Google OAuth login...');
+      
+      const { data, error } = await supabaseClient.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: AuthSession.makeRedirectUri({
+            path: '/auth/callback',
+          }),
+        },
+      });
+      
+      if (error) {
+        console.error('AuthContext - Google login error:', error);
+        throw error;
+      }
+      
+      console.log('AuthContext - Google login initiated successfully');
+      return null; // OAuth flow will handle the rest
+    } catch (error) {
+      console.error('Google login error:', error);
+      throw error;
+    }
+  };
+
   const register = async (email: string, password: string, displayName: string) => {
     try {
       console.log('AuthContext - Starting registration for:', email);
@@ -319,6 +351,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loading,
     authInitialized,
     login,
+    loginWithGoogle,
     register,
     logout,
     isEmailConfirmed,
