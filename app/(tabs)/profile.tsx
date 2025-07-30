@@ -296,7 +296,7 @@ export default function Profile() {
                 <Text style={styles.verifiedBadge}>✅ {t('pendingVerification')}</Text>
               </View>
               <Button
-                title={t('goToAdmin')}
+                title="Ir al Dashboard de Aliado"
                 onPress={handlePartnerMode}
                 size="large"
               />
