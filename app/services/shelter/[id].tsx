@@ -344,6 +344,7 @@ const ShelterAdoptions = () => {
       </ScrollView>
     </SafeAreaView>
   );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -614,3 +615,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+
+export default ShelterAdoptions;
