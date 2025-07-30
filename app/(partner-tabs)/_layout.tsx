@@ -99,122 +99,124 @@ export default function PartnerTabLayout() {
   console.log('PartnerTabLayout - Should show chat:', shouldShowChat());
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: '#2D6A6F',
-        tabBarInactiveTintColor: '#9CA3AF',
-        tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopWidth: 0,
-          paddingTop: 5,
-          paddingBottom: 5,
-          height: 60, // Further reduced height for better fit
-          shadowColor: '#000',
-          shadowOffset: {
-            width: 0,
-            height: -2,
+    <View style={{ flex: 1 }}>
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarActiveTintColor: '#2D6A6F',
+          tabBarInactiveTintColor: '#9CA3AF',
+          tabBarStyle: {
+            backgroundColor: '#FFFFFF',
+            borderTopWidth: 0,
+            paddingTop: 5,
+            paddingBottom: 5,
+            height: 60, // Further reduced height for better fit
+            shadowColor: '#000',
+            shadowOffset: {
+              width: 0,
+              height: -2,
+            },
+            shadowOpacity: 0.1,
+            shadowRadius: 8,
+            elevation: 10,
           },
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
-          elevation: 10,
-        },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontFamily: 'Inter-Medium',
-          marginTop: 4,
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="business-selector"
-        options={{
-          title: 'Negocios',
-          tabBarIcon: ({ size, color }) => (
-            <Building size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="dashboard"
-        options={{
-          title: 'Dashboard',
-          tabBarIcon: ({ size, color }) => (
-            <BarChart3 size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="bookings"
-        options={{
-          title: 'Reservas',
-          href: { pathname: '/bookings', params: { businessId } },
-          tabBarIcon: ({ size, color }) => (
-            <Calendar size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="services"
-        options={{
-          title: 'Servicios',
-          href: { pathname: '/services', params: { businessId } },
-          tabBarIcon: ({ size, color }) => (
-            <Settings size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="products"
-        options={{
-          title: 'Productos', 
-          href: (businessType === 'shop' || hasProductsEnabled) && partnerProfile
-            ? { pathname: '/products', params: { businessId } }
-            : null,
-          tabBarIcon: ({ size, color }) => (
-            <ShoppingBag size={size} color={color} />
-          ),
-          tabBarStyle: (businessType === 'shop' || hasProductsEnabled) && partnerProfile
-            ? undefined
-            : { display: 'none' },
-        }}
-      />
-      <Tabs.Screen
-        name="chat-contacts"
-        options={{
-          title: 'Contactos',
-          href: shouldShowChat() && partnerProfile
-            ? { pathname: '/chat-contacts', params: { businessId } }
-            : null,
-          tabBarIcon: ({ size, color }) => (
-            <MessageCircle size={size} color={color} />
-          ),
-          tabBarStyle: shouldShowChat() && partnerProfile
-            ? undefined
-            : { display: 'none' },
-        }}
-      />
-      <Tabs.Screen
-        name="back-to-user"
-        options={{
-          title: 'Volver',
-          tabBarIcon: ({ size, color }) => (
-            <ArrowLeft size={size} color={color} />
-          ),
-        }}
-        listeners={{
-          tabPress: (e) => {
-            e.preventDefault();
-            handleBackToUser();
+          tabBarLabelStyle: {
+            fontSize: 12,
+            fontFamily: 'Inter-Medium',
+            marginTop: 4,
           },
         }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          href: null, // Hide this tab
-        }}
-      />
-    </Tabs>
+      >
+        <Tabs.Screen
+          name="business-selector"
+          options={{
+            title: 'Negocios',
+            tabBarIcon: ({ size, color }) => (
+              <Building size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="dashboard"
+          options={{
+            title: 'Dashboard',
+            tabBarIcon: ({ size, color }) => (
+              <BarChart3 size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="bookings"
+          options={{
+            title: 'Reservas',
+            href: { pathname: '/bookings', params: { businessId } },
+            tabBarIcon: ({ size, color }) => (
+              <Calendar size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="services"
+          options={{
+            title: 'Servicios',
+            href: { pathname: '/services', params: { businessId } },
+            tabBarIcon: ({ size, color }) => (
+              <Settings size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="products"
+          options={{
+            title: 'Productos', 
+            href: (businessType === 'shop' || hasProductsEnabled) && partnerProfile
+              ? { pathname: '/products', params: { businessId } }
+              : null,
+            tabBarIcon: ({ size, color }) => (
+              <ShoppingBag size={size} color={color} />
+            ),
+            tabBarStyle: (businessType === 'shop' || hasProductsEnabled) && partnerProfile
+              ? undefined
+              : { display: 'none' },
+          }}
+        />
+        <Tabs.Screen
+          name="chat-contacts"
+          options={{
+            title: 'Contactos',
+            href: shouldShowChat() && partnerProfile
+              ? { pathname: '/chat-contacts', params: { businessId } }
+              : null,
+            tabBarIcon: ({ size, color }) => (
+              <MessageCircle size={size} color={color} />
+            ),
+            tabBarStyle: shouldShowChat() && partnerProfile
+              ? undefined
+              : { display: 'none' },
+          }}
+        />
+        <Tabs.Screen
+          name="back-to-user"
+          options={{
+            title: 'Volver',
+            tabBarIcon: ({ size, color }) => (
+              <ArrowLeft size={size} color={color} />
+            ),
+          }}
+          listeners={{
+            tabPress: (e) => {
+              e.preventDefault();
+              handleBackToUser();
+            },
+          }}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{
+            href: null, // Hide this tab
+          }}
+        />
+      </Tabs>
+    </View>
   );
 }

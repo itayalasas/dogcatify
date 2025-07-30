@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
 import { ChartBar as BarChart3, Users, Megaphone, Settings, MapPin, FileText, ArrowLeft } from 'lucide-react-native';
 import { useAuth } from '../../contexts/AuthContext';
-import { View, Text } from 'react-native';
+import { View, Text, ActivityIndicator } from 'react-native';
 
 export default function AdminTabLayout() {
   const { currentUser } = useAuth();
@@ -12,7 +12,8 @@ export default function AdminTabLayout() {
   if (!currentUser) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>Cargando...</Text>
+        <ActivityIndicator size="large" color="#DC2626" />
+        <Text style={{ marginTop: 10, fontFamily: 'Inter-Regular' }}>Cargando...</Text>
       </View>
     );
   }
@@ -31,78 +32,80 @@ export default function AdminTabLayout() {
   }
   
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: '#DC2626',
-        tabBarInactiveTintColor: '#6B7280',
-        tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopWidth: 1,
-          borderTopColor: '#E5E7EB',
-          paddingBottom: 5,
-          paddingTop: 5,
-          height: 60,
-        },
-        tabBarLabelStyle: {
-          fontSize: 10,
-          fontFamily: 'Inter-Medium',
-        },
-      }}>
-      <Tabs.Screen
-        name="analytics"
-        options={{
-          title: 'Analytics',
-          tabBarIcon: ({ size, color }) => (
-            <BarChart3 size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="partners"
-        options={{
-          title: 'Aliados',
-          tabBarIcon: ({ size, color }) => (
-            <Users size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="promotions"
-        options={{
-          title: 'Promoc...',
-          tabBarIcon: ({ size, color }) => (
-            <Megaphone size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="places"
-        options={{
-          title: 'Lugares',
-          tabBarIcon: ({ size, color }) => (
-            <MapPin size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: 'Config...',
-          tabBarIcon: ({ size, color }) => (
-            <Settings size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="requests"
-        options={{
-          title: 'Solicitudes',
-          tabBarIcon: ({ size, color }) => (
-            <FileText size={size} color={color} />
-          ),
-        }}
-      />
-    </Tabs>
+    <View style={{ flex: 1 }}>
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarActiveTintColor: '#DC2626',
+          tabBarInactiveTintColor: '#6B7280',
+          tabBarStyle: {
+            backgroundColor: '#FFFFFF',
+            borderTopWidth: 1,
+            borderTopColor: '#E5E7EB',
+            paddingBottom: 5,
+            paddingTop: 5,
+            height: 60,
+          },
+          tabBarLabelStyle: {
+            fontSize: 10,
+            fontFamily: 'Inter-Medium',
+          },
+        }}>
+        <Tabs.Screen
+          name="analytics"
+          options={{
+            title: 'Analytics',
+            tabBarIcon: ({ size, color }) => (
+              <BarChart3 size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="partners"
+          options={{
+            title: 'Aliados',
+            tabBarIcon: ({ size, color }) => (
+              <Users size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="promotions"
+          options={{
+            title: 'Promoc...',
+            tabBarIcon: ({ size, color }) => (
+              <Megaphone size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="places"
+          options={{
+            title: 'Lugares',
+            tabBarIcon: ({ size, color }) => (
+              <MapPin size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="settings"
+          options={{
+            title: 'Config...',
+            tabBarIcon: ({ size, color }) => (
+              <Settings size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="requests"
+          options={{
+            title: 'Solicitudes',
+            tabBarIcon: ({ size, color }) => (
+              <FileText size={size} color={color} />
+            ),
+          }}
+        />
+      </Tabs>
+    </View>
   );
 }
