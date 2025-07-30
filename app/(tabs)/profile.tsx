@@ -16,7 +16,8 @@ export default function Profile() {
     isBiometricSupported, 
     isBiometricEnabled, 
     biometricType, 
-    disableBiometric 
+    disableBiometric,
+    enableBiometric
   } = useBiometric();
   
   const [userStats, setUserStats] = useState({
@@ -139,10 +140,75 @@ export default function Profile() {
           ]
         );
       } else {
+        // Habilitar biometría directamente desde el perfil
         Alert.alert(
-          'Configurar autenticación biométrica',
-          'Para habilitar la autenticación biométrica, cierra sesión e inicia sesión nuevamente. Se te dará la opción de configurarla.',
-          [{ text: 'Entendido' }]
+          'Habilitar autenticación biométrica',
+          `¿Quieres usar tu ${biometricType || 'biometría'} para iniciar sesión más rápido?`,
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            {
+              text: 'Habilitar',
+              onPress: async () => {
+                try {
+                  if (!currentUser?.email) {
+                    Alert.alert('Error', 'No se pudo obtener la información del usuario');
+                    return;
+                  }
+
+                  // Solicitar la contraseña actual para habilitar biometría
+                  Alert.prompt(
+                    'Confirmar identidad',
+                    'Ingresa tu contraseña actual para habilitar la autenticación biométrica:',
+                    [
+                      { text: 'Cancelar', style: 'cancel' },
+                      {
+                        text: 'Confirmar',
+                        onPress: async (password) => {
+                          if (!password) {
+                            Alert.alert('Error', 'La contraseña es requerida');
+                            return;
+                          }
+
+                          try {
+                            // Verificar la contraseña con Supabase
+                            const { error: signInError } = await supabaseClient.auth.signInWithPassword({
+                              email: currentUser.email,
+                              password: password
+                            });
+
+                            if (signInError) {
+                              Alert.alert('Error', 'Contraseña incorrecta');
+                              return;
+                            }
+
+                            // Habilitar biometría con las credenciales verificadas
+                            const { enableBiometric } = useBiometric();
+                            const success = await enableBiometric(currentUser.email, password);
+                            
+                            if (success) {
+                              Alert.alert(
+                                'Biometría habilitada',
+                                `${biometricType || 'La autenticación biométrica'} ha sido configurada correctamente. Ahora puedes usarla para iniciar sesión.`
+                              );
+                            } else {
+                              Alert.alert('Error', 'No se pudo habilitar la autenticación biométrica');
+                            }
+                          } catch (enableError) {
+                            console.error('Error enabling biometric:', enableError);
+                            Alert.alert('Error', 'No se pudo habilitar la autenticación biométrica');
+                          }
+                        }
+                      }
+                    ],
+                    'secure-text'
+                  );
+                } catch (error) {
+                  console.error('Error in biometric setup:', error);
+                  Alert.alert('Error', 'No se pudo configurar la autenticación biométrica');
+                }
+              }
+            }
+          ]
         );
       }
     } catch (error) {
