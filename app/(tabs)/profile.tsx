@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, Image, Switch } from 'react-native';
 import { router } from 'expo-router';
-import { User, Settings, Heart, ShoppingBag, Calendar, LogOut, CreditCard as Edit, Bell, Shield, CircleHelp as HelpCircle, Globe, Building, CreditCard, Fingerprint, ChevronRight } from 'lucide-react-native';
+import { User, Settings, Heart, ShoppingBag, Calendar, LogOut, CreditCard as Edit, Bell, Shield, CircleHelp as HelpCircle, Globe, Building, CreditCard, Fingerprint, ChevronRight, ArrowRight } from 'lucide-react-native';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../contexts/AuthContext';
@@ -259,47 +259,64 @@ export default function Profile() {
           </View>
         </Card>
 
-        {/* Admin Mode */}
+        {/* Admin Mode - Solo para administradores */}
         {isAdmin && (
-          <Card style={styles.modeCard}>
-            <TouchableOpacity style={styles.modeOption} onPress={handleAdminMode}>
-              <View style={styles.modeInfo}>
+          <Card style={styles.adminCard}>
+            <TouchableOpacity style={styles.adminOption} onPress={handleAdminMode}>
+              <View style={styles.adminInfo}>
                 <Shield size={24} color="#DC2626" />
-                <View style={styles.modeDetails}>
-                  <Text style={styles.modeTitle}>{t('adminMode')}</Text>
-                  <Text style={styles.modeDescription}>
+                <View style={styles.adminDetails}>
+                  <Text style={styles.adminTitle}>{t('adminMode')}</Text>
+                  <Text style={styles.adminDescription}>
                     {t('adminModeDescription')}
                   </Text>
                 </View>
               </View>
-              <ChevronRight size={20} color="#6B7280" />
+              <ArrowRight size={20} color="#DC2626" />
             </TouchableOpacity>
           </Card>
         )}
 
-        {/* Partner Mode */}
-        <Card style={styles.modeCard}>
-          <TouchableOpacity style={styles.modeOption} onPress={handlePartnerMode}>
-            <View style={styles.modeInfo}>
-              <Building size={24} color="#2D6A6F" />
-              <View style={styles.modeDetails}>
-                <Text style={styles.modeTitle}>{t('partnerMode')}</Text>
-                {partnerProfile ? (
-                  <View>
-                    <Text style={styles.modeDescription}>
-                      {getBusinessTypeName(partnerProfile.businessType)}: {partnerProfile.businessName}
-                    </Text>
-                    <Text style={styles.verifiedBadge}>✅ Verificado</Text>
-                  </View>
-                ) : (
-                  <Text style={styles.modeDescription}>
-                    {t('canRegisterBusiness')}
-                  </Text>
-                )}
+        {/* Partner Mode Card */}
+        <Card style={styles.partnerCard}>
+          <View style={styles.partnerHeader}>
+            <Building size={24} color="#2D6A6F" />
+            <Text style={styles.partnerTitle}>{t('partnerMode')}</Text>
+          </View>
+          
+          {partnerProfile ? (
+            <View style={styles.partnerActive}>
+              <Text style={styles.partnerActiveText}>
+                {t('partnerModeOn')}
+              </Text>
+              <View style={styles.businessInfo}>
+                <Text style={styles.businessName}>
+                  {getBusinessTypeName(partnerProfile.businessType)}: {partnerProfile.businessName}
+                </Text>
+                <Text style={styles.verifiedBadge}>✅ {t('pendingVerification')}</Text>
               </View>
+              <Button
+                title={t('goToAdmin')}
+                onPress={handlePartnerMode}
+                size="large"
+              />
             </View>
-            <ChevronRight size={20} color="#6B7280" />
-          </TouchableOpacity>
+          ) : (
+            <View style={styles.partnerInactive}>
+              <Text style={styles.partnerInactiveText}>
+                {t('partnerModeOff')}
+              </Text>
+              <Text style={styles.partnerDescription}>
+                {t('canRegisterBusiness')}
+              </Text>
+              <Button
+                title={t('registerBusiness')}
+                onPress={handlePartnerMode}
+                variant="outline"
+                size="large"
+              />
+            </View>
+          )}
         </Card>
 
         {/* Menu Options */}
@@ -354,7 +371,7 @@ export default function Profile() {
               <View style={styles.menuOptionLeft}>
                 <Fingerprint size={20} color="#6B7280" />
                 <Text style={styles.menuOptionText}>
-                  {biometricType || 'Autenticación biométrica'}
+                  {biometricType || t('biometricAuth')}
                 </Text>
               </View>
               <Switch
@@ -373,7 +390,7 @@ export default function Profile() {
             </View>
             <View style={styles.languageIndicator}>
               <Text style={styles.languageText}>
-                {language === 'es' ? 'Español' : 'English'}
+                {language === 'es' ? t('spanish') : t('english')}
               </Text>
               <ChevronRight size={16} color="#6B7280" />
             </View>
@@ -494,41 +511,96 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 4,
   },
-  modeCard: {
+  adminCard: {
     marginBottom: 16,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
   },
-  modeOption: {
+  adminOption: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 4,
   },
-  modeInfo: {
+  adminInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
-  modeDetails: {
+  adminDetails: {
     marginLeft: 12,
     flex: 1,
   },
-  modeTitle: {
+  adminTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#DC2626',
+    marginBottom: 2,
+  },
+  adminDescription: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#991B1B',
+    lineHeight: 18,
+  },
+  partnerCard: {
+    marginBottom: 16,
+  },
+  partnerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  partnerTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#2D6A6F',
+    marginLeft: 8,
+  },
+  partnerActive: {
+    alignItems: 'center',
+  },
+  partnerActiveText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#059669',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  businessInfo: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  businessName: {
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
     color: '#111827',
-    marginBottom: 2,
-  },
-  modeDescription: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    lineHeight: 18,
+    textAlign: 'center',
+    marginBottom: 4,
   },
   verifiedBadge: {
     fontSize: 12,
     fontFamily: 'Inter-Medium',
     color: '#10B981',
-    marginTop: 2,
+  },
+  partnerInactive: {
+    alignItems: 'center',
+  },
+  partnerInactiveText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  partnerDescription: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 16,
+    lineHeight: 20,
   },
   menuCard: {
     marginBottom: 16,
