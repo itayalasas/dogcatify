@@ -186,17 +186,28 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       await SecureStore.deleteItemAsync('biometric_email');
       await SecureStore.deleteItemAsync('biometric_password');
 
-      // Update user profile
-      const { error } = await supabaseClient
-        .from('profiles')
-        .update({
-          biometric_enabled: false,
-          biometric_enabled_at: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', currentUser.id);
+      // Update user profile (gracefully handle missing column)
+      try {
+        const { error } = await supabaseClient
+          .from('profiles')
+          .update({
+            biometric_enabled: false,
+            biometric_enabled_at: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', currentUser.id);
 
-      if (error) throw error;
+        if (error && error.code === '42703') {
+          console.log('Biometric column not available, credentials removed locally');
+          // Column doesn't exist yet, but credentials are already removed locally
+        } else if (error) {
+          throw error;
+        }
+      } catch (updateError) {
+        if (updateError.code !== '42703') {
+          throw updateError;
+        }
+      }
 
       setIsBiometricEnabled(false);
     } catch (error) {
