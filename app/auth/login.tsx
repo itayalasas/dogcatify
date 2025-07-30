@@ -124,7 +124,7 @@ export default function Login() {
       Alert.alert(
         'No disponible en Expo Go',
         'Google Sign-In requiere un build nativo. Puedes probarlo en el simulador web o crear un build de desarrollo.',
-        [{ text: 'Entendido' }]
+        [{ text: 'Entendido', style: 'default' }]
       );
       return;
     }
@@ -149,7 +149,11 @@ export default function Login() {
       }
     } catch (error: any) {
       console.error('Google login error:', error);
-      Alert.alert('Error', 'No se pudo iniciar sesión con Google. Intenta nuevamente.');
+      Alert.alert(
+        'Error', 
+        'No se pudo iniciar sesión con Google. Intenta nuevamente.',
+        [{ text: 'OK', style: 'default' }]
+      );
     } finally {
       setGoogleLoading(false);
     }

@@ -935,6 +935,7 @@ const PartnerServices = () => {
       </Modal>
     </SafeAreaView>
   );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -1428,3 +1429,5 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 });
+
+export default PartnerServices;
