@@ -294,33 +294,27 @@ export default function Profile() {
           
           {partnerProfile ? (
             <View style={styles.partnerActive}>
-              <Text style={styles.partnerActiveText}>
-                {t('partnerModeOn')}
-              </Text>
-              <View style={styles.businessInfo}>
-                <Text style={styles.businessName}>
-                  {getBusinessTypeName(partnerProfile.businessType)}: {partnerProfile.businessName}
-                </Text>
-                <Text style={styles.verifiedBadge}>✅ {t('pendingVerification')}</Text>
+              <View style={styles.partnerButtons}>
+                <Button
+                  title="Ir al Dashboard de Aliado"
+                  onPress={handlePartnerMode}
+                  size="large"
+                  style={styles.partnerButton}
+                />
+                <Button
+                  title="Registrar Otro Negocio"
+                  onPress={() => router.push('/(tabs)/partner-register')}
+                  variant="outline"
+                  size="large"
+                  style={styles.partnerButton}
+                />
               </View>
-              <Button
-                title="Ir al Dashboard de Aliado"
-                onPress={handlePartnerMode}
-                size="large"
-              />
             </View>
           ) : (
             <View style={styles.partnerInactive}>
-              <Text style={styles.partnerInactiveText}>
-                {t('partnerModeOff')}
-              </Text>
-              <Text style={styles.partnerDescription}>
-                {t('canRegisterBusiness')}
-              </Text>
               <Button
                 title={t('registerBusiness')}
                 onPress={handlePartnerMode}
-                variant="outline"
                 size="large"
               />
             </View>
