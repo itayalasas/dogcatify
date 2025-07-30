@@ -160,7 +160,7 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
         if (error) {
           // If columns don't exist yet, continue anyway (credentials are stored locally)
-          if (error.code === '42703' || error.code === 'PGRST204') {
+          if (error.code === '42703' || error.code === 'PGRST204' || error.code === 'PGRST116') {
             console.log('Biometric columns not available in database yet, but credentials stored locally');
             setIsBiometricEnabled(true);
             return true;
@@ -171,6 +171,8 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           await SecureStore.deleteItemAsync('biometric_password');
           throw error;
         }
+        
+        console.log('Biometric status updated in database successfully');
       } catch (dbError) {
         console.log('Database update failed, but credentials stored locally:', dbError);
         // If database update fails but credentials are stored, still consider it enabled
