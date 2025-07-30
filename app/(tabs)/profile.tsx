@@ -560,6 +560,13 @@ const styles = StyleSheet.create({
     color: '#2D6A6F',
     marginLeft: 8,
   },
+  partnerButtons: {
+    gap: 12,
+    width: '100%',
+  },
+  partnerButton: {
+    width: '100%',
+  },
   partnerActive: {
     alignItems: 'center',
   },
