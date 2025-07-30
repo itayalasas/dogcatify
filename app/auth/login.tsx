@@ -287,40 +287,6 @@ export default function Login() {
     }
   };
 
-  const handleBiometricLogin = async (): Promise<boolean> => {
-    try {
-      setLoading(true);
-      console.log('Starting biometric authentication process');
-      const credentials = await authenticateWithBiometric();
-      if (credentials) {
-        console.log('Got credentials from biometric, attempting login');
-        await login(credentials.email, credentials.password);
-        // Redirect based on user type after biometric login
-        const isAdmin = credentials.email.toLowerCase() === 'admin@dogcatify.com';
-        if (isAdmin) {
-          console.log('Admin biometric login, redirecting to admin tabs');
-          router.replace('/(admin-tabs)/requests');
-        } else {
-          console.log('Regular user biometric login, redirecting to regular tabs');
-          router.replace('/(tabs)');
-        }
-        return true;
-      }
-      console.log('No credentials returned from biometric authentication');
-      return false;
-    } catch (error: any) {
-      console.error('Biometric authentication error:', error);
-      Alert.alert(
-        'Error de autenticación biométrica',
-        'No pudimos verificar tu identidad. Por favor, intenta con tu correo y contraseña.',
-        [{ text: 'Entendido', style: 'default' }]
-      );
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleEnableBiometric = async () => {
     console.log('Attempting to enable biometric with credentials');
     const success = await enableBiometric(email, password);
