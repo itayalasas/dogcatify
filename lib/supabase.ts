@@ -108,3 +108,34 @@ export const signOut = async () => {
     throw error;
   }
 };
+
+// Pet functions
+export const getPets = async (userId: string) => {
+  try {
+    const { data, error } = await supabaseClient
+      .from('pets')
+      .select('*')
+      .eq('owner_id', userId)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error fetching pets:', error);
+    throw error;
+  }
+};
+
+export const deletePet = async (petId: string) => {
+  try {
+    const { error } = await supabaseClient
+      .from('pets')
+      .delete()
+      .eq('id', petId);
+    
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error deleting pet:', error);
+    throw error;
+  }
+};
