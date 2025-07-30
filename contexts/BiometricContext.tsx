@@ -72,29 +72,34 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         return;
       }
 
-      // Check if biometric is enabled in user profile
-      const { data, error } = await supabaseClient
-        .from('profiles')
-        .select('biometric_enabled')
-        .eq('id', currentUser.id)
-        .single();
+      try {
+        // Check if biometric is enabled in user profile
+        const { data, error } = await supabaseClient
+          .from('profiles')
+          .select('biometric_enabled')
+          .eq('id', currentUser.id)
+          .single();
 
-      if (error) {
-        // If column doesn't exist, gracefully handle it
-        if (error.code === '42703') {
-          console.log('Biometric column not yet available in database');
+        if (error) {
+          // If column doesn't exist or other database errors, gracefully handle it
+          if (error.code === '42703' || error.code === 'PGRST204') {
+            console.log('Biometric columns not yet available in database');
+            setIsBiometricEnabled(false);
+            return;
+          }
+          console.error('Error checking biometric status:', error);
           setIsBiometricEnabled(false);
           return;
         }
-        console.error('Error checking biometric status:', error);
-        setIsBiometricEnabled(false);
-        return;
-      }
 
-      const isEnabled = data?.biometric_enabled || false;
-      setIsBiometricEnabled(isEnabled);
-      
-      console.log('Biometric enabled status:', isEnabled);
+        const isEnabled = data?.biometric_enabled || false;
+        setIsBiometricEnabled(isEnabled);
+        
+        console.log('Biometric enabled status:', isEnabled);
+      } catch (dbError) {
+        console.log('Database error checking biometric status, assuming disabled:', dbError);
+        setIsBiometricEnabled(false);
+      }
     } catch (error) {
       console.error('Error checking biometric enabled:', error);
       setIsBiometricEnabled(false);
@@ -142,22 +147,35 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       
       console.log('Credentials stored, updating user profile...');
 
-      // Update user profile in Supabase
-      const { error } = await supabaseClient
-        .from('profiles')
-        .update({
-          biometric_enabled: true,
-          biometric_enabled_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', currentUser.id);
+      // Update user profile in Supabase (gracefully handle missing columns)
+      try {
+        const { error } = await supabaseClient
+          .from('profiles')
+          .update({
+            biometric_enabled: true,
+            biometric_enabled_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', currentUser.id);
 
-      if (error) {
-        console.error('Error updating biometric status in Supabase:', error);
-        // Clean up stored credentials if database update fails
-        await SecureStore.deleteItemAsync('biometric_email');
-        await SecureStore.deleteItemAsync('biometric_password');
-        throw error;
+        if (error) {
+          // If columns don't exist yet, continue anyway (credentials are stored locally)
+          if (error.code === '42703' || error.code === 'PGRST204') {
+            console.log('Biometric columns not available in database yet, but credentials stored locally');
+            setIsBiometricEnabled(true);
+            return true;
+          }
+          console.error('Error updating biometric status in Supabase:', error);
+          // Clean up stored credentials if database update fails
+          await SecureStore.deleteItemAsync('biometric_email');
+          await SecureStore.deleteItemAsync('biometric_password');
+          throw error;
+        }
+      } catch (dbError) {
+        console.log('Database update failed, but credentials stored locally:', dbError);
+        // If database update fails but credentials are stored, still consider it enabled
+        setIsBiometricEnabled(true);
+        return true;
       }
 
       console.log('Biometric setup completed successfully');
@@ -197,14 +215,14 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           })
           .eq('id', currentUser.id);
 
-        if (error && error.code === '42703') {
+        if (error && (error.code === '42703' || error.code === 'PGRST204')) {
           console.log('Biometric column not available, credentials removed locally');
           // Column doesn't exist yet, but credentials are already removed locally
         } else if (error) {
           throw error;
         }
       } catch (updateError) {
-        if (updateError.code !== '42703') {
+        if (updateError.code !== '42703' && updateError.code !== 'PGRST204') {
           throw updateError;
         }
       }
