@@ -9,7 +9,7 @@ import { supabaseClient } from '../../../lib/supabase';
 
 const { width } = Dimensions.get('window');
 
-export default function PartnerServices() {
+const PartnerServices = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { currentUser } = useAuth();
   const [partner, setPartner] = useState<any>(null);
@@ -935,7 +935,6 @@ export default function PartnerServices() {
       </Modal>
     </SafeAreaView>
   );
-}
 
 const styles = StyleSheet.create({
   container: {

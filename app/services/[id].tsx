@@ -9,7 +9,7 @@ import { supabaseClient } from '../../lib/supabase';
 
 const { width } = Dimensions.get('window');
 
-export default function ServiceDetail() {
+const ServiceDetail = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { currentUser } = useAuth();
   const [service, setService] = useState<any>(null);
@@ -505,7 +505,6 @@ export default function ServiceDetail() {
       </Modal>
     </SafeAreaView>
   );
-}
 
 const styles = StyleSheet.create({
   container: {

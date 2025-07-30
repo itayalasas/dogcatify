@@ -7,7 +7,7 @@ import { Button } from '../../../components/ui/Button';
 import { useAuth } from '../../../contexts/AuthContext';
 import { supabaseClient } from '../../../lib/supabase';
 
-export default function ShelterAdoptions() {
+const ShelterAdoptions = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { currentUser } = useAuth();
   const [shelter, setShelter] = useState<any>(null);
@@ -344,7 +344,6 @@ export default function ShelterAdoptions() {
       </ScrollView>
     </SafeAreaView>
   );
-}
 
 const styles = StyleSheet.create({
   container: {

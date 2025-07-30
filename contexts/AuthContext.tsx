@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import * as Crypto from 'expo-crypto';
+import Constants from 'expo-constants';
 import { supabaseClient, getUserProfile, updateUserProfile, signIn as supabaseSignIn, signUp as supabaseSignUp, signOut as supabaseSignOut } from '../lib/supabase';
 import { User } from '../types';
 
@@ -40,12 +40,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Configure Google Sign-In
   useEffect(() => {
-    configureGoogleSignIn();
+    // Only configure Google Sign-In in native builds, not in Expo Go
+    if (Constants.appOwnership !== 'expo') {
+      configureGoogleSignIn();
+    }
   }, []);
 
   const configureGoogleSignIn = async () => {
     try {
-      if (Platform.OS !== 'web') {
+      // Only import and configure Google Sign-In in native builds
+      if (Platform.OS !== 'web' && Constants.appOwnership !== 'expo') {
+        const { GoogleSignin } = await import('@react-native-google-signin/google-signin');
         GoogleSignin.configure({
           webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
           iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
@@ -303,6 +308,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('AuthContext - Starting Google OAuth login...');
       
+      // Check if running in Expo Go
+      if (Constants.appOwnership === 'expo') {
+        throw new Error('Google Sign-In no está disponible en Expo Go. Usa un build nativo o el simulador web.');
+      }
+      
       if (Platform.OS === 'web') {
         // Web implementation using Supabase OAuth
         const { data, error } = await supabaseClient.auth.signInWithOAuth({
@@ -323,6 +333,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return null; // OAuth flow will handle the rest
       } else {
         // Native implementation using Google Sign-In SDK
+        const { GoogleSignin } = await import('@react-native-google-signin/google-signin');
         await GoogleSignin.hasPlayServices();
         const userInfo = await GoogleSignin.signIn();
         
@@ -436,6 +447,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Sign out from Google if signed in
       if (Platform.OS !== 'web') {
         try {
+          const { GoogleSignin } = await import('@react-native-google-signin/google-signin');
           const isSignedIn = await GoogleSignin.isSignedIn();
           if (isSignedIn) {
             await GoogleSignin.signOut();

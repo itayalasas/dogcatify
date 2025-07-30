@@ -9,7 +9,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabaseClient } from '../../lib/supabase';
 import { NotificationService } from '../../utils/notifications';
 
-export default function ServiceBooking() {
+const ServiceBooking = () => {
   const { serviceId, partnerId, petId } = useLocalSearchParams<{ 
     serviceId: string;
     partnerId: string;
@@ -584,7 +584,6 @@ export default function ServiceBooking() {
       </ScrollView>
     </SafeAreaView>
   );
-}
 
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat('es-AR', {

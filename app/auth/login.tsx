@@ -9,6 +9,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { useBiometric } from '../../contexts/BiometricContext'; 
 import * as LocalAuthentication from 'expo-local-authentication';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 
 export default function Login() {
   const { redirectTo } = useLocalSearchParams<{ redirectTo?: string }>();
@@ -118,6 +119,16 @@ export default function Login() {
   };
 
   const handleGoogleLogin = async () => {
+    // Check if running in Expo Go
+    if (Constants.appOwnership === 'expo') {
+      Alert.alert(
+        'No disponible en Expo Go',
+        'Google Sign-In requiere un build nativo. Puedes probarlo en el simulador web o crear un build de desarrollo.',
+        [{ text: 'Entendido' }]
+      );
+      return;
+    }
+    
     setGoogleLoading(true);
     try {
       console.log('Starting Google login...');
