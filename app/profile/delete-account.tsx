@@ -169,16 +169,23 @@ export default function DeleteAccount() {
         return;
       }
 
-      // 9. Delete user profile
+      // 9. Delete user profile from profiles table
       console.log('Deleting user profile...');
       const { error: profileError } = await supabaseClient
         .from('profiles')
         .delete()
         .eq('id', currentUser.id);
 
-      if (profileError) {
-        console.error('Error deleting profile:', profileError);
-        throw profileError;
+      if (deleteProfileError) {
+        console.error('Error deleting profile from profiles table:', deleteProfileError);
+        Alert.alert(
+          'Error',
+          `No se pudo eliminar el perfil: ${deleteProfileError.message}. Contacta con soporte.`
+        );
+        setLoading(false);
+        return;
+      } else {
+        console.log('Profile deleted successfully from profiles table');
       }
 
       // 10. Sign out user (auth user will be handled by admin later)
@@ -194,22 +201,40 @@ export default function DeleteAccount() {
         })
         .eq('id', currentUser.id);
 
-      console.log('Account deletion completed successfully');
+      // 10. Try to delete from auth (this might fail due to permissions)
+      console.log('Attempting to delete auth user...');
+      try {
+        // This will likely fail for regular users, but we'll try anyway
+        const { error: authError } = await supabaseClient.auth.admin.deleteUser(currentUser.id);
+        
+        if (authError) {
+          console.log('Auth user deletion failed (expected for regular users):', authError.message);
+          console.log('Auth user will need to be cleaned up by admin later');
+        } else {
+          console.log('Auth user deleted successfully');
+        }
+      } catch (authError) {
+        console.log('Auth deletion not available for regular users:', authError);
+      }
 
-      // Sign out and redirect
+      // 11. Sign out user
+      console.log('Signing out user...');
       await logout();
+      
+      console.log('Account deletion process completed');
       
       Alert.alert(
         'Cuenta eliminada',
-        'Tu cuenta y todos tus datos han sido eliminados permanentemente. El usuario de autenticación será eliminado por un administrador.',
+        'Tu cuenta y todos tus datos han sido eliminados permanentemente de la aplicación. Para completar el proceso, un administrador eliminará tu usuario de autenticación.',
         [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
       );
 
     } catch (error) {
       console.error('Error deleting account:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
       Alert.alert(
         'Error',
-        'Ocurrió un error al eliminar tu cuenta. Por favor contacta con soporte para asistencia.'
+        `Ocurrió un error al eliminar tu cuenta: ${error.message || error}. Por favor contacta con soporte para asistencia.`
       );
     } finally {
       setLoading(false);
