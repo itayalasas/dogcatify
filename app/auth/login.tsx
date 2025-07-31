@@ -346,7 +346,7 @@ export default function Login() {
                 text: 'Crear cuenta', 
                 onPress: () => router.push('/auth/register')
               }
-        if (isBiometricSupported && !isBiometricEnabled && email && password && !showBiometricOption) {
+            ]
           );
         } else {
           Alert.alert(
