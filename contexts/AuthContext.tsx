@@ -142,14 +142,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               console.log('AuthContext - Session error after login, signing out');
               await supabaseClient.auth.signOut();
             }
-            
-                  }
+          }
         }
         if (!mounted) return;
         setLoading(false);
         setAuthInitialized(true);
       }
-    }
     );
 
     // Initial session check
