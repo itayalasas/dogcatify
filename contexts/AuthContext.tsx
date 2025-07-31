@@ -114,7 +114,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 photoURL: session.user.user_metadata?.photo_url,
                 isOwner: true,
                 isPartner: false,
-                        } catch (error: any) {
+                createdAt: new Date(),
+                followers: [],
+                following: [],
+                followersCount: 0,
+                followingCount: 0,
+              };
+              
+              setCurrentUser({ id: session.user.id, ...newUser });
+            }
+          } catch (error: any) {
             if (!mounted) return;
             console.error('Error processing user data:', error);
             
