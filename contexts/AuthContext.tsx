@@ -128,19 +128,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 photoURL: session.user.user_metadata?.photo_url,
                 isOwner: true,
                 isPartner: false,
-                createdAt: new Date(),
-              };
-              
-              await updateUserProfile(session.user.id, {
-                display_name: newUser.displayName,
-                photo_url: newUser.photoURL,
-                is_owner: newUser.isOwner,
-                is_partner: newUser.isPartner,
-                created_at: new Date(),
-              });
-              
-              setCurrentUser({ id: session.user.id, ...newUser });
-            }
           } catch (error: any) {
             if (!mounted) return;
             console.error('Error processing user data:', error);
@@ -205,16 +192,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 createdAt: new Date(profile.created_at),
                 followers: profile.followers,
                 following: profile.following,
-              }
-              )
+                followersCount: profile.followers?.length || 0,
+                followingCount: profile.following?.length || 0,
+              });
             }
-            if (error.message?.includes('session_not_found') || error.message?.includes('JWT')) {
-              console.log('AuthContext - Session expired during profile load, signing out');
-              await supabaseClient.auth.signOut();
-            }
-            
-            // Re-throw the error so it can be handled by the login function
-            throw error;
           }
         } else {
           console.log('AuthContext - No initial session found');
