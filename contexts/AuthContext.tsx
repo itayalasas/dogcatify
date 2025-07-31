@@ -70,7 +70,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Check if email is confirmed
             setIsEmailConfirmed(session.user.email_confirmed_at !== null);
             
-            const profile = await getUserProfile(session.user.id);
+            let profile;
+            try {
+              profile = await getUserProfile(session.user.id);
+            } catch (profileError: any) {
+              // Handle case where user exists in auth.users but not in profiles (deleted account)
+              if (profileError.code === 'PGRST116' && profileError.message?.includes('0 rows')) {
+                console.log('AuthContext - User exists in auth but not in profiles (deleted account)');
+                // Sign out the user since their profile was deleted
+                await supabaseClient.auth.signOut();
+                setCurrentUser(null);
+                setSession(null);
+                return;
+              }
+              throw profileError;
+            let profile;
+            try {
+              profile = await getUserProfile(data.user.id);
+            } catch (profileError: any) {
+              // Handle case where user exists in auth.users but not in profiles (deleted account)
+              if (profileError.code === 'PGRST116' && profileError.message?.includes('0 rows')) {
+                console.log('AuthContext - Login: User exists in auth but not in profiles (deleted account)');
+                // Sign out the user and throw a user-friendly error
+                await supabaseClient.auth.signOut();
+                throw new Error('Esta cuenta ya no existe. Si eliminaste tu cuenta anteriormente, necesitas crear una nueva.');
+              }
+              throw profileError;
+            }
             
             if (profile) {
               if (!mounted) return;
@@ -118,16 +144,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (!mounted) return;
             console.error('Error processing user data:', error);
             
-            // Handle case where user exists in auth.users but not in profiles (deleted account)
-            if (error.code === 'PGRST116' && error.message?.includes('0 rows')) {
-              console.log('AuthContext - User exists in auth but not in profiles (deleted account)');
-              // Sign out the user since their profile was deleted
-              await supabaseClient.auth.signOut();
-              setCurrentUser(null);
-              setSession(null);
-              return;
-            }
-            
             // If it's a session error, sign out the user
             if (error.message?.includes('session_not_found') || error.message?.includes('JWT')) {
               console.log('AuthContext - Session expired, signing out user');
@@ -156,7 +172,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (session?.user) {
           try {
-            const profile = await getUserProfile(session.user.id);
+            let profile;
+            try {
+              profile = await getUserProfile(session.user.id);
+            } catch (profileError: any) {
+              // Handle case where user exists in auth.users but not in profiles (deleted account)
+              if (profileError.code === 'PGRST116' && profileError.message?.includes('0 rows')) {
+                console.log('AuthContext - Initial check: User exists in auth but not in profiles (deleted account)');
+                // Sign out the user since their profile was deleted
+                await supabaseClient.auth.signOut();
+                setCurrentUser(null);
+                setSession(null);
+                return;
+              }
+              throw profileError;
+            }
             
             if (!mounted) return;
             if (profile) {
@@ -174,28 +204,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 createdAt: new Date(profile.created_at),
                 followers: profile.followers,
                 following: profile.following,
-                followersCount: profile.followers?.length || 0,
-                followingCount: profile.following?.length || 0,
-              });
-            }
-          } catch (error: any) {
-            console.error('Error loading user profile:', error);
-            if (!mounted) return;
-            
-            // Handle case where user exists in auth.users but not in profiles (deleted account)
-            if (error.code === 'PGRST116' && error.message?.includes('0 rows')) {
-              console.log('AuthContext - Initial check: User exists in auth but not in profiles (deleted account)');
-              // Sign out the user since their profile was deleted
-              await supabaseClient.auth.signOut();
-              setCurrentUser(null);
-              setSession(null);
-              return;
-            }
-            
             if (error.message?.includes('session_not_found') || error.message?.includes('JWT')) {
               console.log('AuthContext - Session expired during profile load, signing out');
               await supabaseClient.auth.signOut();
             }
+            
+            // Re-throw the error so it can be handled by the login function
+            throw error;
           }
         } else {
           console.log('AuthContext - No initial session found');
