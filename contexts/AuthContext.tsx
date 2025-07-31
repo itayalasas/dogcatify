@@ -143,6 +143,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               await supabaseClient.auth.signOut();
             }
             
+                  }
         }
         if (!mounted) return;
         setLoading(false);
