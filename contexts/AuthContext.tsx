@@ -117,7 +117,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 following: [],
                 followersCount: 0,
                 followingCount: 0,
-        } catch (error: any) {
+                      } catch (error: any) {
           console.error('Error loading user profile after login:', error);
           
           if (error.message?.includes('session_not_found') || error.message?.includes('JWT')) {
@@ -126,6 +126,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
           
           throw error;
+        }
+            }
+          }
         }
         if (!mounted) return;
         setLoading(false);
