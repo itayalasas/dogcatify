@@ -79,9 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 console.log('AuthContext - User exists in auth but not in profiles (deleted account)');
                 // Sign out the user since their profile was deleted
                 await supabaseClient.auth.signOut();
-                setCurrentUser(null);
-                setSession(null);
-                return;
+               throw new Error('Esta cuenta ya no existe. Si eliminaste tu cuenta anteriormente, necesitas crear una nueva.');
               }
               throw profileError;
             }
@@ -119,22 +117,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 following: [],
                 followersCount: 0,
                 followingCount: 0,
-              };
-              
-              setCurrentUser({ id: session.user.id, ...newUser });
-            }
-          } catch (error: any) {
-            if (!mounted) return;
-            console.error('Error processing user data:', error);
-            
-            // If it's a session error, sign out the user
-            if (error.message?.includes('session_not_found') || error.message?.includes('JWT')) {
-              console.log('AuthContext - Session expired, signing out user');
-              await supabaseClient.auth.signOut();
-              setCurrentUser(null);
-              setSession(null);
-            }
+        } catch (error: any) {
+          console.error('Error loading user profile after login:', error);
+          
+          if (error.message?.includes('session_not_found') || error.message?.includes('JWT')) {
+            console.log('AuthContext - Session error after login, signing out');
+            await supabaseClient.auth.signOut();
           }
+          
+          throw error;
         }
         if (!mounted) return;
         setLoading(false);
