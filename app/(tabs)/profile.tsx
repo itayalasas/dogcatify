@@ -473,6 +473,19 @@ export default function Profile() {
           </TouchableOpacity>
         </Card>
 
+        {/* Advanced Settings */}
+        <Card style={styles.menuCard}>
+          <TouchableOpacity 
+            style={styles.menuOption} 
+            onPress={() => router.push('/profile/delete-account')}
+          >
+            <View style={styles.menuOptionLeft}>
+              <Trash2 size={20} color="#EF4444" />
+              <Text style={[styles.menuOptionText, styles.dangerText]}>Eliminar cuenta</Text>
+            </View>
+            <ChevronRight size={16} color="#EF4444" />
+          </TouchableOpacity>
+        </Card>
         {/* Logout */}
         <Card style={styles.logoutCard}>
           <TouchableOpacity style={styles.logoutOption} onPress={handleLogout}>
@@ -723,5 +736,8 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     color: '#EF4444',
     marginLeft: 8,
+  },
+  dangerText: {
+    color: '#EF4444',
   },
 });
