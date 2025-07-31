@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import * as LocalAuthentication from 'expo-local-authentication';
+import * as SecureStore from 'expo-secure-store';
 import { useAuth } from './AuthContext';
 import { supabaseClient } from '../lib/supabase';
 
@@ -38,6 +40,16 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const checkBiometricAvailability = async () => {
     try {
+      // Check if running in Expo Go
+      const isExpoGo = __DEV__ && !LocalAuthentication;
+      if (isExpoGo) {
+        console.log('Biometric authentication not available in Expo Go');
+        setIsBiometricAvailable(false);
+        setIsBiometricSupported(false);
+        setBiometricType(null);
+        return;
+      }
+
       const compatible = await LocalAuthentication.hasHardwareAsync();
       const enrolled = await LocalAuthentication.isEnrolledAsync();
       const available = compatible && enrolled;
@@ -112,6 +124,12 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try {
       console.log('Starting biometric setup...');
       
+      // Check if running in Expo Go
+      if (!LocalAuthentication || !SecureStore) {
+        console.log('Biometric authentication not available in Expo Go');
+        return false;
+      }
+
       if (!isBiometricAvailable) {
         throw new Error('Biometric authentication is not available');
       }

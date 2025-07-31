@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity, Image, TextInput } from 'react-native';
 import { Link, router, useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Linking } from 'react-native';
 import { Mail, Lock, Eye, EyeOff, Check, Fingerprint } from 'lucide-react-native';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
@@ -38,6 +40,12 @@ export default function Login() {
 
   const checkBiometricAvailability = async () => {
     try {
+      // Skip biometric check in Expo Go
+      if (__DEV__) {
+        console.log('Skipping biometric check in development');
+        return;
+      }
+
       const compatible = await LocalAuthentication.hasHardwareAsync();
       const enrolled = await LocalAuthentication.isEnrolledAsync();
       console.log('Biometric availability:', { compatible, enrolled });

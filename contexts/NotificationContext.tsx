@@ -63,8 +63,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       // Check if running in Expo Go
       const isExpoGo = Constants.appOwnership === 'expo';
       if (isExpoGo) {
-        console.log('Running in Expo Go - push notifications may not work properly');
-        // Don't return null immediately, let's try anyway for testing
+        console.log('Running in Expo Go - push notifications not supported in SDK 53+');
+        return null;
       }
 
       // Check if device supports push notifications
