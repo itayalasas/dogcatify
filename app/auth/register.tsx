@@ -208,17 +208,17 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     padding: 20,
-    paddingTop: 40,
+    paddingTop: 20,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   logo: {
     width: 140,
     height: 140,
     resizeMode: 'contain',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   title: {
     fontSize: 28,
