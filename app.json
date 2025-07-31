@@ -42,8 +42,7 @@
         "NSPhotoLibraryUsageDescription": "Esta aplicación necesita acceso a la galería para seleccionar fotos de mascotas.",
         "NSFaceIDUsageDescription": "Esta aplicación usa Face ID para un acceso rápido y seguro.",
         "ITSAppUsesNonExemptEncryption": false
-      },
-      "googleServicesFile": "./GoogleService-Info.plist"
+      }
     },
     "android": {
       "package": "com.dogcatify.app",
@@ -51,7 +50,6 @@
         "foregroundImage": "./assets/images/logo.jpg",
         "backgroundColor": "#FFFFFF"
       },
-      "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -64,8 +62,6 @@
       "favicon": "./assets/images/logo.jpg",
       "bundler": "metro",
       "output": "static"
-      "ITSAppUsesNonExemptEncryption": false
-    }
     },
     "runtimeVersion": {
       "policy": "sdkVersion"
@@ -73,6 +69,7 @@
     "notification": {
       "icon": "./assets/images/logo.jpg",
       "color": "#2D6A6F"
+    },
     "permissions": [
       "NOTIFICATIONS"
     ],
