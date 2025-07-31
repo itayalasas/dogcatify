@@ -229,7 +229,7 @@ export default function Login() {
                       type: 'signup',
                       email: email,
                       options: {
-                        emailRedirectTo: `${process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:8081'}/auth/confirm?type=signup`,
+                        emailRedirectTo: `${process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:8081'}/auth/confirm`,
                       }
                     });
                     
@@ -261,7 +261,7 @@ export default function Login() {
                       type: 'signup',
                       email: email,
                       options: {
-                        emailRedirectTo: `${process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:8081'}/auth/confirm?type=signup`,
+                        emailRedirectTo: `${process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:8081'}/auth/confirm`,
                       }
                     });
                     
@@ -315,7 +315,7 @@ export default function Login() {
                       type: 'signup',
                       email: email,
                       options: {
-                        emailRedirectTo: `${process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:8081'}/auth/confirm?type=signup`,
+                        emailRedirectTo: `${process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:8081'}/auth/confirm`,
                       }
                     });
                     

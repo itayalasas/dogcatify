@@ -22,7 +22,7 @@ export default function ForgotPassword() {
     setLoading(true);
     try {
       const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-        redirectTo: `${process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:8081'}/auth/confirm?type=recovery`,
+        redirectTo: `${process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:8081'}/auth/confirm`,
       });
 
       if (error) throw error;

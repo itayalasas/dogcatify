@@ -82,12 +82,7 @@ export const NotificationService = {
         <div style="padding: 20px; background-color: #f9f9f9;">
           <p>Hola <strong>${name}</strong>,</p>
           <p>¡Gracias por registrarte en DogCatiFy!</p>
-          <p>Para completar tu registro y acceder a todas las funciones, necesitas confirmar tu correo electrónico.</p>
-          <div style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 15px; margin: 20px 0;">
-            <p><strong>📧 Revisa tu bandeja de entrada</strong></p>
-            <p>Te hemos enviado un correo de confirmación. Haz clic en el enlace para activar tu cuenta.</p>
-            <p>Si no ves el correo, revisa tu carpeta de spam.</p>
-          </div>
+          <p>Para completar tu registro y acceder a todas las funciones, necesitas confirmar tu correo electrónico haciendo clic en el enlace que Supabase te enviará automáticamente.</p>
           <p>Una vez confirmado tu email, podrás:</p>
           <ul>
             <li>Crear perfiles para tus mascotas</li>
@@ -95,13 +90,11 @@ export const NotificationService = {
             <li>Encontrar servicios para tus compañeros peludos</li>
             <li>Compartir momentos especiales con la comunidad</li>
           </ul>
-          ${activationLink ? `
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${activationLink}" style="background-color: #2D6A6F; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">
-              Confirmar mi correo electrónico
-            </a>
+          <div style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 15px; margin: 20px 0;">
+            <p><strong>📧 Importante:</strong></p>
+            <p>Recibirás un correo separado de Supabase con el enlace de confirmación. Haz clic en ese enlace para activar tu cuenta.</p>
+            <p>Si no ves el correo, revisa tu carpeta de spam.</p>
           </div>
-          ` : ''}
           <p>¡Esperamos verte pronto en DogCatiFy!</p>
           <p>El equipo de DogCatiFy</p>
         </div>
