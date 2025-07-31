@@ -17,11 +17,10 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [rememberPassword, setRememberPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const [biometricLoading, setBiometricLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showBiometricOption, setShowBiometricOption] = useState(false);
-  const { login, loginWithGoogle } = useAuth();
+  const { login } = useAuth();
   const { t } = useLanguage();
   const { 
     isBiometricSupported, 
@@ -116,47 +115,6 @@ export default function Login() {
 
     // Proceed with credential login
     await handleCredentialLogin();
-  };
-
-  const handleGoogleLogin = async () => {
-    // Check if running in Expo Go
-    if (Constants.appOwnership === 'expo') {
-      Alert.alert(
-        'No disponible en Expo Go',
-        'Google Sign-In requiere un build nativo. Puedes probarlo en el simulador web o crear un build de desarrollo.',
-        [{ text: 'Entendido', style: 'default' }]
-      );
-      return;
-    }
-    
-    setGoogleLoading(true);
-    try {
-      console.log('Starting Google login...');
-      const result = await loginWithGoogle();
-      
-      if (result) {
-        // Redirect based on user type
-        const isAdmin = result?.email?.toLowerCase() === 'admin@dogcatify.com';
-        if (isAdmin) {
-          router.replace('/(admin-tabs)/requests');
-        } else {
-          if (redirectTo) {
-            router.replace(`/${redirectTo}` as any);
-          } else {
-            router.replace('/(tabs)');
-          }
-        }
-      }
-    } catch (error: any) {
-      console.error('Google login error:', error);
-      Alert.alert(
-        'Error', 
-        'No se pudo iniciar sesión con Google. Intenta nuevamente.',
-        [{ text: 'OK', style: 'default' }]
-      );
-    } finally {
-      setGoogleLoading(false);
-    }
   };
 
   const handleBiometricLogin = async () => {
@@ -404,45 +362,27 @@ export default function Login() {
           size="large"
         />
 
-        {/* Social Login Options */}
-        <View style={styles.socialLoginSection}>
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>o continúa con</Text>
-            <View style={styles.dividerLine} />
-          </View>
-          
-          <View style={styles.socialButtons}>
-            {/* Google Login */}
+        {/* Biometric Login */}
+        {isBiometricSupported && isBiometricEnabled && (
+          <View style={styles.biometricLoginSection}>
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>o usa</Text>
+              <View style={styles.dividerLine} />
+            </View>
+            
             <TouchableOpacity
-              style={styles.socialButton}
-              onPress={handleGoogleLogin}
-              disabled={googleLoading}
+              style={styles.biometricLoginButton}
+              onPress={handleBiometricLogin}
+              disabled={biometricLoading}
             >
-              <Image
-                source={{ uri: 'https://developers.google.com/identity/images/g-logo.png' }}
-                style={styles.googleIcon}
-              />
-              <Text style={styles.socialButtonText}>
-                {googleLoading ? 'Conectando...' : 'Google'}
+              <Fingerprint size={20} color="#6B7280" />
+              <Text style={styles.biometricLoginText}>
+                {biometricLoading ? 'Autenticando...' : biometricType || 'Biometría'}
               </Text>
             </TouchableOpacity>
-
-            {/* Biometric Login */}
-            {isBiometricSupported && isBiometricEnabled && (
-              <TouchableOpacity
-                style={styles.socialButton}
-                onPress={handleBiometricLogin}
-                disabled={biometricLoading}
-              >
-                <Fingerprint size={20} color="#6B7280" />
-                <Text style={styles.socialButtonText}>
-                  {biometricLoading ? 'Autenticando...' : biometricType || 'Biometría'}
-                </Text>
-              </TouchableOpacity>
-            )}
           </View>
-        </View>
+        )}
 
         {/* Biometric Setup Option */}
         {showBiometricOption && (
@@ -575,7 +515,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
     color: '#3B82F6',
   },
-  socialLoginSection: {
+  biometricLoginSection: {
     marginTop: 24,
     marginBottom: 12,
   },
@@ -595,12 +535,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     paddingHorizontal: 16,
   },
-  socialButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  socialButton: {
-    flex: 1,
+  biometricLoginButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -612,11 +547,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     gap: 8,
   },
-  googleIcon: {
-    width: 20,
-    height: 20,
-  },
-  socialButtonText: {
+  biometricLoginText: {
     fontSize: 14,
     fontFamily: 'Inter-Medium',
     color: '#374151',

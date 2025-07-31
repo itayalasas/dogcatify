@@ -14,7 +14,6 @@ interface AuthContextType {
   currentUser: User | null;
   loading: boolean; 
   login: (email: string, password: string) => Promise<User | null>;
-  loginWithGoogle: () => Promise<User | null>;
   register: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => Promise<void>;
   isEmailConfirmed: boolean;
@@ -37,30 +36,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<any | null>(null);
   const [isEmailConfirmed, setIsEmailConfirmed] = useState(false);
   const [authInitialized, setAuthInitialized] = useState(false);
-
-  // Configure Google Sign-In
-  useEffect(() => {
-    // Only configure Google Sign-In in native builds, not in Expo Go
-    if (Constants.appOwnership !== 'expo') {
-      configureGoogleSignIn();
-    }
-  }, []);
-
-  const configureGoogleSignIn = async () => {
-    try {
-      // Only import and configure Google Sign-In in native builds
-      if (Platform.OS !== 'web' && Constants.appOwnership !== 'expo') {
-        const { GoogleSignin } = await import('@react-native-google-signin/google-signin');
-        GoogleSignin.configure({
-          webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-          iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-          androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-        });
-      }
-    } catch (error) {
-      console.error('Error configuring Google Sign-In:', error);
-    }
-  };
 
   useEffect(() => {
     let mounted = true;
@@ -304,115 +279,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const loginWithGoogle = async (): Promise<User | null> => {
-    try {
-      console.log('AuthContext - Starting Google OAuth login...');
-      
-      // Check if running in Expo Go
-      if (Constants.appOwnership === 'expo') {
-        throw new Error('Google Sign-In no está disponible en Expo Go. Usa un build nativo o el simulador web.');
-      }
-      
-      if (Platform.OS === 'web') {
-        // Web implementation using Supabase OAuth
-        const { data, error } = await supabaseClient.auth.signInWithOAuth({
-          provider: 'google',
-          options: {
-            redirectTo: AuthSession.makeRedirectUri({
-              path: '/auth/callback',
-            }),
-          },
-        });
-        
-        if (error) {
-          console.error('AuthContext - Google login error:', error);
-          throw error;
-        }
-        
-        console.log('AuthContext - Google login initiated successfully');
-        return null; // OAuth flow will handle the rest
-      } else {
-        // Native implementation using Google Sign-In SDK
-        const { GoogleSignin } = await import('@react-native-google-signin/google-signin');
-        await GoogleSignin.hasPlayServices();
-        const userInfo = await GoogleSignin.signIn();
-        
-        if (userInfo.idToken) {
-          const { data, error } = await supabaseClient.auth.signInWithIdToken({
-            provider: 'google',
-            token: userInfo.idToken,
-          });
-          
-          if (error) {
-            console.error('AuthContext - Google login error:', error);
-            throw error;
-          }
-          
-          if (data.user) {
-            // Load or create user profile
-            try {
-              const profile = await getUserProfile(data.user.id);
-              
-              if (profile) {
-                const user: User = {
-                  id: data.user.id,
-                  email: data.user.email!,
-                  displayName: profile.display_name || userInfo.user.name || '',
-                  photoURL: profile.photo_url || userInfo.user.photo,
-                  isOwner: profile.is_owner || true,
-                  isPartner: profile.is_partner || false,
-                  location: profile.location,
-                  bio: profile.bio,
-                  phone: profile.phone,
-                  createdAt: new Date(profile.created_at),
-                  followers: profile.followers,
-                  following: profile.following,
-                  followersCount: profile.followers?.length || 0,
-                  followingCount: profile.following?.length || 0,
-                };
-                
-                setCurrentUser(user);
-                return user;
-              } else {
-                // Create new profile
-                const newProfile = {
-                  display_name: userInfo.user.name || '',
-                  photo_url: userInfo.user.photo,
-                  is_owner: true,
-                  is_partner: false,
-                  created_at: new Date(),
-                };
-                
-                await updateUserProfile(data.user.id, newProfile);
-                
-                const user: User = {
-                  id: data.user.id,
-                  email: data.user.email!,
-                  displayName: newProfile.display_name,
-                  photoURL: newProfile.photo_url,
-                  isOwner: true,
-                  isPartner: false,
-                  createdAt: new Date(),
-                };
-                
-                setCurrentUser(user);
-                return user;
-              }
-            } catch (profileError) {
-              console.error('Error handling Google user profile:', profileError);
-              throw profileError;
-            }
-          }
-        }
-        
-        throw new Error('No se pudo obtener el token de Google');
-      }
-    } catch (error) {
-      console.error('Google login error:', error);
-      throw error;
-    }
-  };
-
   const register = async (email: string, password: string, displayName: string) => {
     try {
       console.log('AuthContext - Starting registration for:', email);
@@ -443,20 +309,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       console.log('AuthContext - Logging out user');
-      
-      // Sign out from Google if signed in
-      if (Platform.OS !== 'web') {
-        try {
-          const { GoogleSignin } = await import('@react-native-google-signin/google-signin');
-          const isSignedIn = await GoogleSignin.isSignedIn();
-          if (isSignedIn) {
-            await GoogleSignin.signOut();
-          }
-        } catch (googleError) {
-          console.log('Google sign out error (non-critical):', googleError);
-        }
-      }
-      
       const { error } = await supabaseClient.auth.signOut();
       if (error) throw error;
       
@@ -475,7 +327,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loading,
     authInitialized,
     login,
-    loginWithGoogle,
     register,
     logout,
     isEmailConfirmed,
