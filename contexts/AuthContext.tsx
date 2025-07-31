@@ -118,6 +118,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (!mounted) return;
             console.error('Error processing user data:', error);
             
+            // Handle case where user exists in auth.users but not in profiles (deleted account)
+            if (error.code === 'PGRST116' && error.message?.includes('0 rows')) {
+              console.log('AuthContext - User exists in auth but not in profiles (deleted account)');
+              // Sign out the user since their profile was deleted
+              await supabaseClient.auth.signOut();
+              setCurrentUser(null);
+              setSession(null);
+              return;
+            }
+            
             // If it's a session error, sign out the user
             if (error.message?.includes('session_not_found') || error.message?.includes('JWT')) {
               console.log('AuthContext - Session expired, signing out user');
@@ -171,6 +181,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } catch (error: any) {
             console.error('Error loading user profile:', error);
             if (!mounted) return;
+            
+            // Handle case where user exists in auth.users but not in profiles (deleted account)
+            if (error.code === 'PGRST116' && error.message?.includes('0 rows')) {
+              console.log('AuthContext - Initial check: User exists in auth but not in profiles (deleted account)');
+              // Sign out the user since their profile was deleted
+              await supabaseClient.auth.signOut();
+              setCurrentUser(null);
+              setSession(null);
+              return;
+            }
+            
             if (error.message?.includes('session_not_found') || error.message?.includes('JWT')) {
               console.log('AuthContext - Session expired during profile load, signing out');
               await supabaseClient.auth.signOut();
@@ -265,6 +286,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         } catch (error: any) {
           console.error('Error loading user profile after login:', error);
+          
+          // Handle case where user exists in auth.users but not in profiles (deleted account)
+          if (error.code === 'PGRST116' && error.message?.includes('0 rows')) {
+            console.log('AuthContext - Login: User exists in auth but not in profiles (deleted account)');
+            // Sign out the user and throw a user-friendly error
+            await supabaseClient.auth.signOut();
+            throw new Error('Esta cuenta ya no existe. Si eliminaste tu cuenta anteriormente, necesitas crear una nueva.');
+          }
+          
           if (error.message?.includes('session_not_found') || error.message?.includes('JWT')) {
             console.log('AuthContext - Session error after login, signing out');
             await supabaseClient.auth.signOut();
