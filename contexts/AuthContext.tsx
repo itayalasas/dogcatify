@@ -71,6 +71,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (session?.user) {
           try {
             // Check if email is confirmed
+            if (!session.user.email_confirmed_at) {
+              console.log('AuthContext - Email not confirmed for user:', session.user.email);
+              setAuthError('Debes confirmar tu correo electrónico antes de acceder a la aplicación. Revisa tu bandeja de entrada.');
+              await supabaseClient.auth.signOut();
+              return;
+            }
+            
             setIsEmailConfirmed(session.user.email_confirmed_at !== null);
             
             let profile;
@@ -329,6 +336,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email,
         password,
         options: {
+          data: {
+            display_name: displayName,
+          },
           emailRedirectTo: 'https://dogcatify.com/auth/login',
         }
       });
@@ -336,9 +346,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
       console.log('AuthContext - Registration successful, user created');
       
-      // Sign out after registration to force email confirmation
-      await supabaseClient.auth.signOut();
+      // Don't sign out, just set user to null and show confirmation message
       setCurrentUser(null);
+      setSession(null);
     } catch (error) {
       console.error('Register error:', error);
       throw error;

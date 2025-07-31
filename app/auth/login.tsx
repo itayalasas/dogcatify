@@ -218,24 +218,30 @@ export default function Login() {
         // Manejar errores específicos de autenticación
         if (error.message.includes('confirma tu correo')) {
           Alert.alert(
-            'Correo no confirmado',
-            'Por favor confirma tu correo electrónico antes de iniciar sesión. Revisa tu bandeja de entrada.',
+            'Correo electrónico no confirmado',
+            'Debes confirmar tu correo electrónico antes de iniciar sesión. Revisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace de confirmación.',
             [
               { 
                 text: 'Reenviar correo', 
                 onPress: async () => {
                   try {
-                    await supabaseClient.auth.resend({
+                    const { error } = await supabaseClient.auth.resend({
                       type: 'signup',
                       email: email,
                       options: {
                         emailRedirectTo: 'https://dogcatify.com/auth/login',
                       }
                     });
-                    Alert.alert('Correo enviado', 'Se ha enviado un nuevo correo de confirmación');
+                    
+                    if (error) throw error;
+                    
+                    Alert.alert(
+                      'Correo reenviado', 
+                      `Se ha enviado un nuevo correo de confirmación a ${email}. Por favor revisa tu bandeja de entrada.`
+                    );
                   } catch (resendError) {
                     console.error('Error resending confirmation email:', resendError);
-                    Alert.alert('Error', 'No se pudo reenviar el correo de confirmación');
+                    Alert.alert('Error', 'No se pudo reenviar el correo de confirmación. Intenta más tarde.');
                   }
                 }
               },
@@ -266,9 +272,35 @@ export default function Login() {
           );
         } else if (error.message.includes('Email not confirmed')) {
           Alert.alert(
-            'Correo no confirmado',
-            'Tu cuenta aún no ha sido confirmada. Por favor revisa tu correo electrónico y confirma tu cuenta.',
-            [{ text: 'Entendido', style: 'default' }]
+            'Correo electrónico no confirmado',
+            'Debes confirmar tu correo electrónico antes de iniciar sesión. Revisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace de confirmación.',
+            [
+              { 
+                text: 'Reenviar correo', 
+                onPress: async () => {
+                  try {
+                    const { error } = await supabaseClient.auth.resend({
+                      type: 'signup',
+                      email: email,
+                      options: {
+                        emailRedirectTo: 'https://dogcatify.com/auth/login',
+                      }
+                    });
+                    
+                    if (error) throw error;
+                    
+                    Alert.alert(
+                      'Correo reenviado', 
+                      `Se ha enviado un nuevo correo de confirmación a ${email}. Por favor revisa tu bandeja de entrada.`
+                    );
+                  } catch (resendError) {
+                    console.error('Error resending confirmation email:', resendError);
+                    Alert.alert('Error', 'No se pudo reenviar el correo de confirmación. Intenta más tarde.');
+                  }
+                }
+              },
+              { text: 'Entendido', style: 'default' }
+            ]
           );
         } else if (error.message.includes('Too many requests')) {
           Alert.alert(

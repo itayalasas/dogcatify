@@ -44,8 +44,8 @@ export default function Register() {
       await register(email, password, displayName);
       console.log('User registered successfully');
       Alert.alert(
-        'Cuenta creada - Confirma tu correo',
-        'Hemos enviado un correo de confirmación a tu dirección de email. Por favor revisa tu bandeja de entrada y confirma tu cuenta para poder iniciar sesión.',
+        '¡Cuenta creada exitosamente!',
+        `Hemos enviado un correo de confirmación a ${email}. Por favor revisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace de confirmación antes de iniciar sesión.`,
         [
           {
             text: 'OK',
