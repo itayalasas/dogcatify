@@ -330,6 +330,9 @@ export default function DeleteAccount() {
       // 10. Try to delete from auth system
       console.log('Attempting to delete auth user...');
       
+      const supabaseServiceKey = process.env.EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
+      const supabaseServiceUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+      
       if (supabaseServiceKey) {
         try {
           console.log('Using service role to delete auth user...');
