@@ -71,7 +71,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (session?.user) {
           try {
             // Check if email is confirmed
-            if (!session.user.email_confirmed_at) {
+            if (!session.user.email_confirmed_at && session.user.app_metadata?.provider !== 'email') {
               console.log('AuthContext - Email not confirmed for user:', session.user.email);
               setAuthError('Debes confirmar tu correo electrónico antes de acceder a la aplicación. Revisa tu bandeja de entrada.');
               await supabaseClient.auth.signOut();
@@ -272,10 +272,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (data.user) {
         // Check if email is confirmed
-        if (data.user.email_confirmed_at === null) {
+        if (!data.user.email_confirmed_at) {
           console.warn('AuthContext - Email not confirmed for user:', email);
           setIsEmailConfirmed(false);
-          throw new Error('Por favor confirma tu correo electrónico antes de iniciar sesión. Revisa tu bandeja de entrada.');
+          throw new Error('Email not confirmed');
         }
         
         setIsEmailConfirmed(true);
@@ -339,12 +339,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           data: {
             display_name: displayName,
           },
-          emailRedirectTo: `${process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/confirm`,
+          emailRedirectTo: `${process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:8081'}/auth/confirm`,
         }
       });
       
       if (error) throw error;
       console.log('AuthContext - Registration successful, user created');
+      
+      // Send welcome email with confirmation instructions
+      try {
+        const { NotificationService } = await import('../utils/notifications');
+        await NotificationService.sendWelcomeEmail(
+          email,
+          displayName,
+          `${process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:8081'}/auth/confirm`
+        );
+        console.log('Welcome email sent successfully');
+      } catch (emailError) {
+        console.error('Error sending welcome email:', emailError);
+        // Don't throw error, registration was successful
+      }
       
       // Don't sign out, just set user to null and show confirmation message
       setCurrentUser(null);

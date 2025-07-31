@@ -229,7 +229,7 @@ export default function Login() {
                       type: 'signup',
                       email: email,
                       options: {
-                        emailRedirectTo: 'https://dogcatify.com/auth/login',
+                        emailRedirectTo: `${process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:8081'}/auth/confirm`,
                       }
                     });
                     
@@ -238,6 +238,38 @@ export default function Login() {
                     Alert.alert(
                       'Correo reenviado', 
                       `Se ha enviado un nuevo correo de confirmación a ${email}. Por favor revisa tu bandeja de entrada.`
+                    );
+                  } catch (resendError) {
+                    console.error('Error resending confirmation email:', resendError);
+                    Alert.alert('Error', 'No se pudo reenviar el correo de confirmación. Intenta más tarde.');
+                  }
+                }
+              },
+              { text: 'Entendido', style: 'default' }
+            ]
+          );
+        } else if (error.message.includes('Email not confirmed')) {
+          Alert.alert(
+            'Correo electrónico no confirmado',
+            'Debes confirmar tu correo electrónico antes de iniciar sesión. Revisa tu bandeja de entrada y haz clic en el enlace de confirmación.',
+            [
+              { 
+                text: 'Reenviar correo', 
+                onPress: async () => {
+                  try {
+                    const { error } = await supabaseClient.auth.resend({
+                      type: 'signup',
+                      email: email,
+                      options: {
+                        emailRedirectTo: `${process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:8081'}/auth/confirm`,
+                      }
+                    });
+                    
+                    if (error) throw error;
+                    
+                    Alert.alert(
+                      'Correo reenviado', 
+                      `Se ha enviado un nuevo correo de confirmación a ${email}. Por favor revisa tu bandeja de entrada y haz clic en el enlace.`
                     );
                   } catch (resendError) {
                     console.error('Error resending confirmation email:', resendError);
@@ -273,7 +305,7 @@ export default function Login() {
         } else if (error.message.includes('Email not confirmed')) {
           Alert.alert(
             'Correo electrónico no confirmado',
-            'Tu cuenta existe pero el email no ha sido confirmado. Debes confirmar tu correo electrónico antes de iniciar sesión.',
+            'Debes confirmar tu correo electrónico antes de iniciar sesión. Revisa tu bandeja de entrada y haz clic en el enlace de confirmación.',
             [
               { 
                 text: 'Reenviar correo', 
@@ -283,7 +315,7 @@ export default function Login() {
                       type: 'signup',
                       email: email,
                       options: {
-                        emailRedirectTo: `${process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/confirm`,
+                        emailRedirectTo: `${process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:8081'}/auth/confirm`,
                       }
                     });
                     

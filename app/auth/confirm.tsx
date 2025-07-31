@@ -22,14 +22,6 @@ export default function ConfirmEmail() {
   const [resendSuccess, setResendSuccess] = useState(false);
 
   useEffect(() => {
-    // Check if this is a resend request
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('resend') === 'true' && emailParam) {
-      setShowResendForm(true);
-      setLoading(false);
-      return;
-    }
-    
     handleEmailConfirmation();
   }, [token_hash, type]);
 
@@ -84,6 +76,8 @@ export default function ConfirmEmail() {
                 photo_url: data.user.user_metadata?.photo_url || null,
                 is_owner: true,
                 is_partner: false,
+                email_confirmed: true,
+                email_confirmed_at: new Date().toISOString(),
                 created_at: new Date().toISOString(),
                 followers: [],
                 following: []
@@ -94,6 +88,20 @@ export default function ConfirmEmail() {
               setError('Email confirmado pero hubo un error creando el perfil. Contacta con soporte.');
               setLoading(false);
               return;
+            }
+          } else if (existingProfile) {
+            // Profile exists, update confirmation status
+            const { error: updateError } = await supabaseClient
+              .from('profiles')
+              .update({
+                email_confirmed: true,
+                email_confirmed_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', data.user.id);
+
+            if (updateError) {
+              console.error('Error updating profile confirmation:', updateError);
             }
           }
         } catch (profileError) {
@@ -127,7 +135,7 @@ export default function ConfirmEmail() {
         type: 'signup',
         email: email.trim(),
         options: {
-          emailRedirectTo: 'http://localhost:8081/auth/confirm'
+          emailRedirectTo: `${process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:8081'}/auth/confirm`
         }
       });
 

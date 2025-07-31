@@ -72,9 +72,37 @@ export const NotificationService = {
   },
 
   sendWelcomeEmail: async (email: string, name: string, activationLink?: string): Promise<void> => {
-    const subject = '¡Bienvenido a DogCatiFy!';
-    const text = `Hola ${name},\n\nBienvenido a DogCatiFy, la plataforma para amantes de mascotas.\n\nGracias por unirte a nuestra comunidad.\n\nEl equipo de DogCatiFy`;
-    const html = EmailTemplates.welcome(name, activationLink);
+    const subject = '¡Confirma tu cuenta en DogCatiFy!';
+    const text = `Hola ${name},\n\n¡Bienvenido a DogCatiFy!\n\nPara completar tu registro, por favor confirma tu correo electrónico haciendo clic en el enlace que te enviamos por separado.\n\nSi no ves el correo, revisa tu carpeta de spam.\n\nGracias por unirte a nuestra comunidad.\n\nEl equipo de DogCatiFy`;
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background-color: #2D6A6F; padding: 20px; text-align: center;">
+          <h1 style="color: white; margin: 10px 0;">¡Bienvenido a DogCatiFy!</h1>
+        </div>
+        <div style="padding: 20px; background-color: #f9f9f9;">
+          <p>Hola <strong>${name}</strong>,</p>
+          <p>¡Gracias por registrarte en DogCatiFy!</p>
+          <p>Para completar tu registro y acceder a todas las funciones, necesitas confirmar tu correo electrónico.</p>
+          <div style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 15px; margin: 20px 0;">
+            <p><strong>📧 Revisa tu bandeja de entrada</strong></p>
+            <p>Te hemos enviado un correo de confirmación. Haz clic en el enlace para activar tu cuenta.</p>
+            <p>Si no ves el correo, revisa tu carpeta de spam.</p>
+          </div>
+          <p>Una vez confirmado tu email, podrás:</p>
+          <ul>
+            <li>Crear perfiles para tus mascotas</li>
+            <li>Conectar con otros dueños de mascotas</li>
+            <li>Encontrar servicios para tus compañeros peludos</li>
+            <li>Compartir momentos especiales con la comunidad</li>
+          </ul>
+          <p>¡Esperamos verte pronto en DogCatiFy!</p>
+          <p>El equipo de DogCatiFy</p>
+        </div>
+        <div style="background-color: #f0f0f0; padding: 10px; text-align: center; font-size: 12px; color: #666;">
+          <p>© 2025 DogCatiFy. Todos los derechos reservados.</p>
+        </div>
+      </div>
+    `;
 
     await NotificationService.sendEmail(email, subject, text, html);
   },

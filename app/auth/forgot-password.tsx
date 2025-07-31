@@ -22,7 +22,7 @@ export default function ForgotPassword() {
     setLoading(true);
     try {
       const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-        redirectTo: 'https://dogcatify.com/reset-password',
+        redirectTo: `${process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:8081'}/auth/reset-password`,
       });
 
       if (error) throw error;
