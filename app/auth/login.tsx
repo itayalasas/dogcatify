@@ -346,7 +346,7 @@ export default function Login() {
                 text: 'Crear cuenta', 
                 onPress: () => router.push('/auth/register')
               }
-            ]
+        if (isBiometricSupported && !isBiometricEnabled && email && password && !showBiometricOption) {
           );
         } else {
           Alert.alert(
@@ -489,7 +489,7 @@ export default function Login() {
         )}
 
         {/* Biometric Setup Option */}
-        {showBiometricOption && (
+        {showBiometricOption && isBiometricSupported && !isBiometricEnabled && (
           <View style={styles.biometricSetup}>
             <Text style={styles.biometricSetupTitle} numberOfLines={2}>
               🔒 Habilitar acceso rápido
