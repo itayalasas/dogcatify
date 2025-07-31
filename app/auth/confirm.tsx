@@ -104,7 +104,6 @@ export default function ConfirmEmail() {
               console.error('Error updating profile confirmation:', updateError);
             }
           }
-          }
         } catch (profileError) {
           console.error('Error checking/creating profile:', profileError);
         }
@@ -154,6 +153,7 @@ export default function ConfirmEmail() {
       setResending(false);
     }
   };
+  
   const handleContinueToLogin = () => {
     router.replace('/auth/login');
   };
@@ -195,6 +195,7 @@ export default function ConfirmEmail() {
       </SafeAreaView>
     );
   }
+  
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
@@ -255,6 +256,7 @@ export default function ConfirmEmail() {
               />
             </View>
           )}
+          
           <Button
             title={confirmed ? "Ir a Iniciar Sesión" : "Volver al Login"}
             onPress={handleContinueToLogin}
