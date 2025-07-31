@@ -339,7 +339,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           data: {
             display_name: displayName,
           },
-          emailRedirectTo: 'https://dogcatify.com/auth/login',
+          emailRedirectTo: `${process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/confirm`,
         }
       });
       
