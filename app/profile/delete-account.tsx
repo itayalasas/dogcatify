@@ -236,6 +236,8 @@ export default function DeleteAccount() {
             throw new Error(`Error en la eliminación del perfil: ${apiError.message}`);
           }
         } else {
+        }
+      }
       // Don't trust the success response - always verify
       console.log('Direct deletion response - error:', deleteProfileError);
       
