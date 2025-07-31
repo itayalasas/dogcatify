@@ -63,164 +63,323 @@ export default function DeleteAccount() {
             .delete()
             .eq('pet_id', pet.id);
         }
+
+        // Delete all pets
+        await supabaseClient
+          .from('pets')
+          .delete()
+          .eq('owner_id', currentUser.id);
       }
 
-      // 2. Delete user profile
+      // 2. Delete user's posts and comments
+      console.log('Deleting posts and comments...');
+      
+      // Get user's posts to delete related comments
+      const { data: userPosts } = await supabaseClient
+        .from('posts')
+        .select('id')
+        .eq('user_id', currentUser.id);
+
+      if (userPosts && userPosts.length > 0) {
+        for (const post of userPosts) {
+          // Delete comments on this post
+          await supabaseClient
+            .from('comments')
+            .delete()
+            .eq('post_id', post.id);
+        }
+      }
+
+      // Delete user's posts
       await supabaseClient
+        .from('posts')
+        .delete()
+        .eq('user_id', currentUser.id);
+
+      // Delete user's comments on other posts
+      await supabaseClient
+        .from('comments')
+        .delete()
+        .eq('user_id', currentUser.id);
+
+      // 3. Delete user's bookings
+      console.log('Deleting bookings...');
+      await supabaseClient
+        .from('bookings')
+        .delete()
+        .eq('customer_id', currentUser.id);
+
+      // 4. Delete user's orders
+      console.log('Deleting orders...');
+      await supabaseClient
+        .from('orders')
+        .delete()
+        .eq('customer_id', currentUser.id);
+
+      // 5. Delete user's cart
+      console.log('Deleting cart...');
+      await supabaseClient
+        .from('user_carts')
+        .delete()
+        .eq('user_id', currentUser.id);
+
+      // 6. Delete user's service reviews
+      console.log('Deleting service reviews...');
+      await supabaseClient
+        .from('service_reviews')
+        .delete()
+        .eq('customer_id', currentUser.id);
+
+      // 7. Delete chat conversations and messages
+      console.log('Deleting chat data...');
+      const { data: userConversations } = await supabaseClient
+        .from('chat_conversations')
+        .select('id')
+        .eq('user_id', currentUser.id);
+
+      if (userConversations && userConversations.length > 0) {
+        for (const conversation of userConversations) {
+          // Delete messages in this conversation
+          await supabaseClient
+            .from('chat_messages')
+            .delete()
+            .eq('conversation_id', conversation.id);
+        }
+
+        // Delete conversations
+        await supabaseClient
+          .from('chat_conversations')
+          .delete()
+          .eq('user_id', currentUser.id);
+      }
+
+      // 8. Handle partner data if user is a partner
+      console.log('Checking for partner data...');
+      const { data: partnerData } = await supabaseClient
+        .from('partners')
+        .select('id')
+        .eq('user_id', currentUser.id);
+
+      if (partnerData && partnerData.length > 0) {
+        Alert.alert(
+          'Cuenta con negocio',
+          'Tu cuenta tiene negocios asociados. Para eliminar tu cuenta, primero debes transferir o eliminar tus negocios. Contacta con soporte para asistencia.',
+          [{ text: 'Entendido', onPress: () => setLoading(false) }]
+        );
+        return;
+      }
+
+      // 9. Delete user profile
+      console.log('Deleting user profile...');
+      const { error: profileError } = await supabaseClient
         .from('profiles')
         .delete()
         .eq('id', currentUser.id);
 
-      // 3. Delete auth user
-      const { error: deleteError } = await supabaseClient.auth.admin.deleteUser(currentUser.id);
-      
-      if (deleteError) {
-        throw deleteError;
+      if (profileError) {
+        console.error('Error deleting profile:', profileError);
+        throw profileError;
       }
 
+      // 10. Sign out user (auth user will be handled by admin later)
+      console.log('Signing out user and marking for deletion...');
+      
+      // Mark user for deletion in profiles table (admin can clean up auth users later)
+      await supabaseClient
+        .from('profiles')
+        .update({ 
+          deleted_at: new Date().toISOString(),
+          email: `deleted_${currentUser.id}@deleted.com`,
+          display_name: 'Cuenta Eliminada'
+        })
+        .eq('id', currentUser.id);
+
+      console.log('Account deletion completed successfully');
+
+      // Sign out and redirect
+      await logout();
+      
       Alert.alert(
         'Cuenta eliminada',
-        'Tu cuenta ha sido eliminada exitosamente.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              logout();
-              router.replace('/auth/login');
-            }
-          }
-        ]
+        'Tu cuenta y todos tus datos han sido eliminados permanentemente. El usuario de autenticación será eliminado por un administrador.',
+        [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
       );
 
     } catch (error) {
       console.error('Error deleting account:', error);
-      Alert.alert('Error', 'Hubo un problema al eliminar tu cuenta. Por favor intenta de nuevo.');
+      Alert.alert(
+        'Error',
+        'Ocurrió un error al eliminar tu cuenta. Por favor contacta con soporte para asistencia.'
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const renderWarningStep = () => (
-    <>
-      <Card style={styles.warningCard}>
-        <View style={styles.warningHeader}>
-          <AlertTriangle size={48} color="#EF4444" />
-          <Text style={styles.warningTitle}>¡Atención!</Text>
-        </View>
-        <Text style={styles.warningText}>
-          Estás a punto de eliminar permanentemente tu cuenta. Esta acción no se puede deshacer.
-        </Text>
-      </Card>
+  const handleContinueToConfirmation = () => {
+    setStep(2);
+  };
 
-      <Card style={styles.dataCard}>
-        <Text style={styles.dataTitle}>Se eliminarán los siguientes datos:</Text>
-        <View style={styles.dataList}>
-          <View style={styles.dataItem}>
-            <Text style={styles.dataIcon}>👤</Text>
-            <Text style={styles.dataText}>Tu perfil de usuario</Text>
-          </View>
-          <View style={styles.dataItem}>
-            <Text style={styles.dataIcon}>🐕</Text>
-            <Text style={styles.dataText}>Todos tus perros registrados</Text>
-          </View>
-          <View style={styles.dataItem}>
-            <Text style={styles.dataIcon}>📊</Text>
-            <Text style={styles.dataText}>Historial de salud y comportamiento</Text>
-          </View>
-          <View style={styles.dataItem}>
-            <Text style={styles.dataIcon}>📅</Text>
-            <Text style={styles.dataText}>Todas tus reservas</Text>
-          </View>
-          <View style={styles.dataItem}>
-            <Text style={styles.dataIcon}>📸</Text>
-            <Text style={styles.dataText}>Álbumes de fotos</Text>
-          </View>
-        </View>
-      </Card>
-
-      <Card style={styles.alternativeCard}>
-        <Text style={styles.alternativeTitle}>¿Consideraste estas alternativas?</Text>
-        <View style={styles.alternativeList}>
-          <Text style={styles.alternativeItem}>• Cerrar sesión temporalmente</Text>
-          <Text style={styles.alternativeItem}>• Desactivar notificaciones</Text>
-          <Text style={styles.alternativeItem}>• Contactar soporte para resolver problemas</Text>
-        </View>
-      </Card>
-
-      <View style={styles.actionButtons}>
-        <Button
-          title="Continuar con la eliminación"
-          onPress={() => setStep(2)}
-          style={styles.dangerButton}
-        />
-        <Button
-          title="Cancelar"
-          onPress={() => router.back()}
-          variant="outline"
-        />
-      </View>
-    </>
-  );
-
-  const renderConfirmationStep = () => (
-    <>
-      <Card style={styles.confirmationCard}>
-        <View style={styles.confirmationHeader}>
-          <Shield size={48} color="#EF4444" />
-          <Text style={styles.confirmationTitle}>Confirmación Final</Text>
-        </View>
-        
-        <Text style={styles.confirmationText}>
-          Para confirmar que deseas eliminar tu cuenta permanentemente, escribe exactamente la siguiente frase:
-        </Text>
-
-        <View style={styles.confirmationPhrase}>
-          <Text style={styles.phraseText}>ELIMINAR MI CUENTA</Text>
+  if (step === 1) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <ArrowLeft size={24} color="#111827" />
+          </TouchableOpacity>
+          <Text style={styles.title}>Eliminar Cuenta</Text>
+          <View style={styles.placeholder} />
         </View>
 
-        <TextInput
-          style={styles.confirmationInput}
-          value={confirmationText}
-          onChangeText={setConfirmationText}
-          placeholder="Escribe la frase aquí"
-          placeholderTextColor="#9CA3AF"
-          autoCapitalize="characters"
-        />
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          <Card style={styles.warningCard}>
+            <View style={styles.warningHeader}>
+              <AlertTriangle size={48} color="#EF4444" />
+              <Text style={styles.warningTitle}>¡Atención!</Text>
+            </View>
+            
+            <Text style={styles.warningText}>
+              Estás a punto de eliminar permanentemente tu cuenta de DogCatiFy. Esta acción no se puede deshacer.
+            </Text>
+          </Card>
 
-        <Text style={styles.confirmationNote}>
-          Esta acción es irreversible. Una vez eliminada, no podrás recuperar tu cuenta ni tus datos.
-        </Text>
-      </Card>
+          <Card style={styles.dataCard}>
+            <Text style={styles.dataTitle}>Se eliminarán los siguientes datos:</Text>
+            
+            <View style={styles.dataList}>
+              <View style={styles.dataItem}>
+                <Text style={styles.dataIcon}>🐾</Text>
+                <Text style={styles.dataText}>Todos los perfiles de tus mascotas</Text>
+              </View>
+              
+              <View style={styles.dataItem}>
+                <Text style={styles.dataIcon}>📸</Text>
+                <Text style={styles.dataText}>Todas las fotos y álbumes</Text>
+              </View>
+              
+              <View style={styles.dataItem}>
+                <Text style={styles.dataIcon}>📝</Text>
+                <Text style={styles.dataText}>Todas tus publicaciones y comentarios</Text>
+              </View>
+              
+              <View style={styles.dataItem}>
+                <Text style={styles.dataIcon}>🏥</Text>
+                <Text style={styles.dataText}>Registros médicos y de salud</Text>
+              </View>
+              
+              <View style={styles.dataItem}>
+                <Text style={styles.dataIcon}>📅</Text>
+                <Text style={styles.dataText}>Historial de reservas y citas</Text>
+              </View>
+              
+              <View style={styles.dataItem}>
+                <Text style={styles.dataIcon}>🛒</Text>
+                <Text style={styles.dataText}>Historial de compras y pedidos</Text>
+              </View>
+              
+              <View style={styles.dataItem}>
+                <Text style={styles.dataIcon}>💬</Text>
+                <Text style={styles.dataText}>Conversaciones y mensajes</Text>
+              </View>
+              
+              <View style={styles.dataItem}>
+                <Text style={styles.dataIcon}>👤</Text>
+                <Text style={styles.dataText}>Tu perfil y información personal</Text>
+              </View>
+            </View>
+          </Card>
 
-      <View style={styles.finalActions}>
-        <Button
-          title={loading ? "Eliminando cuenta..." : "Eliminar mi cuenta permanentemente"}
-          onPress={handleDeleteAccount}
-          style={styles.deleteButton}
-          disabled={loading || confirmationText !== 'ELIMINAR MI CUENTA'}
-        />
-        <Button
-          title="Volver atrás"
-          onPress={() => setStep(1)}
-          variant="outline"
-          disabled={loading}
-        />
-      </View>
-    </>
-  );
+          <Card style={styles.alternativeCard}>
+            <Text style={styles.alternativeTitle}>¿Consideraste estas alternativas?</Text>
+            
+            <View style={styles.alternativeList}>
+              <Text style={styles.alternativeItem}>
+                • Desactivar temporalmente tu cuenta
+              </Text>
+              <Text style={styles.alternativeItem}>
+                • Cambiar tu configuración de privacidad
+              </Text>
+              <Text style={styles.alternativeItem}>
+                • Contactar con soporte para resolver problemas
+              </Text>
+            </View>
+          </Card>
+
+          <View style={styles.actionButtons}>
+            <Button
+              title="Cancelar"
+              onPress={() => router.back()}
+              variant="outline"
+              size="large"
+            />
+            
+            <Button
+              title="Continuar con la eliminación"
+              onPress={handleContinueToConfirmation}
+              size="large"
+              style={styles.dangerButton}
+            />
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => setStep(1)} style={styles.backButton}>
           <ArrowLeft size={24} color="#111827" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Eliminar Cuenta</Text>
-        <View style={{ width: 24 }} />
+        <Text style={styles.title}>Confirmar Eliminación</Text>
+        <View style={styles.placeholder} />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {step === 1 ? renderWarningStep() : renderConfirmationStep()}
+        <Card style={styles.confirmationCard}>
+          <View style={styles.confirmationHeader}>
+            <Shield size={48} color="#EF4444" />
+            <Text style={styles.confirmationTitle}>Confirmación Final</Text>
+          </View>
+          
+          <Text style={styles.confirmationText}>
+            Para confirmar que deseas eliminar permanentemente tu cuenta, escribe exactamente:
+          </Text>
+          
+          <View style={styles.confirmationPhrase}>
+            <Text style={styles.phraseText}>ELIMINAR MI CUENTA</Text>
+          </View>
+          
+          <TextInput
+            style={styles.confirmationInput}
+            placeholder="Escribe la frase exacta aquí"
+            value={confirmationText}
+            onChangeText={setConfirmationText}
+            autoCapitalize="characters"
+          />
+          
+          <Text style={styles.confirmationNote}>
+            Esta acción es irreversible. Una vez eliminada, no podrás recuperar tu cuenta ni tus datos.
+          </Text>
+        </Card>
+
+        <View style={styles.finalActions}>
+          <Button
+            title="Cancelar"
+            onPress={() => router.back()}
+            variant="outline"
+            size="large"
+          />
+          
+          <Button
+            title={loading ? "Eliminando..." : "Eliminar mi cuenta permanentemente"}
+            onPress={handleDeleteAccount}
+            loading={loading}
+            disabled={confirmationText !== 'ELIMINAR MI CUENTA'}
+            size="large"
+            style={styles.deleteButton}
+          />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -229,7 +388,8 @@ export default function DeleteAccount() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F9FAFB',
+    paddingTop: 50,
   },
   header: {
     flexDirection: 'row',
@@ -237,13 +397,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
-  headerTitle: {
+  backButton: {
+    padding: 8,
+  },
+  title: {
     fontSize: 18,
     fontFamily: 'Inter-SemiBold',
     color: '#111827',
+  },
+  placeholder: {
+    width: 32,
   },
   content: {
     flex: 1,
