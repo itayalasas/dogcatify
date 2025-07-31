@@ -239,7 +239,7 @@ export default function DeleteAccount() {
         }
       }
       // Don't trust the success response - always verify
-      console.log('Direct deletion response - error:', deleteProfileError);
+      console.log('Direct deletion response - error:', directDeleteError);
       
       // Verify profile deletion
       console.log('Verifying profile deletion...');
