@@ -225,15 +225,12 @@ export default function Login() {
                 text: 'Reenviar correo', 
                 onPress: async () => {
                   try {
-                    const { error } = await supabaseClient.auth.resend({
-                      type: 'signup',
-                      email: email,
-                      options: {
-                        emailRedirectTo: `${process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:8081'}/auth/confirm`,
-                      }
-                    });
+                    const { resendConfirmationEmail } = await import('../../utils/emailConfirmation');
+                    const result = await resendConfirmationEmail(email);
                     
-                    if (error) throw error;
+                    if (!result.success) {
+                      throw new Error(result.error || 'Error al reenviar confirmación');
+                    }
                     
                     Alert.alert(
                       'Correo reenviado', 
@@ -241,7 +238,7 @@ export default function Login() {
                     );
                   } catch (resendError) {
                     console.error('Error resending confirmation email:', resendError);
-                    Alert.alert('Error', 'No se pudo reenviar el correo de confirmación. Intenta más tarde.');
+                    Alert.alert('Error', resendError.message || 'No se pudo reenviar el correo de confirmación. Intenta más tarde.');
                   }
                 }
               },
@@ -257,15 +254,12 @@ export default function Login() {
                 text: 'Reenviar correo', 
                 onPress: async () => {
                   try {
-                    const { error } = await supabaseClient.auth.resend({
-                      type: 'signup',
-                      email: email,
-                      options: {
-                        emailRedirectTo: `${process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:8081'}/auth/confirm`,
-                      }
-                    });
+                    const { resendConfirmationEmail } = await import('../../utils/emailConfirmation');
+                    const result = await resendConfirmationEmail(email);
                     
-                    if (error) throw error;
+                    if (!result.success) {
+                      throw new Error(result.error || 'Error al reenviar confirmación');
+                    }
                     
                     Alert.alert(
                       'Correo reenviado', 
@@ -273,7 +267,7 @@ export default function Login() {
                     );
                   } catch (resendError) {
                     console.error('Error resending confirmation email:', resendError);
-                    Alert.alert('Error', 'No se pudo reenviar el correo de confirmación. Intenta más tarde.');
+                    Alert.alert('Error', resendError.message || 'No se pudo reenviar el correo de confirmación. Intenta más tarde.');
                   }
                 }
               },
@@ -311,15 +305,12 @@ export default function Login() {
                 text: 'Reenviar correo', 
                 onPress: async () => {
                   try {
-                    const { error } = await supabaseClient.auth.resend({
-                      type: 'signup',
-                      email: email,
-                      options: {
-                        emailRedirectTo: `${process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:8081'}/auth/confirm`,
-                      }
-                    });
+                    const { resendConfirmationEmail } = await import('../../utils/emailConfirmation');
+                    const result = await resendConfirmationEmail(email);
                     
-                    if (error) throw error;
+                    if (!result.success) {
+                      throw new Error(result.error || 'Error al reenviar confirmación');
+                    }
                     
                     Alert.alert(
                       'Correo reenviado', 
@@ -327,7 +318,7 @@ export default function Login() {
                     );
                   } catch (resendError) {
                     console.error('Error resending confirmation email:', resendError);
-                    Alert.alert('Error', 'No se pudo reenviar el correo de confirmación. Intenta más tarde.');
+                    Alert.alert('Error', resendError.message || 'No se pudo reenviar el correo de confirmación. Intenta más tarde.');
                   }
                 }
               },

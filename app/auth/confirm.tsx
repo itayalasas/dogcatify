@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, TextInput, Alert } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { supabaseClient } from '../../lib/supabase';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, TextInput, Alert, Image } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+import { CircleCheck as CheckCircle, Circle as XCircle, Mail, ArrowLeft } from 'lucide-react-native';
+import { Card } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
+import { verifyEmailConfirmationToken, resendConfirmationEmail } from '../../utils/emailConfirmation';
 
 export default function ConfirmScreen() {
   const [loading, setLoading] = useState(true);
@@ -10,8 +14,8 @@ export default function ConfirmScreen() {
   const [showResendForm, setShowResendForm] = useState(false);
   const [email, setEmail] = useState('');
   const [resending, setResending] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   
-  const router = useRouter();
   const params = useLocalSearchParams();
 
   useEffect(() => {
@@ -25,111 +29,42 @@ export default function ConfirmScreen() {
 
       // Extract parameters from URL
       const token_hash = params.token_hash as string;
-      const type = params.type as string;
-      const token = params.token as string; // Legacy support
+      const type = (params.type as string) || 'signup';
 
-      console.log('Confirmation parameters:', { token_hash, type, token });
+      console.log('Custom confirmation parameters:', { token_hash, type });
 
-      if (!token_hash && !token) {
+      if (!token_hash) {
         setError('Enlace de confirmación inválido o incompleto');
         setLoading(false);
         setShowResendForm(true);
         return;
       }
 
-      let result;
-      
-      if (token_hash && type) {
-        // New method with token_hash and type
-        result = await supabaseClient.auth.verifyOtp({
-          token_hash,
-          type: type as any
-        });
-      } else if (token) {
-        // Legacy method with token
-        result = await supabaseClient.auth.verifyOtp({
-          token_hash: token,
-          type: 'signup'
-        });
-      }
+      // Verify token using our custom system
+      const result = await verifyEmailConfirmationToken(token_hash, type as 'signup' | 'password_reset');
 
-      if (result?.error) {
-        console.error('Confirmation error:', result.error);
-        setError('Error al procesar la confirmación');
+      if (!result.success) {
+        console.error('Custom confirmation failed:', result.error);
+        setError(result.error || 'Error al confirmar email');
         setShowResendForm(true);
         setLoading(false);
         return;
       }
 
-      if (result?.data?.user) {
-        await handleSuccessfulConfirmation(result.data.user);
+      if (result.userId && result.email) {
+        console.log('Custom email confirmation successful for:', result.email);
+        setUserEmail(result.email);
+        setConfirmed(true);
       }
 
     } catch (error) {
-      console.error('Confirmation error:', error);
+      console.error('Custom confirmation error:', error);
       setError('Error al procesar la confirmación');
       setLoading(false);
       setShowResendForm(true);
+    } finally {
+      setLoading(false);
     }
-  };
-
-  const handleSuccessfulConfirmation = async (user: any) => {
-    console.log('Email confirmed successfully for user:', user.email);
-    
-    // Create user profile if it doesn't exist
-    try {
-      const { data: existingProfile, error: profileError } = await supabaseClient
-        .from('profiles')
-        .select('id')
-        .eq('id', user.id)
-        .single();
-
-      if (profileError && profileError.code === 'PGRST116') {
-        // Profile doesn't exist, create it
-        console.log('Creating profile for confirmed user');
-        const { error: createError } = await supabaseClient
-          .from('profiles')
-          .insert({
-            id: user.id,
-            email: user.email,
-            display_name: user.user_metadata?.display_name || user.email?.split('@')[0] || '',
-            photo_url: user.user_metadata?.photo_url || null,
-            created_at: new Date().toISOString(),
-            email_confirmed_at: new Date().toISOString(),
-            email_confirmed: true,
-            is_partner: false,
-            is_owner: true,
-            followers: [],
-            following: []
-          });
-
-        if (createError) {
-          console.error('Error creating profile:', createError);
-          setError('Email confirmado pero hubo un error creando el perfil. Contacta con soporte.');
-          setLoading(false);
-          return;
-        }
-      } else if (existingProfile) {
-        // Profile exists, update confirmation status
-        const { error: updateError } = await supabaseClient
-          .from('profiles')
-          .update({
-            email_confirmed: true,
-            email_confirmed_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', user.id);
-
-        if (updateError) {
-          console.error('Error updating profile confirmation:', updateError);
-        }
-      }
-    } catch (profileError) {
-      console.error('Error checking/creating profile:', profileError);
-    }
-    
-    setConfirmed(true);
-    setLoading(false);
   };
 
   const handleResendConfirmation = async () => {
@@ -140,16 +75,10 @@ export default function ConfirmScreen() {
 
     try {
       setResending(true);
-      const { error } = await supabaseClient.auth.resend({
-        type: 'signup',
-        email: email.trim(),
-        options: {
-          emailRedirectTo: `${process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:8081'}/auth/confirm`
-        }
-      });
+      const result = await resendConfirmationEmail(email.trim());
 
-      if (error) {
-        Alert.alert('Error', 'No se pudo reenviar el email de confirmación');
+      if (!result.success) {
+        Alert.alert('Error', result.error || 'No se pudo reenviar el email de confirmación');
       } else {
         Alert.alert('Éxito', 'Email de confirmación reenviado. Revisa tu bandeja de entrada.');
         setShowResendForm(false);
@@ -168,8 +97,10 @@ export default function ConfirmScreen() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" color="#0066cc" />
-        <Text style={styles.loadingText}>Confirmando tu email...</Text>
+        <Card style={styles.loadingCard}>
+          <ActivityIndicator size="large" color="#2D6A6F" />
+          <Text style={styles.loadingText}>Confirmando tu email...</Text>
+        </Card>
       </View>
     );
   }
@@ -177,13 +108,23 @@ export default function ConfirmScreen() {
   if (confirmed) {
     return (
       <View style={styles.container}>
-        <Text style={styles.successTitle}>¡Email Confirmado!</Text>
-        <Text style={styles.successText}>
-          Tu cuenta ha sido activada exitosamente. Ya puedes iniciar sesión.
-        </Text>
-        <TouchableOpacity style={styles.button} onPress={handleGoToLogin}>
-          <Text style={styles.buttonText}>Ir a Iniciar Sesión</Text>
-        </TouchableOpacity>
+        <Card style={styles.successCard}>
+          <CheckCircle size={64} color="#10B981" />
+          <Text style={styles.successTitle}>¡Email Confirmado!</Text>
+          <Text style={styles.successText}>
+            Tu cuenta ha sido activada exitosamente. Ya puedes iniciar sesión y disfrutar de todas las funciones de DogCatiFy.
+          </Text>
+          {userEmail && (
+            <Text style={styles.emailText}>
+              Email confirmado: {userEmail}
+            </Text>
+          )}
+          <Button
+            title="Ir a Iniciar Sesión"
+            onPress={handleGoToLogin}
+            size="large"
+          />
+        </Card>
       </View>
     );
   }
@@ -191,46 +132,57 @@ export default function ConfirmScreen() {
   if (error && showResendForm) {
     return (
       <View style={styles.container}>
-        <Text style={styles.errorTitle}>Error de Confirmación</Text>
-        <Text style={styles.errorText}>{error}</Text>
-        
-        <View style={styles.resendContainer}>
-          <Text style={styles.resendTitle}>Reenviar Email de Confirmación</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Tu email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-          <TouchableOpacity 
-            style={[styles.button, resending && styles.buttonDisabled]} 
-            onPress={handleResendConfirmation}
-            disabled={resending}
-          >
-            <Text style={styles.buttonText}>
-              {resending ? 'Enviando...' : 'Reenviar Confirmación'}
+        <Card style={styles.errorCard}>
+          <XCircle size={64} color="#EF4444" />
+          <Text style={styles.errorTitle}>Error de Confirmación</Text>
+          <Text style={styles.errorText}>{error}</Text>
+          
+          <View style={styles.resendContainer}>
+            <Text style={styles.resendTitle}>Reenviar Email de Confirmación</Text>
+            <Text style={styles.resendDescription}>
+              Ingresa tu email para recibir un nuevo enlace de confirmación
             </Text>
-          </TouchableOpacity>
-        </View>
+            
+            <Input
+              label="Email"
+              placeholder="tu@email.com"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              leftIcon={<Mail size={20} color="#6B7280" />}
+            />
+            
+            <Button
+              title={resending ? 'Enviando...' : 'Reenviar Confirmación'}
+              onPress={handleResendConfirmation}
+              loading={resending}
+              size="large"
+            />
+          </View>
 
-        <TouchableOpacity style={styles.linkButton} onPress={handleGoToLogin}>
-          <Text style={styles.linkText}>Volver al Login</Text>
-        </TouchableOpacity>
+          <TouchableOpacity style={styles.linkButton} onPress={handleGoToLogin}>
+            <Text style={styles.linkText}>Volver al Login</Text>
+          </TouchableOpacity>
+        </Card>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.errorTitle}>Error</Text>
-      <Text style={styles.errorText}>
-        {error || 'Ocurrió un error inesperado'}
-      </Text>
-      <TouchableOpacity style={styles.button} onPress={handleGoToLogin}>
-        <Text style={styles.buttonText}>Volver al Login</Text>
-      </TouchableOpacity>
+      <Card style={styles.errorCard}>
+        <XCircle size={64} color="#EF4444" />
+        <Text style={styles.errorTitle}>Error</Text>
+        <Text style={styles.errorText}>
+          {error || 'Ocurrió un error inesperado'}
+        </Text>
+        <Button
+          title="Volver al Login"
+          onPress={handleGoToLogin}
+          size="large"
+        />
+      </Card>
     </View>
   );
 }
@@ -241,84 +193,94 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F9FAFB',
+    paddingTop: 50,
+  },
+  loadingCard: {
+    alignItems: 'center',
+    paddingVertical: 40,
   },
   loadingText: {
     marginTop: 20,
     fontSize: 16,
-    color: '#666',
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+  },
+  successCard: {
+    alignItems: 'center',
+    paddingVertical: 40,
   },
   successTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#28a745',
-    marginBottom: 20,
+    fontFamily: 'Inter-Bold',
+    color: '#10B981',
+    marginTop: 16,
+    marginBottom: 8,
     textAlign: 'center',
   },
   successText: {
     fontSize: 16,
-    color: '#333',
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
     textAlign: 'center',
-    marginBottom: 30,
+    marginBottom: 16,
     lineHeight: 24,
+  },
+  emailText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  errorCard: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    width: '100%',
+    maxWidth: 400,
   },
   errorTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#dc3545',
-    marginBottom: 20,
+    fontFamily: 'Inter-Bold',
+    color: '#EF4444',
+    marginTop: 16,
+    marginBottom: 8,
     textAlign: 'center',
   },
   errorText: {
     fontSize: 16,
-    color: '#666',
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
     textAlign: 'center',
-    marginBottom: 30,
+    marginBottom: 24,
     lineHeight: 24,
   },
   resendContainer: {
     width: '100%',
-    maxWidth: 300,
-    marginBottom: 20,
+    marginBottom: 24,
   },
   resendTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 15,
+    fontFamily: 'Inter-SemiBold',
+    color: '#111827',
+    marginBottom: 8,
     textAlign: 'center',
   },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: '#fff',
-    marginBottom: 15,
-  },
-  button: {
-    backgroundColor: '#0066cc',
-    paddingHorizontal: 30,
-    paddingVertical: 15,
-    borderRadius: 8,
-    minWidth: 200,
-  },
-  buttonDisabled: {
-    backgroundColor: '#ccc',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+  resendDescription: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
     textAlign: 'center',
+    marginBottom: 16,
+    lineHeight: 20,
   },
   linkButton: {
-    marginTop: 20,
+    marginTop: 16,
   },
   linkText: {
-    color: '#0066cc',
     fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#3B82F6',
     textAlign: 'center',
   },
 });

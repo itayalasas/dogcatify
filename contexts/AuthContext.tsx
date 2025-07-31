@@ -271,14 +271,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       if (data.user) {
-        // Check if email is confirmed
-        if (!data.user.email_confirmed_at) {
+        // Check email confirmation using our custom system
+        const { isEmailConfirmed: checkEmailConfirmed } = await import('../utils/emailConfirmation');
+        const emailConfirmed = await checkEmailConfirmed(data.user.id);
+        
+        if (!emailConfirmed) {
           console.warn('AuthContext - Email not confirmed for user:', email);
           setIsEmailConfirmed(false);
           throw new Error('Email not confirmed');
         }
         
-        setIsEmailConfirmed(true);
+        setIsEmailConfirmed(emailConfirmed);
         try {
           // Check if user profile exists
           const profile = await getUserProfile(data.user.id);
@@ -332,6 +335,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('AuthContext - Attempting registration for:', email);
       
+      // First create the user without email confirmation
       const { data, error } = await supabaseClient.auth.signUp({
         email,
         password,
@@ -339,24 +343,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           data: {
             display_name: displayName,
           },
-          emailRedirectTo: `${process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:8081'}/auth/confirm`,
+          // Disable automatic email confirmation
+          emailRedirectTo: undefined,
         }
       });
       
       if (error) throw error;
       console.log('AuthContext - Registration successful, user created');
       
-      // Send welcome email with confirmation instructions
-      try {
+      if (data.user) {
+        // Create our custom email confirmation token
+        const { createEmailConfirmationToken, generateConfirmationUrl } = await import('../utils/emailConfirmation');
+        const token = await createEmailConfirmationToken(data.user.id, email, 'signup');
+        const confirmationUrl = generateConfirmationUrl(token, 'signup');
+        
+        console.log('Custom confirmation token created:', token);
+        console.log('Confirmation URL:', confirmationUrl);
+        
+        // Send our custom confirmation email
         const { NotificationService } = await import('../utils/notifications');
-        await NotificationService.sendWelcomeEmail(
+        await NotificationService.sendCustomConfirmationEmail(
           email,
           displayName,
-          `${process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:8081'}/auth/confirm?type=signup`
+          confirmationUrl
         );
-        console.log('Welcome email sent successfully');
+        console.log('Custom confirmation email sent successfully');
+      }
+      
+      try {
       } catch (emailError) {
-        console.error('Error sending welcome email:', emailError);
+        console.error('Error sending custom confirmation email:', emailError);
         // Don't throw error, registration was successful
       }
       
