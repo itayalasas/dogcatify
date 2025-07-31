@@ -207,18 +207,18 @@ const styles = StyleSheet.create({
   },
   content: {
     flexGrow: 1,
-    justifyContent: 'center',
     padding: 20,
+    paddingTop: 40,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 24,
   },
   logo: {
-    width: 180,
-    height: 180,
+    width: 140,
+    height: 140,
     resizeMode: 'contain',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   title: {
     fontSize: 28,
