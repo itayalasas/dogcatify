@@ -224,7 +224,40 @@ export default function DeleteAccount() {
       setDeletionProgress(prev => [...prev, '✅ Usuario eliminado completamente de la base de datos']);
       console.log('✅ User deleted completely using database function');
 
-      // 10. Sign out user from current session
+      // 10. Delete user from auth.users table
+      setDeletionProgress(prev => [...prev, 'Eliminando usuario del sistema de autenticación...']);
+      console.log('Deleting user from auth.users table...');
+      
+      try {
+        // Use Supabase admin API to delete the user from auth.users
+        const { error: deleteUserError } = await supabaseClient.auth.admin.deleteUser(
+          currentUser.id
+        );
+        
+        if (deleteUserError) {
+          console.error('Error deleting user from auth:', deleteUserError);
+          // If we can't delete from auth, try the alternative method
+          setDeletionProgress(prev => [...prev, 'Intentando método alternativo para eliminar autenticación...']);
+          
+          // Alternative: Use the user's own session to delete their account
+          const { error: selfDeleteError } = await supabaseClient.rpc('delete_user');
+          
+          if (selfDeleteError) {
+            console.error('Error with self-delete:', selfDeleteError);
+            setDeletionProgress(prev => [...prev, '⚠️ No se pudo eliminar del sistema de autenticación, pero los datos fueron eliminados']);
+          } else {
+            setDeletionProgress(prev => [...prev, '✅ Usuario eliminado del sistema de autenticación']);
+          }
+        } else {
+          setDeletionProgress(prev => [...prev, '✅ Usuario eliminado del sistema de autenticación']);
+          console.log('✅ User deleted from auth.users successfully');
+        }
+      } catch (authError) {
+        console.error('Error deleting from auth system:', authError);
+        setDeletionProgress(prev => [...prev, '⚠️ Error al eliminar del sistema de autenticación, pero los datos fueron eliminados']);
+      }
+
+      // 11. Sign out user from current session
       setDeletionProgress(prev => [...prev, 'Cerrando sesión...']);
       console.log('Signing out user...');
       await logout();
