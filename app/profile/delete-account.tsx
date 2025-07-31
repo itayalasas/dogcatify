@@ -278,6 +278,7 @@ export default function DeleteAccount() {
       
       if (supabaseServiceKey) {
         try {
+        try {
           console.log('Using service role to delete auth user...');
           const authResponse = await fetch(`${supabaseServiceUrl}/auth/v1/admin/users/${currentUser.id}`, {
             method: 'DELETE',
@@ -306,6 +307,9 @@ export default function DeleteAccount() {
               console.error('Auth user deletion failed with service role:', authResponse.status, authErrorText);
             }
           }
+        } catch (authError) {
+          console.error('Exception during auth user deletion:', authError);
+        }
         } catch (authError) {
           console.error('Exception during auth user deletion:', authError);
         }
