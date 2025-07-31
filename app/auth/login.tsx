@@ -220,6 +220,20 @@ export default function Login() {
             'El correo electrónico o la contraseña son incorrectos. Por favor verifica tus datos e intenta nuevamente.',
             [{ text: 'Entendido', style: 'default' }]
           );
+        } else if (error.message.includes('User not found') || 
+                   error.message.includes('user_not_found') ||
+                   error.message.includes('Invalid user')) {
+          Alert.alert(
+            'Usuario no encontrado',
+            'No existe una cuenta con este correo electrónico. ¿Deseas crear una cuenta nueva?',
+            [
+              { text: 'Cancelar', style: 'cancel' },
+              { 
+                text: 'Crear cuenta', 
+                onPress: () => router.push('/auth/register')
+              }
+            ]
+          );
         } else if (error.message.includes('Email not confirmed')) {
           Alert.alert(
             'Correo no confirmado',
