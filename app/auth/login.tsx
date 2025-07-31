@@ -107,24 +107,9 @@ export default function Login() {
     // Clear any previous errors
     clearAuthError();
     
-    // FIRST: Check if biometric is configured and available
-    if (isBiometricEnabled && isBiometricSupported) {
-      console.log('Biometric is configured, attempting biometric login first...');
-      try {
-        const biometricResult = await handleBiometricLogin();
-        if (biometricResult) {
-          console.log('Biometric login successful');
-          return;
-        }
-      } catch (error) {
-        console.log('Biometric login failed, falling back to credential validation');
-        // Continue to credential validation if biometric fails
-      }
-    }
-    
-    // SECOND: If no biometric or biometric failed, validate credentials are provided
+    // Validate credentials are provided
     if (!email || !password) {
-      Alert.alert(t('error'), 'Por favor completa el correo electrónico y la contraseña');
+      Alert.alert(t('error'), t('fillAllFields'));
       return;
     }
     
@@ -152,10 +137,19 @@ export default function Login() {
     await handleCredentialLogin();
   };
 
-  const handleBiometricLogin = async () => {
+  const handleBiometricButtonPress = async () => {
     if (!isBiometricEnabled || !isBiometricSupported) {
       Alert.alert('Biometría no disponible', 'La autenticación biométrica no está configurada o no está disponible en este dispositivo.');
       return;
+    }
+
+    await handleBiometricLogin();
+  };
+
+  const handleBiometricLogin = async () => {
+    if (!isBiometricEnabled || !isBiometricSupported) {
+      Alert.alert('Biometría no disponible', 'La autenticación biométrica no está configurada o no está disponible en este dispositivo.');
+      return false;
     }
 
     setBiometricLoading(true);
@@ -178,11 +172,14 @@ export default function Login() {
               router.replace('/(tabs)');
             }
           }
+          return true;
         }
       }
+      return false;
     } catch (error: any) {
       console.error('Biometric login error:', error);
       Alert.alert('Error', 'No se pudo autenticar con biometría. Intenta con tu correo y contraseña.');
+      return false;
     } finally {
       setBiometricLoading(false);
     }
@@ -459,33 +456,38 @@ export default function Login() {
           </TouchableOpacity>
         </View>
 
-        <Button
-          title={t('signIn')}
-          onPress={handleLogin}
-          loading={loading}
-          size="large"
-        />
+        {/* Show biometric button if biometric is enabled, otherwise show regular login */}
+        {isBiometricSupported && isBiometricEnabled ? (
+          <TouchableOpacity
+            style={styles.biometricMainButton}
+            onPress={handleBiometricButtonPress}
+            disabled={biometricLoading}
+          >
+            <Fingerprint size={24} color="#FFFFFF" />
+            <Text style={styles.biometricMainButtonText}>
+              {biometricLoading ? 'Autenticando...' : `Iniciar con ${biometricType || 'Biometría'}`}
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <Button
+            title={t('signIn')}
+            onPress={handleLogin}
+            loading={loading}
+            size="large"
+          />
+        )}
 
-        {/* Biometric Login */}
+        {/* Alternative login option when biometric is primary */}
         {isBiometricSupported && isBiometricEnabled && (
-          <View style={styles.biometricLoginSection}>
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>o usa</Text>
-              <View style={styles.dividerLine} />
-            </View>
-            
-            <TouchableOpacity
-              style={styles.biometricLoginButton}
-              onPress={handleBiometricLogin}
-              disabled={biometricLoading}
-            >
-              <Fingerprint size={20} color="#6B7280" />
-              <Text style={styles.biometricLoginText}>
-                {biometricLoading ? 'Autenticando...' : biometricType || 'Biometría'}
-              </Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={styles.alternativeLoginButton}
+            onPress={handleLogin}
+            disabled={loading}
+          >
+            <Text style={styles.alternativeLoginText}>
+              Usar correo y contraseña
+            </Text>
+          </TouchableOpacity>
         )}
 
         {/* Biometric Setup Option */}
@@ -655,6 +657,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-Medium',
     color: '#374151',
+  },
+  biometricMainButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2D6A6F',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    minHeight: 44,
+    gap: 8,
+    marginBottom: 12,
+  },
+  biometricMainButtonText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#FFFFFF',
+  },
+  alternativeLoginButton: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    marginBottom: 12,
+  },
+  alternativeLoginText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#3B82F6',
+    textDecorationLine: 'underline',
   },
   biometricSetup: {
     backgroundColor: '#F0F9FF',
