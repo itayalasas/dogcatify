@@ -5,10 +5,12 @@
   "private": true,
   "scripts": {
     "start": "expo start",
-    "dev": "expo start --clear",
+    "dev": "expo start --clear --reset-cache",
     "web": "expo start --web",
     "android": "expo start --android",
-    "ios": "expo start --ios"
+    "ios": "expo start --ios",
+    "clean": "expo start --clear --reset-cache",
+    "reset": "rm -rf node_modules && npm install && expo start --clear"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",

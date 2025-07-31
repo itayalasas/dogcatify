@@ -9,10 +9,23 @@ module.exports = function(api) {
         {
           root: ['./'],
           alias: {
-            '@': './'
-          }
-        }
-      ]
+            '@': './',
+          },
+          extensions: [
+            '.ios.ts',
+            '.android.ts',
+            '.native.ts',
+            '.ts',
+            '.ios.tsx',
+            '.android.tsx',
+            '.native.tsx',
+            '.tsx',
+            '.js',
+            '.jsx',
+            '.json',
+          ],
+        },
+      ],
     ],
   };
 };

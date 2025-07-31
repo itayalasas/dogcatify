@@ -23,6 +23,9 @@
     "plugins": [
       "expo-router"
     ],
+    "packagerOpts": {
+      "config": "metro.config.js"
+    },
     "experiments": {
       "typedRoutes": true
     },
