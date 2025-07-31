@@ -81,6 +81,28 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         return;
       }
 
+      // First check if credentials are stored locally on the device
+      const storedCredentials = await getStoredCredentials();
+      
+      if (!storedCredentials) {
+        // No credentials stored locally, biometric is not enabled
+        setIsBiometricEnabled(false);
+        
+        // Also update database to reflect this
+        try {
+          await supabaseClient
+            .from('profiles')
+            .update({ 
+              biometric_enabled: false,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', currentUser.id);
+        } catch (dbError) {
+          console.log('Could not update database biometric status:', dbError);
+        }
+        return;
+      }
+
       try {
         // Check if biometric is enabled in user profile
         const { data, error } = await supabaseClient
@@ -93,7 +115,8 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           // If column doesn't exist or other database errors, gracefully handle it
           if (error.code === '42703' || error.code === 'PGRST204') {
             console.log('Biometric columns not yet available in database');
-            setIsBiometricEnabled(false);
+            // If we have stored credentials but no DB column, consider it enabled
+            setIsBiometricEnabled(!!storedCredentials);
             return;
           }
           console.error('Error checking biometric status:', error);
@@ -101,13 +124,33 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           return;
         }
 
-        const isEnabled = data?.biometric_enabled || false;
+        // Biometric is enabled only if BOTH database says yes AND credentials are stored locally
+        const dbEnabled = data?.biometric_enabled || false;
+        const isEnabled = dbEnabled && !!storedCredentials;
+        
         setIsBiometricEnabled(isEnabled);
+        
+        // If database says enabled but no local credentials, update database
+        if (dbEnabled && !storedCredentials) {
+          console.log('Database shows biometric enabled but no local credentials found, updating database...');
+          try {
+            await supabaseClient
+              .from('profiles')
+              .update({ 
+                biometric_enabled: false,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', currentUser.id);
+          } catch (updateError) {
+            console.error('Error updating database biometric status:', updateError);
+          }
+        }
         
         console.log('Biometric enabled status:', isEnabled);
       } catch (dbError) {
-        console.log('Database error checking biometric status, assuming disabled:', dbError);
-        setIsBiometricEnabled(false);
+        console.log('Database error checking biometric status, using local credentials only:', dbError);
+        // If database fails, rely on local credentials
+        setIsBiometricEnabled(!!storedCredentials);
       }
     } catch (error) {
       console.error('Error checking biometric enabled:', error);
