@@ -260,6 +260,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           throw new Error('User not found');
         }
         
+          
+          throw error;
         throw error;
       }
       
@@ -273,9 +275,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         setIsEmailConfirmed(true);
         try {
+          // Check if user profile exists
           const profile = await getUserProfile(data.user.id);
           
-          if (profile) {
+          if (!profile) {
+            // Profile doesn't exist, sign out and throw error
+            await supabaseClient.auth.signOut();
+            throw new Error('Esta cuenta fue eliminada previamente. Por favor crea una nueva cuenta o contacta con soporte.');
+          }
+          
             const user: User = {
               id: data.user.id,
               email: data.user.email!,
@@ -296,46 +304,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.log('AuthContext - Login successful, setting user:', user.email);
             setCurrentUser(user);
             return user;
-          }
-        } catch (error: any) {
-          console.error('Error loading user profile after login:', error);
-          
-          // Handle case where user exists in auth.users but not in profiles (deleted account)
-          if (error.code === 'PGRST116' && error.message?.includes('0 rows')) {
-            console.log('AuthContext - Login: User exists in auth but not in profiles (deleted account)');
-            // Sign out the user and show clear error message
-            await supabaseClient.auth.signOut();
-            setAuthError('Esta cuenta fue eliminada previamente. Por favor crea una nueva cuenta o contacta con soporte.');
-            return null;
-          }
-          
-          if (error.message?.includes('session_not_found') || error.message?.includes('JWT')) {
-            console.log('AuthContext - Session error after login, signing out');
-            await supabaseClient.auth.signOut();
-          }
-        }
-      }
-      
-      return null;
-    } catch (error) {
-      console.error('Login error:', error);
-      throw error;
-    }
-  };
-
-  const register = async (email: string, password: string, displayName: string) => {
-    try {
-      console.log('AuthContext - Starting registration for:', email);
-      
-      const { data, error } = await supabaseClient.auth.signUp({
-        email,
         password,
         options: {
           emailRedirectTo: 'https://dogcatify.com/auth/login',
-          data: {
-            display_name: displayName,
-          },
-        },
+          // Handle case where user exists in auth.users but not in profiles
+          if (error.code === 'PGRST116' && error.message?.includes('0 rows')) {
+            console.log('AuthContext - Login: User exists in auth but not in profiles (deleted account)');
+            // Sign out the user and throw clear error message
+            await supabaseClient.auth.signOut();
+            throw new Error('Esta cuenta fue eliminada previamente. Por favor crea una nueva cuenta o contacta con soporte.');
+          }
       });
       
       if (error) throw error;
