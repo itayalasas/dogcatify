@@ -8,7 +8,7 @@ module.exports = function(api) {
         'module-resolver',
         {
           alias: {
-            'nanoid': 'nanoid/non-secure',
+            'nanoid/non-secure': 'nanoid/non-secure/index.js',
           },
         },
       ],
