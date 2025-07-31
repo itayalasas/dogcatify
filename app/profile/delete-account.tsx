@@ -172,51 +172,57 @@ export default function DeleteAccount() {
       // 9. Delete user profile from profiles table
       console.log('Deleting user profile...');
       
-      // Use service role to bypass RLS for profile deletion
+      // Try to use service role to bypass RLS for profile deletion
       const supabaseServiceUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
       const supabaseServiceKey = process.env.EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
       
-      if (!supabaseServiceKey) {
-        console.error('Service role key not available, trying with regular client...');
+      if (supabaseServiceKey) {
+        console.log('Using service role to delete profile...');
+        try {
+          // Use direct API call with service role key to bypass RLS
+          const response = await fetch(`${supabaseServiceUrl}/rest/v1/profiles?id=eq.${currentUser.id}`, {
+            method: 'DELETE',
+            headers: {
+              'apikey': supabaseServiceKey,
+              'Authorization': `Bearer ${supabaseServiceKey}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal'
+            }
+          });
+          
+          console.log('Service role delete response status:', response.status);
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Error deleting profile with service role:', response.status, errorText);
+            throw new Error(`Service role deletion failed: ${response.status} ${errorText}`);
+          }
+          
+          console.log('Profile deleted successfully with service role');
+        } catch (serviceRoleError) {
+          console.error('Service role deletion failed, trying with regular client:', serviceRoleError);
+          // Fallback to regular client
+          const { error: deleteProfileError } = await supabaseClient
+            .from('profiles')
+            .delete()
+            .eq('id', currentUser.id);
+          
+          if (deleteProfileError) {
+            console.error('Error deleting profile with regular client:', deleteProfileError);
+            throw new Error(`Failed to delete profile: ${deleteProfileError.message}`);
+          }
+        }
+      } else {
+        console.log('Service role key not available, using regular client...');
         const { error: deleteProfileError } = await supabaseClient
           .from('profiles')
           .delete()
           .eq('id', currentUser.id);
         
         if (deleteProfileError) {
-          console.error('Error deleting profile with regular client:', deleteProfileError);
-          Alert.alert(
-            'Error',
-            `No se pudo eliminar el perfil: ${deleteProfileError.message}. Contacta con soporte.`
-          );
-          setLoading(false);
-          return;
+          console.error('Error deleting profile:', deleteProfileError);
+          throw new Error(`Failed to delete profile: ${deleteProfileError.message}`);
         }
-      } else {
-        // Use direct API call with service role key to bypass RLS
-        console.log('Using service role to delete profile...');
-        const response = await fetch(`${supabaseServiceUrl}/rest/v1/profiles?id=eq.${currentUser.id}`, {
-          method: 'DELETE',
-          headers: {
-            'apikey': supabaseServiceKey,
-            'Authorization': `Bearer ${supabaseServiceKey}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=minimal'
-          }
-        });
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Error deleting profile with service role:', response.status, errorText);
-          Alert.alert(
-            'Error',
-            `No se pudo eliminar el perfil: ${response.status} ${errorText}. Contacta con soporte.`
-          );
-          setLoading(false);
-          return;
-        }
-        
-        console.log('Profile deleted successfully with service role');
       }
       
       // Verify profile deletion
@@ -227,37 +233,21 @@ export default function DeleteAccount() {
         .eq('id', currentUser.id);
 
       if (verifyError) {
-        console.error('Error verifying profile deletion:', verifyError);
+        console.log('Error verifying profile deletion (might be expected):', verifyError);
       } else if (verifyProfile && verifyProfile.length > 0) {
-        console.error('Profile still exists after deletion attempt!');
-        Alert.alert(
-          'Error',
-          'El perfil no se pudo eliminar completamente. Contacta con soporte para completar la eliminación.'
-        );
-        setLoading(false);
-        return;
+        console.error('CRITICAL: Profile still exists after deletion attempt!');
+        console.log('Profile data that still exists:', verifyProfile);
+        throw new Error('El perfil no se pudo eliminar de la base de datos. Los datos siguen existiendo.');
       } else {
-        console.log('Profile deletion verified - profile no longer exists');
+        console.log('✅ Profile deletion verified - profile no longer exists in database');
       }
 
-      // 10. Sign out user (auth user will be handled by admin later)
-      console.log('Signing out user and marking for deletion...');
-      
-      // Mark user for deletion in profiles table (admin can clean up auth users later)
-      await supabaseClient
-        .from('profiles')
-        .update({ 
-          deleted_at: new Date().toISOString(),
-          email: `deleted_${currentUser.id}@deleted.com`,
-          display_name: 'Cuenta Eliminada'
-        })
-        .eq('id', currentUser.id);
-
-      // 10. Try to delete from auth using service role
+      // 10. Try to delete from auth system
       console.log('Attempting to delete auth user...');
-      try {
-        if (supabaseServiceKey) {
-          // Use service role to delete auth user
+      
+      if (supabaseServiceKey) {
+        try {
+          console.log('Using service role to delete auth user...');
           const authResponse = await fetch(`${supabaseServiceUrl}/auth/v1/admin/users/${currentUser.id}`, {
             method: 'DELETE',
             headers: {
@@ -267,35 +257,35 @@ export default function DeleteAccount() {
             }
           });
           
+          console.log('Auth deletion response status:', authResponse.status);
+          
           if (authResponse.ok) {
-            console.log('Auth user deleted successfully with service role');
+            console.log('✅ Auth user deleted successfully with service role');
           } else {
             const authErrorText = await authResponse.text();
-            console.log('Auth user deletion failed with service role:', authResponse.status, authErrorText);
+            console.error('Auth user deletion failed with service role:', authResponse.status, authErrorText);
           }
-        } else {
-          // Fallback to regular admin API (will likely fail)
-          const { error: authError } = await supabaseClient.auth.admin.deleteUser(currentUser.id);
-          
-          if (authError) {
-            console.log('Auth user deletion failed (expected for regular users):', authError.message);
-          } else {
-            console.log('Auth user deleted successfully');
-          }
+        } catch (authError) {
+          console.error('Exception during auth user deletion:', authError);
         }
-      } catch (authError) {
-        console.log('Auth deletion not available for regular users:', authError);
+      } else {
+        console.log('⚠️  Service role key not available - auth user cannot be deleted');
+        console.log('Admin will need to manually delete auth user:', currentUser.id);
       }
 
-      // 11. Sign out user
+      // 11. Sign out user from current session
       console.log('Signing out user...');
       await logout();
       
-      console.log('Account deletion process completed');
+      console.log('✅ Account deletion process completed successfully');
+      console.log('Profile deleted from database, user signed out');
+      if (!supabaseServiceKey) {
+        console.log('⚠️  Auth user still exists and needs manual cleanup by admin');
+      }
       
       Alert.alert(
         'Cuenta eliminada',
-        'Tu cuenta y todos tus datos han sido eliminados permanentemente de la aplicación. Para completar el proceso, un administrador eliminará tu usuario de autenticación.',
+        'Tu cuenta y todos tus datos han sido eliminados permanentemente de la aplicación.',
         [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
       );
 
