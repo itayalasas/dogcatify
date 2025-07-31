@@ -260,8 +260,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           throw new Error('User not found');
         }
         
-          
-          throw error;
         throw error;
       }
       
@@ -284,29 +282,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             throw new Error('Esta cuenta fue eliminada previamente. Por favor crea una nueva cuenta o contacta con soporte.');
           }
           
-            const user: User = {
-              id: data.user.id,
-              email: data.user.email!,
-              displayName: profile.display_name || '',
-              photoURL: profile.photo_url,
-              isOwner: profile.is_owner || true,
-              isPartner: profile.is_partner || false,
-              location: profile.location,
-              bio: profile.bio,
-              phone: profile.phone,
-              createdAt: new Date(profile.created_at),
-              followers: profile.followers,
-              following: profile.following,
-              followersCount: profile.followers?.length || 0,
-              followingCount: profile.following?.length || 0,
-            };
-            
-            console.log('AuthContext - Login successful, setting user:', user.email);
-            setCurrentUser(user);
-            return user;
-        password,
-        options: {
-          emailRedirectTo: 'https://dogcatify.com/auth/login',
+          const user: User = {
+            id: data.user.id,
+            email: data.user.email!,
+            displayName: profile.display_name || '',
+            photoURL: profile.photo_url,
+            isOwner: profile.is_owner || true,
+            isPartner: profile.is_partner || false,
+            location: profile.location,
+            bio: profile.bio,
+            phone: profile.phone,
+            createdAt: new Date(profile.created_at),
+            followers: profile.followers,
+            following: profile.following,
+            followersCount: profile.followers?.length || 0,
+            followingCount: profile.following?.length || 0,
+          };
+          
+          console.log('AuthContext - Login successful, setting user:', user.email);
+          setCurrentUser(user);
+          return user;
+        } catch (error: any) {
           // Handle case where user exists in auth.users but not in profiles
           if (error.code === 'PGRST116' && error.message?.includes('0 rows')) {
             console.log('AuthContext - Login: User exists in auth but not in profiles (deleted account)');
@@ -314,6 +310,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             await supabaseClient.auth.signOut();
             throw new Error('Esta cuenta fue eliminada previamente. Por favor crea una nueva cuenta o contacta con soporte.');
           }
+          throw error;
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
+  };
+
+  const register = async (email: string, password: string, displayName: string) => {
+    try {
+      console.log('AuthContext - Attempting registration for:', email);
+      
+      const { data, error } = await supabaseClient.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: 'https://dogcatify.com/auth/login',
+        }
       });
       
       if (error) throw error;
