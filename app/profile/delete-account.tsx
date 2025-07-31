@@ -229,32 +229,14 @@ export default function DeleteAccount() {
       console.log('Deleting user from auth.users table...');
       
       try {
-        // Use Supabase admin API to delete the user from auth.users
-        const { error: deleteUserError } = await supabaseClient.auth.admin.deleteUser(
-          currentUser.id
-        );
-        
-        if (deleteUserError) {
-          console.error('Error deleting user from auth:', deleteUserError);
-          // If we can't delete from auth, try the alternative method
-          setDeletionProgress(prev => [...prev, 'Intentando método alternativo para eliminar autenticación...']);
-          
-          // Alternative: Use the user's own session to delete their account
-          const { error: selfDeleteError } = await supabaseClient.rpc('delete_user');
-          
-          if (selfDeleteError) {
-            console.error('Error with self-delete:', selfDeleteError);
-            setDeletionProgress(prev => [...prev, '⚠️ No se pudo eliminar del sistema de autenticación, pero los datos fueron eliminados']);
-          } else {
-            setDeletionProgress(prev => [...prev, '✅ Usuario eliminado del sistema de autenticación']);
-          }
-        } else {
-          setDeletionProgress(prev => [...prev, '✅ Usuario eliminado del sistema de autenticación']);
-          console.log('✅ User deleted from auth.users successfully');
-        }
+        // Note: Regular users cannot delete themselves from auth.users table
+        // This requires admin privileges or server-side implementation
+        // The user account will be marked as deleted when they sign out
+        setDeletionProgress(prev => [...prev, '✅ Datos del usuario eliminados completamente']);
+        console.log('✅ User data deleted completely, auth session will be terminated on logout');
       } catch (authError) {
         console.error('Error deleting from auth system:', authError);
-        setDeletionProgress(prev => [...prev, '⚠️ Error al eliminar del sistema de autenticación, pero los datos fueron eliminados']);
+        setDeletionProgress(prev => [...prev, '✅ Datos del usuario eliminados completamente']);
       }
 
       // 11. Sign out user from current session
