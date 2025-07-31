@@ -145,7 +145,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             
           }
         }
-        }
         if (!mounted) return;
         setLoading(false);
         setAuthInitialized(true);
