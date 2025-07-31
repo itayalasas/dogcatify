@@ -104,6 +104,7 @@ export default function ConfirmEmail() {
               console.error('Error updating profile confirmation:', updateError);
             }
           }
+          }
         } catch (profileError) {
           console.error('Error checking/creating profile:', profileError);
         }
