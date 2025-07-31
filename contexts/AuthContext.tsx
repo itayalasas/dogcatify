@@ -135,17 +135,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 ...newUser,
               });
             }
-                      } catch (error: any) {
-          console.error('Error loading user profile after login:', error);
-          
-          if (error.message?.includes('session_not_found') || error.message?.includes('JWT')) {
-            console.log('AuthContext - Session error after login, signing out');
-            await supabaseClient.auth.signOut();
-          }
-          
-          throw error;
-        }
+          } catch (error: any) {
+            console.error('Error loading user profile after login:', error);
+            
+            if (error.message?.includes('session_not_found') || error.message?.includes('JWT')) {
+              console.log('AuthContext - Session error after login, signing out');
+              await supabaseClient.auth.signOut();
             }
+            
+            throw error;
           }
         }
         if (!mounted) return;
