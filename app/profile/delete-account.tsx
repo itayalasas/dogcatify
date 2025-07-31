@@ -181,14 +181,18 @@ export default function DeleteAccount() {
         throw profileError;
       }
 
-      // 10. Delete auth user (this should be last)
-      console.log('Deleting auth user...');
-      const { error: authError } = await supabaseClient.auth.admin.deleteUser(currentUser.id);
-
-      if (authError) {
-        console.error('Error deleting auth user:', authError);
-        // Continue anyway as profile is already deleted
-      }
+      // 10. Sign out user (auth user will be handled by admin later)
+      console.log('Signing out user and marking for deletion...');
+      
+      // Mark user for deletion in profiles table (admin can clean up auth users later)
+      await supabaseClient
+        .from('profiles')
+        .update({ 
+          deleted_at: new Date().toISOString(),
+          email: `deleted_${currentUser.id}@deleted.com`,
+          display_name: 'Cuenta Eliminada'
+        })
+        .eq('id', currentUser.id);
 
       console.log('Account deletion completed successfully');
 
@@ -197,7 +201,7 @@ export default function DeleteAccount() {
       
       Alert.alert(
         'Cuenta eliminada',
-        'Tu cuenta y todos tus datos han sido eliminados permanentemente.',
+        'Tu cuenta y todos tus datos han sido eliminados permanentemente. El usuario de autenticación será eliminado por un administrador.',
         [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
       );
 
