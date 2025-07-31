@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { CircleCheck as CheckCircle, CircleX as XCircle } from 'lucide-react-native';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
 import { supabaseClient } from '../../lib/supabase';
 
 export default function ConfirmEmail() {
@@ -15,6 +16,10 @@ export default function ConfirmEmail() {
   const [loading, setLoading] = useState(true);
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showResendForm, setShowResendForm] = useState(false);
+  const [email, setEmail] = useState('');
+  const [resending, setResending] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
 
   useEffect(() => {
     handleEmailConfirmation();
@@ -24,6 +29,7 @@ export default function ConfirmEmail() {
     try {
       if (!token_hash || !type) {
         setError('Enlace de confirmación inválido');
+        setShowResendForm(true);
         setLoading(false);
         return;
       }
@@ -37,7 +43,12 @@ export default function ConfirmEmail() {
 
       if (error) {
         console.error('Email confirmation error:', error);
-        setError('No se pudo confirmar el email. El enlace puede haber expirado.');
+        if (error.message?.includes('expired') || error.message?.includes('invalid')) {
+          setError('El enlace de confirmación ha expirado o es inválido.');
+          setShowResendForm(true);
+        } else {
+          setError('No se pudo confirmar el email. Por favor intenta nuevamente.');
+        }
         setLoading(false);
         return;
       }
@@ -88,11 +99,44 @@ export default function ConfirmEmail() {
     } catch (error) {
       console.error('Confirmation error:', error);
       setError('Error al procesar la confirmación');
+      setShowResendForm(true);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleResendConfirmation = async () => {
+    if (!email.trim()) {
+      setError('Por favor ingresa tu email');
+      return;
+    }
+
+    setResending(true);
+    setError(null);
+
+    try {
+      const { error } = await supabaseClient.auth.resend({
+        type: 'signup',
+        email: email.trim(),
+        options: {
+          emailRedirectTo: 'http://localhost:8081/auth/confirm'
+        }
+      });
+
+      if (error) {
+        console.error('Resend confirmation error:', error);
+        setError('No se pudo reenviar el email. Verifica que el email sea correcto.');
+      } else {
+        setResendSuccess(true);
+        setShowResendForm(false);
+      }
+    } catch (error) {
+      console.error('Resend error:', error);
+      setError('Error al reenviar el email de confirmación');
+    } finally {
+      setResending(false);
+    }
+  };
   const handleContinueToLogin = () => {
     router.replace('/auth/login');
   };
@@ -108,6 +152,32 @@ export default function ConfirmEmail() {
     );
   }
 
+  if (resendSuccess) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.content}>
+          <Card style={styles.resultCard}>
+            <View style={styles.iconContainer}>
+              <CheckCircle size={80} color="#10B981" />
+            </View>
+            
+            <Text style={styles.title}>¡Email Reenviado!</Text>
+            
+            <Text style={styles.subtitle}>
+              Hemos enviado un nuevo enlace de confirmación a tu email. 
+              Por favor revisa tu bandeja de entrada y spam.
+            </Text>
+
+            <Button
+              title="Volver al Login"
+              onPress={handleContinueToLogin}
+              size="large"
+            />
+          </Card>
+        </View>
+      </SafeAreaView>
+    );
+  }
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
@@ -143,10 +213,36 @@ export default function ConfirmEmail() {
             </View>
           )}
 
+          {showResendForm && !confirmed && (
+            <View style={styles.resendForm}>
+              <Text style={styles.resendTitle}>Reenviar enlace de confirmación</Text>
+              <Text style={styles.resendSubtitle}>
+                Ingresa tu email para recibir un nuevo enlace de confirmación
+              </Text>
+              
+              <Input
+                placeholder="tu@email.com"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                style={styles.emailInput}
+              />
+              
+              <Button
+                title={resending ? "Reenviando..." : "Reenviar enlace de confirmación"}
+                onPress={handleResendConfirmation}
+                disabled={resending}
+                size="large"
+                style={styles.resendButton}
+              />
+            </View>
+          )}
           <Button
             title={confirmed ? "Ir a Iniciar Sesión" : "Volver al Login"}
             onPress={handleContinueToLogin}
             size="large"
+            style={showResendForm && !confirmed ? styles.secondaryButton : undefined}
           />
         </Card>
       </View>
@@ -218,5 +314,36 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#166534',
     lineHeight: 20,
+  },
+  resendForm: {
+    width: '100%',
+    backgroundColor: '#FEF3C7',
+    padding: 20,
+    borderRadius: 12,
+    marginBottom: 24,
+    borderLeftWidth: 4,
+    borderLeftColor: '#F59E0B',
+  },
+  resendTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#92400E',
+    marginBottom: 8,
+  },
+  resendSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#92400E',
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  emailInput: {
+    marginBottom: 16,
+  },
+  resendButton: {
+    backgroundColor: '#F59E0B',
+  },
+  secondaryButton: {
+    backgroundColor: '#6B7280',
   },
 });
