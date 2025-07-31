@@ -79,7 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 console.log('AuthContext - User exists in auth but not in profiles (deleted account)');
                 // Sign out the user since their profile was deleted
                 await supabaseClient.auth.signOut();
-               throw new Error('Esta cuenta ya no existe. Si eliminaste tu cuenta anteriormente, necesitas crear una nueva.');
+                return; // Exit early, auth state will be updated by signOut
               }
               throw profileError;
             }
