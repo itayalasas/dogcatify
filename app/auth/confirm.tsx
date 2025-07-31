@@ -106,8 +106,6 @@ export default function ConfirmEmail() {
           }
         } catch (profileError) {
           console.error('Error checking/creating profile:', profileError);
-        } catch (profileError) {
-          console.error('Error checking/creating profile:', profileError);
         }
 
         setConfirmed(true);
