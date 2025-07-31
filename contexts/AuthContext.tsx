@@ -84,6 +84,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 return;
               }
               throw profileError;
+            }
             let profile;
             try {
               profile = await getUserProfile(data.user.id);
@@ -204,6 +205,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 createdAt: new Date(profile.created_at),
                 followers: profile.followers,
                 following: profile.following,
+              }
+              )
+            }
             if (error.message?.includes('session_not_found') || error.message?.includes('JWT')) {
               console.log('AuthContext - Session expired during profile load, signing out');
               await supabaseClient.auth.signOut();
