@@ -128,7 +128,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 photoURL: session.user.user_metadata?.photo_url,
                 isOwner: true,
                 isPartner: false,
-          } catch (error: any) {
+                        } catch (error: any) {
             if (!mounted) return;
             console.error('Error processing user data:', error);
             
@@ -139,6 +139,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setCurrentUser(null);
               setSession(null);
             }
+          }
+                    }
           }
         }
         if (!mounted) return;
