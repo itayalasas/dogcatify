@@ -10,7 +10,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "clean": "expo start --clear --reset-cache",
-    "reset": "rm -rf node_modules && npm install && expo start --clear"
+    "reset": "rm -rf node_modules && npm install && expo start --clear",
+    "build:web": "expo export -p web"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
