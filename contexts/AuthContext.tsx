@@ -339,7 +339,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           data: {
             display_name: displayName,
           },
-          emailRedirectTo: `${process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:8081'}/auth/confirm`,
+          emailRedirectTo: `${process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:8081'}/auth/confirm?type=signup`,
         }
       });
       
@@ -352,7 +352,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await NotificationService.sendWelcomeEmail(
           email,
           displayName,
-          `${process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:8081'}/auth/confirm`
+          `${process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:8081'}/auth/confirm?type=signup`
         );
         console.log('Welcome email sent successfully');
       } catch (emailError) {
