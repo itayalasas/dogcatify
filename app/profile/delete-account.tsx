@@ -235,40 +235,40 @@ export default function DeleteAccount() {
             console.error('Exception during API deletion:', fetchError);
             throw fetchError;
           }
+        } else {
+          // Use database function to delete user completely (bypasses RLS)
+          console.log('Using database function to delete user completely...');
+          const { data: deleteResult, error: functionError } = await supabaseClient
+            .rpc('delete_user_completely', { user_id_to_delete: currentUser.id });
+          
+          console.log('Database function result:', deleteResult);
+          
+          if (functionError) {
+            console.error('Database function error:', functionError);
+            throw new Error(`Error en la función de eliminación: ${functionError.message}`);
           }
+          
+          if (!deleteResult?.success) {
+            console.error('Database function returned failure:', deleteResult);
+            throw new Error(`La función de eliminación falló: ${deleteResult?.error || 'Error desconocido'}`);
+          }
+          
+          console.log('✅ User deleted completely using database function');
+          
+          // Verify deletion worked
+          const { data: verifyProfile } = await supabaseClient
+            .from('profiles')
+            .select('id')
+            .eq('id', currentUser.id);
+          
+          if (verifyProfile && verifyProfile.length > 0) {
+            console.error('CRITICAL: Profile still exists after function deletion!');
+            throw new Error('El perfil no se pudo eliminar completamente de la base de datos.');
+          }
+          
+          console.log('✅ Profile deletion verified - user completely removed from database');
         }
       }
-      // Use database function to delete user completely (bypasses RLS)
-      console.log('Using database function to delete user completely...');
-      const { data: deleteResult, error: functionError } = await supabaseClient
-        .rpc('delete_user_completely', { user_id_to_delete: currentUser.id });
-      
-      console.log('Database function result:', deleteResult);
-      
-      if (functionError) {
-        console.error('Database function error:', functionError);
-        throw new Error(`Error en la función de eliminación: ${functionError.message}`);
-      }
-      
-      if (!deleteResult?.success) {
-        console.error('Database function returned failure:', deleteResult);
-        throw new Error(`La función de eliminación falló: ${deleteResult?.error || 'Error desconocido'}`);
-      }
-      
-      console.log('✅ User deleted completely using database function');
-      
-      // Verify deletion worked
-      const { data: verifyProfile } = await supabaseClient
-        .from('profiles')
-        .select('id')
-        .eq('id', currentUser.id);
-      
-      if (verifyProfile && verifyProfile.length > 0) {
-        console.error('CRITICAL: Profile still exists after function deletion!');
-        throw new Error('El perfil no se pudo eliminar completamente de la base de datos.');
-      }
-      
-      console.log('✅ Profile deletion verified - user completely removed from database');
 
       // 10. Try to delete from auth system
       console.log('Attempting to delete auth user...');
