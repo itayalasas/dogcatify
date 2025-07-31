@@ -231,6 +231,10 @@ export default function DeleteAccount() {
             } else {
               console.log('✅ Profile deleted successfully via API');
             }
+          } catch (fetchError) {
+            console.error('Exception during API deletion:', fetchError);
+            throw fetchError;
+          }
           }
         }
       }
