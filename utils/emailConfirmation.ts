@@ -1,5 +1,4 @@
 import { supabaseClient } from '../lib/supabase';
-import * as Crypto from 'expo-crypto';
 
 export interface EmailConfirmationToken {
   id: string;
@@ -16,9 +15,8 @@ export interface EmailConfirmationToken {
  * Generate a secure token for email confirmation
  */
 export const generateConfirmationToken = async (): Promise<string> => {
-  // Generate a random token using crypto
-  const randomBytes = await Crypto.getRandomBytesAsync(32);
-  const token = Array.from(randomBytes, byte => byte.toString(16).padStart(2, '0')).join('');
+  // Generate a random token using Math.random for compatibility
+  const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
   return token;
 };
 

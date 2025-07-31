@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity, Image, TextInput } from 'react-native';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import { Mail, Lock, Eye, EyeOff, Check, Fingerprint } from 'lucide-react-native';
 import { Input } from '../../components/ui/Input';
@@ -7,9 +7,6 @@ import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useBiometric } from '../../contexts/BiometricContext'; 
-import * as LocalAuthentication from 'expo-local-authentication';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import Constants from 'expo-constants';
 
 export default function Login() {
   const { redirectTo } = useLocalSearchParams<{ redirectTo?: string }>();

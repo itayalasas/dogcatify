@@ -1,7 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import * as LocalAuthentication from 'expo-local-authentication';
-import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
 import { useAuth } from './AuthContext';
 import { supabaseClient } from '../lib/supabase';
 

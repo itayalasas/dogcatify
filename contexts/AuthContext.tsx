@@ -1,14 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Platform } from 'react-native';
-import * as AuthSession from 'expo-auth-session';
-import * as WebBrowser from 'expo-web-browser';
-import * as Crypto from 'expo-crypto';
-import Constants from 'expo-constants';
 import { supabaseClient, getUserProfile, updateUserProfile, signIn as supabaseSignIn, signUp as supabaseSignUp, signOut as supabaseSignOut } from '../lib/supabase';
 import { User } from '../types';
-
-// Complete the auth session for web
-WebBrowser.maybeCompleteAuthSession();
 
 interface AuthContextType {
   currentUser: User | null;
