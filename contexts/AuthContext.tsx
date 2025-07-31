@@ -18,6 +18,8 @@ interface AuthContextType {
   logout: () => Promise<void>;
   isEmailConfirmed: boolean;
   authInitialized: boolean;
+  authError: string | null;
+  clearAuthError: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,6 +38,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<any | null>(null);
   const [isEmailConfirmed, setIsEmailConfirmed] = useState(false);
   const [authInitialized, setAuthInitialized] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -79,7 +82,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 console.log('AuthContext - User exists in auth but not in profiles (deleted account)');
                 // Sign out the user and throw error
                 await supabaseClient.auth.signOut();
-                throw new Error('Esta cuenta existe pero no tiene un perfil válido. Por favor contacta con soporte o crea una nueva cuenta.');
+                setAuthError('Esta cuenta fue eliminada previamente. Por favor crea una nueva cuenta o contacta con soporte.');
+                return;
               }
               throw profileError;
             }
@@ -138,6 +142,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } catch (error: any) {
             console.error('Error loading user profile after login:', error);
             
+            // Set auth error for display in UI
+            if (error.message?.includes('perfil válido') || error.message?.includes('eliminada')) {
+              setAuthError(error.message);
+            }
+            
             if (error.message?.includes('session_not_found') || error.message?.includes('JWT')) {
               console.log('AuthContext - Session error after login, signing out');
               await supabaseClient.auth.signOut();
@@ -172,7 +181,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 console.log('AuthContext - Initial check: User exists in auth but not in profiles (deleted account)');
                 // Sign out the user and show error
                 await supabaseClient.auth.signOut();
-                throw new Error('Esta cuenta existe pero no tiene un perfil válido. Por favor contacta con soporte o crea una nueva cuenta.');
+                setAuthError('Esta cuenta fue eliminada previamente. Por favor crea una nueva cuenta o contacta con soporte.');
+                return;
               }
               throw profileError;
             }
@@ -295,7 +305,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.log('AuthContext - Login: User exists in auth but not in profiles (deleted account)');
             // Sign out the user and show clear error message
             await supabaseClient.auth.signOut();
-            throw new Error('Esta cuenta existe pero no tiene un perfil válido. Por favor contacta con soporte o crea una nueva cuenta.');
+            setAuthError('Esta cuenta fue eliminada previamente. Por favor crea una nueva cuenta o contacta con soporte.');
+            return null;
           }
           
           if (error.message?.includes('session_not_found') || error.message?.includes('JWT')) {
@@ -355,6 +366,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const clearAuthError = () => {
+    setAuthError(null);
+  };
+
   const value = {
     currentUser,
     loading,
@@ -363,6 +378,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     register,
     logout,
     isEmailConfirmed,
+    authError,
+    clearAuthError,
   };
 
   return (

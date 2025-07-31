@@ -22,6 +22,7 @@ export default function Login() {
   const [showBiometricOption, setShowBiometricOption] = useState(false);
   const { login } = useAuth();
   const { t } = useLanguage();
+  const { authError, clearAuthError } = useAuth();
   const { 
     isBiometricSupported, 
     isBiometricEnabled, 
@@ -34,6 +35,8 @@ export default function Login() {
   // Check for biometric availability on component mount
   React.useEffect(() => {
     checkBiometricAvailability();
+    // Clear any previous auth errors when component mounts
+    clearAuthError();
   }, []);
 
   const checkBiometricAvailability = async () => {
@@ -71,7 +74,34 @@ export default function Login() {
     checkBiometricStatus();
   }, [checkBiometricStatus]);
 
+  // Show auth error if it exists
+  React.useEffect(() => {
+    if (authError) {
+      Alert.alert(
+        'Error de cuenta',
+        authError,
+        [
+          { 
+            text: 'Crear nueva cuenta', 
+            onPress: () => {
+              clearAuthError();
+              router.push('/auth/register');
+            }
+          },
+          { 
+            text: 'Entendido', 
+            onPress: () => clearAuthError(),
+            style: 'cancel'
+          }
+        ]
+      );
+    }
+  }, [authError]);
+
   const handleLogin = async () => {
+    // Clear any previous errors
+    clearAuthError();
+    
     // If biometric is enabled and supported, try biometric first
     if (isBiometricEnabled && isBiometricSupported) {
       try {
