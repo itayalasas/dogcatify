@@ -236,12 +236,8 @@ export default function DeleteAccount() {
             throw new Error(`Error en la eliminación del perfil: ${apiError.message}`);
           }
         } else {
-          console.error('No access token available');
-          throw new Error('No se pudo obtener el token de acceso para eliminar el perfil');
-        }
-      } else {
-        console.log('✅ Profile deleted successfully with direct method');
-      }
+      // Don't trust the success response - always verify
+      console.log('Direct deletion response - error:', deleteProfileError);
       
       // Verify profile deletion
       console.log('Verifying profile deletion...');
@@ -252,23 +248,81 @@ export default function DeleteAccount() {
 
       if (verifyError) {
         console.log('Error verifying profile deletion (might be expected):', verifyError);
-      } else if (verifyProfile && verifyProfile.length > 0) {
-        // Check if profile was marked for deletion
-        const { data: deletedProfile } = await supabaseClient
-          .from('profiles')
-          .select('is_deleted, deleted_at')
-          .eq('id', currentUser.id)
-          .single();
+      }
+      
+      if (verifyProfile && verifyProfile.length > 0) {
+        console.log('❌ Direct deletion failed - profile still exists');
+        console.log('Trying API deletion with access token...');
         
-        if (deletedProfile?.is_deleted) {
-          console.log('✅ Profile marked for deletion successfully');
+        // Strategy 2: Try using API with access token
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const accessToken = session?.access_token;
+        
+        if (accessToken) {
+          const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+          const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+          
+          const response = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${currentUser.id}`, {
+            method: 'DELETE',
+            headers: {
+              'apikey': supabaseAnonKey || '',
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal'
+            }
+          });
+          
+          console.log('API deletion response status:', response.status);
+          
+          if (response.ok) {
+            console.log('✅ Profile deleted successfully via API');
+          } else {
+            const errorText = await response.text();
+            console.error('API deletion failed:', response.status, errorText);
+            
+            // Strategy 3: Mark for deletion as fallback
+            console.log('Marking profile for deletion instead...');
+            const { error: markError } = await supabaseClient
+              .from('profiles')
+              .update({ 
+                deleted_at: new Date().toISOString(),
+                email: `deleted_${Date.now()}@deleted.com`,
+                display_name: 'Cuenta Eliminada',
+                is_deleted: true
+              })
+              .eq('id', currentUser.id);
+            
+            if (markError) {
+              console.error('Failed to mark profile for deletion:', markError);
+              throw new Error(`No se pudo eliminar ni marcar el perfil: ${markError.message}`);
+            }
+            
+            console.log('✅ Profile marked for deletion successfully');
+          }
         } else {
-          console.error('CRITICAL: Profile still exists and not marked for deletion!');
-          console.log('Profile data that still exists:', verifyProfile);
-          throw new Error('El perfil no se pudo eliminar de la base de datos. Los datos siguen existiendo.');
+          throw new Error('No se pudo obtener el token de acceso para eliminar el perfil');
+        }
+        
+        // Final verification
+        const { data: finalVerify } = await supabaseClient
+          .from('profiles')
+          .select('id, is_deleted, deleted_at')
+          .eq('id', currentUser.id);
+        
+        if (finalVerify && finalVerify.length > 0) {
+          const profile = finalVerify[0];
+          if (profile.is_deleted) {
+            console.log('✅ Profile marked for deletion - functionally deleted');
+          } else {
+            console.error('CRITICAL: Profile still exists and not marked for deletion!');
+            console.log('Profile data that still exists:', finalVerify);
+            throw new Error('El perfil no se pudo eliminar de la base de datos. Los datos siguen existiendo.');
+          }
+        } else {
+          console.log('✅ Profile completely deleted from database');
         }
       } else {
-        console.log('✅ Profile deletion verified - profile no longer exists in database');
+        console.log('✅ Profile successfully deleted - no longer exists in database');
       }
 
       // 10. Try to delete from auth system
