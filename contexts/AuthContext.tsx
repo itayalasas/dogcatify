@@ -117,6 +117,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 following: [],
                 followersCount: 0,
                 followingCount: 0,
+              };
+              
+              // Create the profile in the database
+              await updateUserProfile(session.user.id, {
+                display_name: newUser.displayName,
+                photo_url: newUser.photoURL,
+                is_owner: newUser.isOwner,
+                is_partner: newUser.isPartner,
+                location: newUser.location,
+                bio: newUser.bio,
+                phone: newUser.phone,
+              });
+              
+              setCurrentUser({
+                id: session.user.id,
+                ...newUser,
+              });
+            }
                       } catch (error: any) {
           console.error('Error loading user profile after login:', error);
           
