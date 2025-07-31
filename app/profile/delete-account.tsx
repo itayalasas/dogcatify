@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, TextInput } from 'react-native';
 import { router } from 'expo-router';
 import { ArrowLeft, Trash2, TriangleAlert as AlertTriangle, Shield } from 'lucide-react-native';
@@ -12,6 +12,7 @@ export default function DeleteAccount() {
   const [confirmationText, setConfirmationText] = useState('');
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1); // 1: Warning, 2: Confirmation
+  const [deletionProgress, setDeletionProgress] = useState<string[]>([]);
 
   const handleDeleteAccount = async () => {
     if (!currentUser) {
@@ -26,6 +27,7 @@ export default function DeleteAccount() {
 
     setLoading(true);
     try {
+      setDeletionProgress(['Iniciando proceso de eliminación...']);
       console.log('Starting account deletion process for user:', currentUser.id);
 
       // 1. Delete user's pets and related data
@@ -34,6 +36,8 @@ export default function DeleteAccount() {
         .from('pets')
         .select('id')
         .eq('owner_id', currentUser.id);
+
+      setDeletionProgress(prev => [...prev, 'Verificando mascotas del usuario...']);
 
       if (petsError) {
         console.error('Error fetching user pets:', petsError);
@@ -45,11 +49,15 @@ export default function DeleteAccount() {
             .delete()
             .eq('pet_id', pet.id);
 
+          setDeletionProgress(prev => [...prev, `Eliminando registros de salud de ${pet.id}...`]);
+
           // Delete pet albums
           await supabaseClient
             .from('pet_albums')
             .delete()
             .eq('pet_id', pet.id);
+
+          setDeletionProgress(prev => [...prev, `Eliminando álbumes de ${pet.id}...`]);
 
           // Delete pet behavior records
           await supabaseClient
@@ -57,11 +65,15 @@ export default function DeleteAccount() {
             .delete()
             .eq('pet_id', pet.id);
 
+          setDeletionProgress(prev => [...prev, `Eliminando registros de comportamiento de ${pet.id}...`]);
+
           // Delete bookings related to this pet
           await supabaseClient
             .from('bookings')
             .delete()
             .eq('pet_id', pet.id);
+
+          setDeletionProgress(prev => [...prev, `Eliminando reservas de ${pet.id}...`]);
         }
 
         // Delete all pets
@@ -69,9 +81,12 @@ export default function DeleteAccount() {
           .from('pets')
           .delete()
           .eq('owner_id', currentUser.id);
+
+        setDeletionProgress(prev => [...prev, 'Eliminando perfiles de mascotas...']);
       }
 
       // 2. Delete user's posts and comments
+      setDeletionProgress(prev => [...prev, 'Eliminando publicaciones y comentarios...']);
       console.log('Deleting posts and comments...');
       
       // Get user's posts to delete related comments
@@ -87,6 +102,8 @@ export default function DeleteAccount() {
             .from('comments')
             .delete()
             .eq('post_id', post.id);
+
+          setDeletionProgress(prev => [...prev, `Eliminando comentarios del post ${post.id}...`]);
         }
       }
 
@@ -96,13 +113,18 @@ export default function DeleteAccount() {
         .delete()
         .eq('user_id', currentUser.id);
 
+      setDeletionProgress(prev => [...prev, 'Eliminando publicaciones del usuario...']);
+
       // Delete user's comments on other posts
       await supabaseClient
         .from('comments')
         .delete()
         .eq('user_id', currentUser.id);
 
+      setDeletionProgress(prev => [...prev, 'Eliminando comentarios en otras publicaciones...']);
+
       // 3. Delete user's bookings
+      setDeletionProgress(prev => [...prev, 'Eliminando reservas del usuario...']);
       console.log('Deleting bookings...');
       await supabaseClient
         .from('bookings')
@@ -110,6 +132,7 @@ export default function DeleteAccount() {
         .eq('customer_id', currentUser.id);
 
       // 4. Delete user's orders
+      setDeletionProgress(prev => [...prev, 'Eliminando pedidos del usuario...']);
       console.log('Deleting orders...');
       await supabaseClient
         .from('orders')
@@ -117,6 +140,7 @@ export default function DeleteAccount() {
         .eq('customer_id', currentUser.id);
 
       // 5. Delete user's cart
+      setDeletionProgress(prev => [...prev, 'Eliminando carrito del usuario...']);
       console.log('Deleting cart...');
       await supabaseClient
         .from('user_carts')
@@ -124,6 +148,7 @@ export default function DeleteAccount() {
         .eq('user_id', currentUser.id);
 
       // 6. Delete user's service reviews
+      setDeletionProgress(prev => [...prev, 'Eliminando reseñas del usuario...']);
       console.log('Deleting service reviews...');
       await supabaseClient
         .from('service_reviews')
@@ -131,6 +156,7 @@ export default function DeleteAccount() {
         .eq('customer_id', currentUser.id);
 
       // 7. Delete chat conversations and messages
+      setDeletionProgress(prev => [...prev, 'Eliminando conversaciones de chat...']);
       console.log('Deleting chat data...');
       const { data: userConversations } = await supabaseClient
         .from('chat_conversations')
@@ -140,6 +166,7 @@ export default function DeleteAccount() {
       if (userConversations && userConversations.length > 0) {
         for (const conversation of userConversations) {
           // Delete messages in this conversation
+          setDeletionProgress(prev => [...prev, `Eliminando mensajes de conversación ${conversation.id}...`]);
           await supabaseClient
             .from('chat_messages')
             .delete()
@@ -154,6 +181,7 @@ export default function DeleteAccount() {
       }
 
       // 8. Handle partner data if user is a partner
+      setDeletionProgress(prev => [...prev, 'Verificando datos de negocio...']);
       console.log('Checking for partner data...');
       const { data: partnerData } = await supabaseClient
         .from('partners')
@@ -161,6 +189,7 @@ export default function DeleteAccount() {
         .eq('user_id', currentUser.id);
 
       if (partnerData && partnerData.length > 0) {
+        setDeletionProgress(prev => [...prev, 'Error: Usuario tiene negocios asociados']);
         Alert.alert(
           'Cuenta con negocio',
           'Tu cuenta tiene negocios asociados. Para eliminar tu cuenta, primero debes transferir o eliminar tus negocios. Contacta con soporte para asistencia.',
@@ -170,161 +199,38 @@ export default function DeleteAccount() {
       }
 
       // 9. Delete user profile from profiles table
+      setDeletionProgress(prev => [...prev, 'Eliminando perfil de usuario...']);
       console.log('Deleting user profile...');
       
-      // Strategy 1: Try direct deletion with current user session
-      console.log('Attempting direct profile deletion...');
-      const { error: directDeleteError } = await supabaseClient
-        .from('profiles')
-        .delete()
-        .eq('id', currentUser.id);
+      // Usar la función de base de datos que maneja el orden correcto
+      setDeletionProgress(prev => [...prev, 'Ejecutando eliminación completa...']);
+      const { data: deleteResult, error: functionError } = await supabaseClient
+        .rpc('delete_user_completely', { user_id_to_delete: currentUser.id });
       
-      if (directDeleteError) {
-        console.error('Direct deletion failed:', directDeleteError);
-        
-        // Strategy 2: Try using anon key with explicit headers
-        console.log('Trying deletion with anon key and explicit headers...');
-        const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-        const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-        
-        // Get current session token
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        const accessToken = session?.access_token;
-        
-        if (accessToken) {
-          console.log('Using access token for deletion...');
-          try {
-            const response = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${currentUser.id}`, {
-              method: 'DELETE',
-              headers: {
-                'apikey': supabaseAnonKey || '',
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json',
-                'Prefer': 'return=minimal'
-              }
-            });
-            
-            console.log('API delete response status:', response.status);
-            
-            if (!response.ok) {
-              const errorText = await response.text();
-              console.error('API deletion failed:', response.status, errorText);
-              
-              // Strategy 3: Mark profile for deletion instead of deleting
-              console.log('Marking profile for deletion instead...');
-              const { error: markError } = await supabaseClient
-                .from('profiles')
-                .update({ 
-                  deleted_at: new Date().toISOString(),
-                  email: `deleted_${Date.now()}@deleted.com`,
-                  display_name: 'Cuenta Eliminada',
-                  is_deleted: true
-                })
-                .eq('id', currentUser.id);
-              
-              if (markError) {
-                console.error('Failed to mark profile for deletion:', markError);
-                throw new Error(`No se pudo eliminar el perfil: ${markError.message}`);
-              }
-              
-              console.log('✅ Profile marked for deletion successfully');
-            } else {
-              console.log('✅ Profile deleted successfully via API');
-            }
-          } catch (fetchError) {
-            console.error('Exception during API deletion:', fetchError);
-            throw fetchError;
-          }
-        } else {
-          // Use database function to delete user completely (bypasses RLS)
-          console.log('Using database function to delete user completely...');
-          const { data: deleteResult, error: functionError } = await supabaseClient
-            .rpc('delete_user_completely', { user_id_to_delete: currentUser.id });
-          
-          console.log('Database function result:', deleteResult);
-          
-          if (functionError) {
-            console.error('Database function error:', functionError);
-            throw new Error(`Error en la función de eliminación: ${functionError.message}`);
-          }
-          
-          if (!deleteResult?.success) {
-            console.error('Database function returned failure:', deleteResult);
-            throw new Error(`La función de eliminación falló: ${deleteResult?.error || 'Error desconocido'}`);
-          }
-          
-          console.log('✅ User deleted completely using database function');
-          
-          // Verify deletion worked
-          const { data: verifyProfile } = await supabaseClient
-            .from('profiles')
-            .select('id')
-            .eq('id', currentUser.id);
-          
-          if (verifyProfile && verifyProfile.length > 0) {
-            console.error('CRITICAL: Profile still exists after function deletion!');
-            throw new Error('El perfil no se pudo eliminar completamente de la base de datos.');
-          }
-          
-          console.log('✅ Profile deletion verified - user completely removed from database');
-        }
+      console.log('Database function result:', deleteResult);
+      
+      if (functionError) {
+        console.error('Database function error:', functionError);
+        setDeletionProgress(prev => [...prev, `Error en función de eliminación: ${functionError.message}`]);
+        throw new Error(`Error en la función de eliminación: ${functionError.message}`);
       }
-
-      // 10. Try to delete from auth system
-      console.log('Attempting to delete auth user...');
       
-      const supabaseServiceKey = process.env.EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
-      const supabaseServiceUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      
-      if (supabaseServiceKey) {
-        try {
-        try {
-          console.log('Using service role to delete auth user...');
-          const authResponse = await fetch(`${supabaseServiceUrl}/auth/v1/admin/users/${currentUser.id}`, {
-            method: 'DELETE',
-            headers: {
-              'apikey': supabaseServiceKey,
-              'Authorization': `Bearer ${supabaseServiceKey}`,
-              'Content-Type': 'application/json'
-            }
-          });
-          
-          console.log('Auth deletion response status:', authResponse.status);
-          
-          if (authResponse.ok) {
-            console.log('✅ Auth user deleted successfully with service role');
-          } else {
-            if (authResponse.status === 500) {
-              const authErrorText = await authResponse.text();
-              if (authErrorText.includes('foreign key constraint')) {
-                console.log('⚠️  Auth user deletion blocked by foreign key constraint (expected)');
-                console.log('This is normal - Supabase prevents auth user deletion when profile references exist');
-              } else {
-                console.error('Auth user deletion failed with service role:', authResponse.status, authErrorText);
-              }
-            } else {
-              const authErrorText = await authResponse.text();
-              console.error('Auth user deletion failed with service role:', authResponse.status, authErrorText);
-            }
-          }
-        } catch (authError) {
-          console.error('Exception during auth user deletion:', authError);
-        }
-        } catch (authError) {
-          console.error('Exception during auth user deletion:', authError);
-        }
-      } else {
-        console.log('⚠️  Service role key not available - auth user cannot be deleted');
-        console.log('Admin will need to manually delete auth user:', currentUser.id);
+      if (!deleteResult?.success) {
+        console.error('Database function returned failure:', deleteResult);
+        setDeletionProgress(prev => [...prev, `Error: ${deleteResult?.error || 'Error desconocido'}`]);
+        throw new Error(`La función de eliminación falló: ${deleteResult?.error || 'Error desconocido'}`);
       }
+      
+      setDeletionProgress(prev => [...prev, '✅ Usuario eliminado completamente de la base de datos']);
+      console.log('✅ User deleted completely using database function');
 
-      // 11. Sign out user from current session
+      // 10. Sign out user from current session
+      setDeletionProgress(prev => [...prev, 'Cerrando sesión...']);
       console.log('Signing out user...');
       await logout();
       
+      setDeletionProgress(prev => [...prev, '✅ Proceso de eliminación completado exitosamente']);
       console.log('✅ Account deletion process completed successfully');
-      console.log('Profile deleted from database, user signed out');
-      console.log('⚠️  Auth user may still exist in Supabase Auth (this is normal due to foreign key constraints)');
       
       Alert.alert(
         'Cuenta eliminada',
@@ -333,8 +239,8 @@ export default function DeleteAccount() {
       );
 
     } catch (error) {
+      setDeletionProgress(prev => [...prev, `❌ Error: ${error.message || error}`]);
       console.error('Error deleting account:', error);
-      console.error('Error details:', JSON.stringify(error, null, 2));
       Alert.alert(
         'Error',
         `Ocurrió un error al eliminar tu cuenta: ${error.message || error}. Por favor contacta con soporte para asistencia.`
@@ -486,6 +392,20 @@ export default function DeleteAccount() {
             autoCapitalize="characters"
           />
           
+          {/* Progress indicator during deletion */}
+          {loading && deletionProgress.length > 0 && (
+            <View style={styles.progressContainer}>
+              <Text style={styles.progressTitle}>Progreso de eliminación:</Text>
+              <ScrollView style={styles.progressScroll} showsVerticalScrollIndicator={false}>
+                {deletionProgress.map((step, index) => (
+                  <Text key={index} style={styles.progressStep}>
+                    {step}
+                  </Text>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+          
           <Text style={styles.confirmationNote}>
             Esta acción es irreversible. Una vez eliminada, no podrás recuperar tu cuenta ni tus datos.
           </Text>
@@ -495,7 +415,7 @@ export default function DeleteAccount() {
           <Button
             title="Cancelar"
             onPress={() => router.back()}
-            variant="outline"
+            variant="outline" 
             size="large"
           />
           
@@ -503,7 +423,7 @@ export default function DeleteAccount() {
             title={loading ? "Eliminando..." : "Eliminar mi cuenta permanentemente"}
             onPress={handleDeleteAccount}
             loading={loading}
-            disabled={confirmationText !== 'ELIMINAR MI CUENTA'}
+            disabled={confirmationText !== 'ELIMINAR MI CUENTA' || loading}
             size="large"
             style={styles.deleteButton}
           />
@@ -682,5 +602,27 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     backgroundColor: '#991B1B',
+  },
+  progressContainer: {
+    backgroundColor: '#F3F4F6',
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 16,
+    maxHeight: 200,
+  },
+  progressTitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  progressScroll: {
+    maxHeight: 150,
+  },
+  progressStep: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginBottom: 4,
   },
 });
