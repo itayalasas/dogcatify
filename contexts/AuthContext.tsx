@@ -135,8 +135,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setSession(null);
             }
           }
-                    }
-          }
         }
         if (!mounted) return;
         setLoading(false);
@@ -193,6 +191,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 followingCount: profile.following?.length || 0,
               });
             }
+          } catch (error) {
+            console.error('AuthContext - Error loading profile:', error);
           }
         } else {
           console.log('AuthContext - No initial session found');
