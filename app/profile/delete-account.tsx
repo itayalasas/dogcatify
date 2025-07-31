@@ -172,57 +172,75 @@ export default function DeleteAccount() {
       // 9. Delete user profile from profiles table
       console.log('Deleting user profile...');
       
-      // Try to use service role to bypass RLS for profile deletion
-      const supabaseServiceUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const supabaseServiceKey = process.env.EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
+      // Strategy 1: Try direct deletion with current user session
+      console.log('Attempting direct profile deletion...');
+      const { error: directDeleteError } = await supabaseClient
+        .from('profiles')
+        .delete()
+        .eq('id', currentUser.id);
       
-      if (supabaseServiceKey) {
-        console.log('Using service role to delete profile...');
-        try {
-          // Use direct API call with service role key to bypass RLS
-          const response = await fetch(`${supabaseServiceUrl}/rest/v1/profiles?id=eq.${currentUser.id}`, {
-            method: 'DELETE',
-            headers: {
-              'apikey': supabaseServiceKey,
-              'Authorization': `Bearer ${supabaseServiceKey}`,
-              'Content-Type': 'application/json',
-              'Prefer': 'return=minimal'
+      if (directDeleteError) {
+        console.error('Direct deletion failed:', directDeleteError);
+        
+        // Strategy 2: Try using anon key with explicit headers
+        console.log('Trying deletion with anon key and explicit headers...');
+        const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+        const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+        
+        // Get current session token
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const accessToken = session?.access_token;
+        
+        if (accessToken) {
+          console.log('Using access token for deletion...');
+          try {
+            const response = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${currentUser.id}`, {
+              method: 'DELETE',
+              headers: {
+                'apikey': supabaseAnonKey || '',
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=minimal'
+              }
+            });
+            
+            console.log('API delete response status:', response.status);
+            
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error('API deletion failed:', response.status, errorText);
+              
+              // Strategy 3: Mark profile for deletion instead of deleting
+              console.log('Marking profile for deletion instead...');
+              const { error: markError } = await supabaseClient
+                .from('profiles')
+                .update({ 
+                  deleted_at: new Date().toISOString(),
+                  email: `deleted_${Date.now()}@deleted.com`,
+                  display_name: 'Cuenta Eliminada',
+                  is_deleted: true
+                })
+                .eq('id', currentUser.id);
+              
+              if (markError) {
+                console.error('Failed to mark profile for deletion:', markError);
+                throw new Error(`No se pudo eliminar el perfil: ${markError.message}`);
+              }
+              
+              console.log('✅ Profile marked for deletion successfully');
+            } else {
+              console.log('✅ Profile deleted successfully via API');
             }
-          });
-          
-          console.log('Service role delete response status:', response.status);
-          
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Error deleting profile with service role:', response.status, errorText);
-            throw new Error(`Service role deletion failed: ${response.status} ${errorText}`);
+          } catch (apiError) {
+            console.error('API deletion exception:', apiError);
+            throw new Error(`Error en la eliminación del perfil: ${apiError.message}`);
           }
-          
-          console.log('Profile deleted successfully with service role');
-        } catch (serviceRoleError) {
-          console.error('Service role deletion failed, trying with regular client:', serviceRoleError);
-          // Fallback to regular client
-          const { error: deleteProfileError } = await supabaseClient
-            .from('profiles')
-            .delete()
-            .eq('id', currentUser.id);
-          
-          if (deleteProfileError) {
-            console.error('Error deleting profile with regular client:', deleteProfileError);
-            throw new Error(`Failed to delete profile: ${deleteProfileError.message}`);
-          }
+        } else {
+          console.error('No access token available');
+          throw new Error('No se pudo obtener el token de acceso para eliminar el perfil');
         }
       } else {
-        console.log('Service role key not available, using regular client...');
-        const { error: deleteProfileError } = await supabaseClient
-          .from('profiles')
-          .delete()
-          .eq('id', currentUser.id);
-        
-        if (deleteProfileError) {
-          console.error('Error deleting profile:', deleteProfileError);
-          throw new Error(`Failed to delete profile: ${deleteProfileError.message}`);
-        }
+        console.log('✅ Profile deleted successfully with direct method');
       }
       
       // Verify profile deletion
@@ -235,9 +253,20 @@ export default function DeleteAccount() {
       if (verifyError) {
         console.log('Error verifying profile deletion (might be expected):', verifyError);
       } else if (verifyProfile && verifyProfile.length > 0) {
-        console.error('CRITICAL: Profile still exists after deletion attempt!');
-        console.log('Profile data that still exists:', verifyProfile);
-        throw new Error('El perfil no se pudo eliminar de la base de datos. Los datos siguen existiendo.');
+        // Check if profile was marked for deletion
+        const { data: deletedProfile } = await supabaseClient
+          .from('profiles')
+          .select('is_deleted, deleted_at')
+          .eq('id', currentUser.id)
+          .single();
+        
+        if (deletedProfile?.is_deleted) {
+          console.log('✅ Profile marked for deletion successfully');
+        } else {
+          console.error('CRITICAL: Profile still exists and not marked for deletion!');
+          console.log('Profile data that still exists:', verifyProfile);
+          throw new Error('El perfil no se pudo eliminar de la base de datos. Los datos siguen existiendo.');
+        }
       } else {
         console.log('✅ Profile deletion verified - profile no longer exists in database');
       }
