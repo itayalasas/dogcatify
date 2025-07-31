@@ -204,6 +204,29 @@ export default function DeleteAccount() {
         'Tu cuenta y todos tus datos han sido eliminados permanentemente. El usuario de autenticación será eliminado por un administrador.',
         [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
       );
+      // 9. Delete user profile completely
+      console.log('Deleting user profile...');
+      const { error: profileError } = await supabaseClient
+        .from('profiles')
+        .delete()
+        .eq('id', currentUser.id);
+
+      if (profileError) {
+        console.error('Error deleting profile:', profileError);
+        throw profileError;
+      }
+
+      console.log('User profile deleted successfully');
+      console.log('Account deletion completed successfully');
+
+      // Sign out and redirect
+      await logout();
+      
+      Alert.alert(
+        'Cuenta eliminada',
+        'Tu cuenta y todos tus datos han sido eliminados permanentemente.',
+        [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
+      );
 
     } catch (error) {
       console.error('Error deleting account:', error);
