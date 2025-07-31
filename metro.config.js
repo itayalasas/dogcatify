@@ -1,65 +1,60 @@
-const path = require('path');
 const { getDefaultConfig } = require('expo/metro-config');
 
+/** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
 
-// Enable web support
-config.resolver.platforms = ['ios', 'android', 'native', 'web'];
-
-// Ensure proper module resolution
+// Simplify the configuration to avoid path resolution issues
 config.resolver.alias = {
-  '@': path.resolve(__dirname, './'),
+  '@': __dirname,
 };
 
-config.resolver.resolverMainFields = ['react-native', 'browser', 'main'];
-
-// Add specific resolution for problematic modules
-config.resolver.nodeModulesPaths = [
-  path.resolve(__dirname, 'node_modules'),
-];
-
-// Configure transformer for better compatibility
-config.transformer = {
-  ...config.transformer,
-  minifierConfig: {
-    ...config.transformer.minifierConfig,
-    keep_fnames: true,
-    mangle: {
-      keep_fnames: true,
-    },
-  },
-  assetPlugins: ['expo-asset/tools/hashAssetFiles'],
-};
-
-// Improve resolver configuration
-config.resolver.sourceExts = [...config.resolver.sourceExts, 'mjs', 'cjs'];
-
-// Configure watchFolders properly
-config.watchFolders = [path.resolve(__dirname)];
-
-// Ensure Metro can handle all file types
-config.resolver.assetExts = [
-  ...config.resolver.assetExts,
-  'bin',
-  'txt',
-  'jpg',
-  'png',
+// Ensure proper source extensions
+config.resolver.sourceExts = [
+  'expo.ts',
+  'expo.tsx',
+  'expo.js',
+  'expo.jsx',
+  'ts',
+  'tsx',
+  'js',
+  'jsx',
   'json',
+  'wasm',
+  'svg',
 ];
 
-// Configure serializer to handle modules properly
-config.serializer = {
-  ...config.serializer,
-  getModulesRunBeforeMainModule: () => [
-    require.resolve('react-native/Libraries/Core/InitializeCore'),
-  ],
-};
+// Ensure proper asset extensions
+config.resolver.assetExts = [
+  'glb',
+  'gltf',
+  'png',
+  'jpg',
+  'jpeg',
+  'gif',
+  'webp',
+  'svg',
+  'mp4',
+  'webm',
+  'wav',
+  'mp3',
+  'm4a',
+  'aac',
+  'oga',
+  'ttf',
+  'otf',
+  'woff',
+  'woff2',
+  'eot',
+  'ico',
+  'pdf',
+  'bin',
+];
 
-// Reset cache to ensure clean builds
-config.resetCache = true;
-
-// Configure resolver to handle undefined paths
-config.resolver.resolverMainFields = ['react-native', 'browser', 'main'];
+// Simplify platforms
 config.resolver.platforms = ['ios', 'android', 'native', 'web'];
+
+// Remove problematic configurations that might cause undefined paths
+delete config.watchFolders;
+delete config.transformer.minifierConfig;
 
 module.exports = config;
