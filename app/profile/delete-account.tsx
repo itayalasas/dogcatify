@@ -231,6 +231,9 @@ export default function DeleteAccount() {
             } else {
               console.log('✅ Profile deleted successfully via API');
             }
+          }
+        }
+      }
       // Use database function to delete user completely (bypasses RLS)
       console.log('Using database function to delete user completely...');
       const { data: deleteResult, error: functionError } = await supabaseClient
