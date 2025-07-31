@@ -64,9 +64,8 @@
       "favicon": "./assets/images/logo.jpg",
       "bundler": "metro",
       "output": "static"
-    },
-    "updates": {
-      "fallbackToCacheTimeout": 0
+      "ITSAppUsesNonExemptEncryption": false
+    }
     },
     "runtimeVersion": {
       "policy": "sdkVersion"
@@ -74,7 +73,6 @@
     "notification": {
       "icon": "./assets/images/logo.jpg",
       "color": "#2D6A6F"
-    },
     "permissions": [
       "NOTIFICATIONS"
     ],
