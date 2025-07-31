@@ -212,13 +212,13 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   logo: {
     width: 140,
     height: 140,
     resizeMode: 'contain',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   title: {
     fontSize: 28,
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: 8,
   },
   footerText: {
     fontSize: 16,

@@ -569,7 +569,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: 'center',
-    marginTop: 24,
+    marginTop: 8,
   },
   footerText: {
     fontSize: 16,
@@ -611,8 +611,8 @@ const styles = StyleSheet.create({
   },
   forgotPasswordButton: {
     alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 8,
+    marginTop: 12,
+    marginBottom: 4,
   },
   forgotPasswordText: {
     fontSize: 14,
