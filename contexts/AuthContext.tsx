@@ -77,9 +77,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               // Handle case where user exists in auth.users but not in profiles (deleted account)
               if (profileError.code === 'PGRST116' && profileError.message?.includes('0 rows')) {
                 console.log('AuthContext - User exists in auth but not in profiles (deleted account)');
-                // Sign out the user since their profile was deleted
-                await supabaseClient.auth.signOut();
-                return; // Exit early, auth state will be updated by signOut
+                // Create a new profile for this user
+                console.log('AuthContext - Creating missing profile for user:', session.user.email);
+                const newProfileData = {
+                  display_name: session.user.user_metadata?.display_name || session.user.email?.split('@')[0] || '',
+                  photo_url: session.user.user_metadata?.photo_url || null,
+                  is_owner: true,
+                  is_partner: false,
+                  email: session.user.email,
+                  created_at: new Date().toISOString(),
+                  followers: [],
+                  following: []
+                };
+                
+                await updateUserProfile(session.user.id, newProfileData);
+                profile = await getUserProfile(session.user.id);
               }
               throw profileError;
             }
