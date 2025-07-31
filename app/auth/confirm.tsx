@@ -22,6 +22,14 @@ export default function ConfirmEmail() {
   const [resendSuccess, setResendSuccess] = useState(false);
 
   useEffect(() => {
+    // Check if this is a resend request
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('resend') === 'true' && emailParam) {
+      setShowResendForm(true);
+      setLoading(false);
+      return;
+    }
+    
     handleEmailConfirmation();
   }, [token_hash, type]);
 
