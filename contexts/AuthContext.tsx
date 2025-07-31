@@ -135,6 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setSession(null);
             }
           }
+        }
         if (!mounted) return;
         setLoading(false);
         setAuthInitialized(true);
