@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   logo: {
     width: 140,
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: 'center',
-    marginTop: 24,
+    marginTop: 16,
   },
   footerText: {
     fontSize: 16,
