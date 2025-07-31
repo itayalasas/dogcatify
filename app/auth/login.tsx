@@ -107,38 +107,22 @@ export default function Login() {
     // Clear any previous errors
     clearAuthError();
     
-    // If biometric is enabled and fields are empty, trigger biometric login automatically
-    if (isBiometricEnabled && isBiometricSupported && (!email.trim() || !password.trim())) {
-      console.log('Biometric enabled and fields empty, triggering automatic biometric login...');
-      try {
-        const biometricResult = await handleBiometricLogin();
-        if (biometricResult) {
-          console.log('Automatic biometric login successful');
-          return;
-        }
-      } catch (error) {
-        console.log('Automatic biometric login failed, showing validation error');
-        Alert.alert('Error', 'Por favor completa el correo electrónico y la contraseña o usa tu biometría para iniciar sesión');
-        return;
-      }
-    }
-    
-    // If biometric is enabled and supported, try biometric first
+    // FIRST: Check if biometric is configured and available
     if (isBiometricEnabled && isBiometricSupported) {
+      console.log('Biometric is configured, attempting biometric login first...');
       try {
-        console.log('Attempting biometric login first...');
         const biometricResult = await handleBiometricLogin();
         if (biometricResult) {
           console.log('Biometric login successful');
-          return; // Biometric login successful
+          return;
         }
       } catch (error) {
-        console.log('Biometric login failed, continuing with credentials');
-        // Continue with credential validation
+        console.log('Biometric login failed, falling back to credential validation');
+        // Continue to credential validation if biometric fails
       }
     }
-
-    // Validate credentials are provided
+    
+    // SECOND: If no biometric or biometric failed, validate credentials are provided
     if (!email || !password) {
       Alert.alert(t('error'), 'Por favor completa el correo electrónico y la contraseña');
       return;
