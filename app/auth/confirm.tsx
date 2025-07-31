@@ -102,7 +102,7 @@ export default function ConfirmEmail() {
 
             if (updateError) {
               console.error('Error updating profile confirmation:', updateError);
-            }
+            emailRedirectTo: `${process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:8081'}/auth/confirm?type=signup`
           }
         } catch (profileError) {
           console.error('Error checking/creating profile:', profileError);

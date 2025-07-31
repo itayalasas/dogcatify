@@ -95,6 +95,13 @@ export const NotificationService = {
             <li>Encontrar servicios para tus compañeros peludos</li>
             <li>Compartir momentos especiales con la comunidad</li>
           </ul>
+          ${activationLink ? `
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${activationLink}" style="background-color: #2D6A6F; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">
+              Confirmar mi correo electrónico
+            </a>
+          </div>
+          ` : ''}
           <p>¡Esperamos verte pronto en DogCatiFy!</p>
           <p>El equipo de DogCatiFy</p>
         </div>
