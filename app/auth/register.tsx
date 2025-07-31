@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, Image, TouchableOpacity, Linking } from 'react-native';
 import { Link, router } from 'expo-router';
-import { Mail, Lock, User } from 'lucide-react-native';
+import { Mail, Lock, User, Check, ExternalLink } from 'lucide-react-native';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button'; 
 import { useAuth } from '../../contexts/AuthContext';
@@ -12,6 +12,7 @@ export default function Register() {
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [acceptedPolicies, setAcceptedPolicies] = useState(false);
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
   const { t } = useLanguage();
@@ -19,6 +20,11 @@ export default function Register() {
   const handleRegister = async () => {
     if (!email || !password || !displayName || !confirmPassword) {
       Alert.alert(t('error'), t('fillAllFields'));
+      return;
+    }
+
+    if (!acceptedPolicies) {
+      Alert.alert('Error', 'Debes aceptar las políticas de privacidad y términos de servicio para continuar');
       return;
     }
 
@@ -55,6 +61,35 @@ export default function Register() {
     }
   };
 
+  const handleOpenPrivacyPolicy = async () => {
+    try {
+      const url = process.env.EXPO_PUBLIC_PRIVACY_POLICY_URL || 'https://dogcatify.com/privacy-policy';
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'No se pudo abrir el enlace de políticas de privacidad');
+      }
+    } catch (error) {
+      console.error('Error opening privacy policy:', error);
+      Alert.alert('Error', 'No se pudo abrir el enlace de políticas de privacidad');
+    }
+  };
+
+  const handleOpenTermsOfService = async () => {
+    try {
+      const url = process.env.EXPO_PUBLIC_TERMS_OF_SERVICE_URL || 'https://dogcatify.com/terms-of-service';
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'No se pudo abrir el enlace de términos de servicio');
+      }
+    } catch (error) {
+      console.error('Error opening terms of service:', error);
+      Alert.alert('Error', 'No se pudo abrir el enlace de términos de servicio');
+    }
+  };
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
@@ -103,10 +138,51 @@ export default function Register() {
           leftIcon={<Lock size={20} color="#6B7280" />}
         />
 
+        <View style={styles.policiesContainer}>
+          <TouchableOpacity 
+            style={styles.policiesRow} 
+            onPress={() => setAcceptedPolicies(!acceptedPolicies)}
+          >
+            <View style={[styles.checkbox, acceptedPolicies && styles.checkedCheckbox]}>
+              {acceptedPolicies && <Check size={16} color="#FFFFFF" />}
+            </View>
+            <View style={styles.policiesTextContainer}>
+              <Text style={styles.policiesText}>
+                Acepto las{' '}
+                <TouchableOpacity onPress={handleOpenPrivacyPolicy}>
+                  <Text style={styles.linkText}>políticas de privacidad</Text>
+                </TouchableOpacity>
+                {' '}y los{' '}
+                <TouchableOpacity onPress={handleOpenTermsOfService}>
+                  <Text style={styles.linkText}>términos de servicio</Text>
+                </TouchableOpacity>
+              </Text>
+            </View>
+          </TouchableOpacity>
+          
+          <View style={styles.policiesLinks}>
+            <TouchableOpacity 
+              style={styles.policyLinkButton}
+              onPress={handleOpenPrivacyPolicy}
+            >
+              <ExternalLink size={14} color="#3B82F6" />
+              <Text style={styles.policyLinkText}>Políticas de Privacidad</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.policyLinkButton}
+              onPress={handleOpenTermsOfService}
+            >
+              <ExternalLink size={14} color="#3B82F6" />
+              <Text style={styles.policyLinkText}>Términos de Servicio</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
         <Button
           title={t('createAccount')}
           onPress={handleRegister}
           loading={loading}
+          disabled={loading || !acceptedPolicies}
           size="large"
         />
 
@@ -161,6 +237,66 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 400,
     alignSelf: 'center',
+  },
+  policiesContainer: {
+    marginBottom: 20,
+  },
+  policiesRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    borderRadius: 4,
+    marginRight: 12,
+    marginTop: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkedCheckbox: {
+    backgroundColor: '#2D6A6F',
+    borderColor: '#2D6A6F',
+  },
+  policiesTextContainer: {
+    flex: 1,
+  },
+  policiesText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+    lineHeight: 20,
+  },
+  linkText: {
+    color: '#3B82F6',
+    fontFamily: 'Inter-SemiBold',
+    textDecorationLine: 'underline',
+  },
+  policiesLinks: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  policyLinkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    flex: 1,
+    justifyContent: 'center',
+  },
+  policyLinkText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#3B82F6',
+    marginLeft: 4,
   },
   footer: {
     alignItems: 'center',
