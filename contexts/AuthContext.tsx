@@ -77,21 +77,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               // Handle case where user exists in auth.users but not in profiles (deleted account)
               if (profileError.code === 'PGRST116' && profileError.message?.includes('0 rows')) {
                 console.log('AuthContext - User exists in auth but not in profiles (deleted account)');
-                // Create a new profile for this user
-                console.log('AuthContext - Creating missing profile for user:', session.user.email);
-                const newProfileData = {
-                  display_name: session.user.user_metadata?.display_name || session.user.email?.split('@')[0] || '',
-                  photo_url: session.user.user_metadata?.photo_url || null,
-                  is_owner: true,
-                  is_partner: false,
-                  email: session.user.email,
-                  created_at: new Date().toISOString(),
-                  followers: [],
-                  following: []
-                };
-                
-                await updateUserProfile(session.user.id, newProfileData);
-                profile = await getUserProfile(session.user.id);
+                // Sign out the user and throw error
+                await supabaseClient.auth.signOut();
+                throw new Error('Esta cuenta existe pero no tiene un perfil válido. Por favor contacta con soporte o crea una nueva cuenta.');
               }
               throw profileError;
             }
@@ -182,11 +170,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               // Handle case where user exists in auth.users but not in profiles (deleted account)
               if (profileError.code === 'PGRST116' && profileError.message?.includes('0 rows')) {
                 console.log('AuthContext - Initial check: User exists in auth but not in profiles (deleted account)');
-                // Sign out the user since their profile was deleted
+                // Sign out the user and show error
                 await supabaseClient.auth.signOut();
-                setCurrentUser(null);
-                setSession(null);
-                return;
+                throw new Error('Esta cuenta existe pero no tiene un perfil válido. Por favor contacta con soporte o crea una nueva cuenta.');
               }
               throw profileError;
             }
@@ -307,9 +293,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Handle case where user exists in auth.users but not in profiles (deleted account)
           if (error.code === 'PGRST116' && error.message?.includes('0 rows')) {
             console.log('AuthContext - Login: User exists in auth but not in profiles (deleted account)');
-            // Sign out the user and throw a user-friendly error
+            // Sign out the user and show clear error message
             await supabaseClient.auth.signOut();
-            throw new Error('Esta cuenta ya no existe. Si eliminaste tu cuenta anteriormente, necesitas crear una nueva.');
+            throw new Error('Esta cuenta existe pero no tiene un perfil válido. Por favor contacta con soporte o crea una nueva cuenta.');
           }
           
           if (error.message?.includes('session_not_found') || error.message?.includes('JWT')) {
