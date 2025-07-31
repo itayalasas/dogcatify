@@ -171,7 +171,7 @@ export default function DeleteAccount() {
 
       // 9. Delete user profile from profiles table
       console.log('Deleting user profile...');
-      const { error: profileError } = await supabaseClient
+      const { error: deleteProfileError } = await supabaseClient
         .from('profiles')
         .delete()
         .eq('id', currentUser.id);
