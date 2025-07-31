@@ -149,6 +149,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(false);
         setAuthInitialized(true);
       }
+    }
     );
 
     // Initial session check
