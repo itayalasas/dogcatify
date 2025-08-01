@@ -427,27 +427,32 @@ export default function PartnerRegister() {
     try {
       console.log(`Uploading image to path: ${path}`);
       
-      // Fetch the image as a blob
+      // Fetch the image and convert to blob
       const response = await fetch(imageUri);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status}`);
+      }
+      
       const blob = await response.blob();
       
       console.log(`Image blob size: ${blob.size} bytes`);
-      console.log(`Using Supabase URL: ${process.env.EXPO_PUBLIC_SUPABASE_URL}`);
       
-      // Use the existing 'dogcatify' bucket instead of 'partner-assets'
+      // Upload blob to Supabase storage
       const { data, error } = await supabaseClient.storage
         .from('dogcatify')
         .upload(path, blob, {
           contentType: 'image/jpeg',
           cacheControl: '3600',
+          upsert: false
         });
 
       if (error) {
-        console.error('Error uploading image:', error);
+        console.error('Supabase storage error:', error);
         throw error;
       }
 
-      // Get the public URL
+      console.log('Upload successful, getting public URL...');
+      
       const { data: urlData } = supabaseClient.storage
         .from('dogcatify')
         .getPublicUrl(path);
@@ -475,19 +480,89 @@ export default function PartnerRegister() {
 
     setLoading(true);
     try {
-      // Upload logo if selected
+      let logoUrl = null;
+      if (logo) {
+        try {
+          console.log('Uploading logo...');
+          logoUrl = await uploadImage(logo, `partners/${currentUser.id}/${Date.now()}_logo.jpg`);
+          console.log('Logo uploaded successfully:', logoUrl);
+        } catch (logoError) {
+          console.error('Error uploading logo:', logoError);
+          Alert.alert(
+            'Error al subir logo',
+            'No se pudo subir el logo. ¿Deseas continuar sin logo?',
+            [
+              { text: 'Cancelar', style: 'cancel', onPress: () => setLoading(false) },
+              { text: 'Continuar sin logo', onPress: () => proceedWithoutLogo() }
+            ]
+          );
+          return;
+        }
+      }
+
+      const imageUrls: string[] = [];
+      if (images.length > 0) {
+        try {
+          console.log(`Uploading ${images.length} gallery images...`);
+          for (let i = 0; i < images.length; i++) {
+            console.log(`Uploading image ${i + 1} of ${images.length}...`);
+            const imageUrl = await uploadImage(images[i], `partners/${currentUser.id}/gallery/${Date.now()}_${i}.jpg`);
+            imageUrls.push(imageUrl);
+          }
+          console.log('All gallery images uploaded successfully');
+        } catch (galleryError) {
+          console.error('Error uploading gallery images:', galleryError);
+          Alert.alert(
+            'Error al subir imágenes',
+            'No se pudieron subir las imágenes de la galería. ¿Deseas continuar sin galería?',
+            [
+              { text: 'Cancelar', style: 'cancel', onPress: () => setLoading(false) },
+              { text: 'Continuar sin galería', onPress: () => proceedWithoutGallery() }
+            ]
+          );
+          return;
+        }
+      }
+
+      await createPartnerRecord(logoUrl, imageUrls);
+    } catch (error) {
+      console.error('Error registering partner:', error);
+      Alert.alert('Error', 'No se pudo completar el registro');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const proceedWithoutLogo = async () => {
+    try {
+      await createPartnerRecord(null, []);
+    } catch (error) {
+      console.error('Error registering partner without logo:', error);
+      Alert.alert('Error', 'No se pudo completar el registro');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const proceedWithoutGallery = async () => {
+    try {
       let logoUrl = null;
       if (logo) {
         logoUrl = await uploadImage(logo, `partners/${currentUser.id}/${Date.now()}_logo.jpg`);
       }
+      await createPartnerRecord(logoUrl, []);
+    } catch (error) {
+      console.error('Error registering partner without gallery:', error);
+      Alert.alert('Error', 'No se pudo completar el registro');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      // Upload gallery images
-      const imageUrls: string[] = [];
-      for (let i = 0; i < images.length; i++) {
-        const imageUrl = await uploadImage(images[i], `partners/${currentUser.id}/gallery/${Date.now()}_${i}.jpg`);
-        imageUrls.push(imageUrl);
-      }
-
+  const createPartnerRecord = async (logoUrl: string | null, imageUrls: string[]) => {
+    try {
+      console.log('Creating partner record in database...');
+      
       // Create partner request
       const { error } = await supabaseClient
         .from('partners')
@@ -496,14 +571,13 @@ export default function PartnerRegister() {
           business_name: businessName.trim(),
           business_type: selectedType,
           description: description.trim(),
-          address: `${calle.trim()} ${numero.trim()}, ${barrio ? barrio + ', ' : ''}${selectedDepartment?.name}, ${selectedCountry?.name}`,
+          address: `${calle.trim()} ${numero.trim()}${barrio ? ', ' + barrio : ''}, ${selectedDepartment?.name || ''}, ${selectedCountry?.name || ''}`,
           phone: phone.trim(),
           email: email.trim(),
           logo: logoUrl,
           images: imageUrls,
           has_shipping: hasShipping,
           shipping_cost: hasShipping ? parseFloat(shippingCost) || 0 : 0,
-          // Nuevos campos de ubicación
           country_id: selectedCountry?.id,
           department_id: selectedDepartment?.id,
           calle: calle.trim(),
@@ -520,6 +594,8 @@ export default function PartnerRegister() {
         });
 
       if (error) throw error;
+      
+      console.log('Partner record created successfully');
 
       // Check if user has other businesses with Mercado Pago configured
       await replicateMercadoPagoConfig(currentUser.id);
@@ -551,27 +627,16 @@ export default function PartnerRegister() {
         console.log('Push notification sent to admin');
       } catch (notificationError) {
         console.error('Error sending push notification:', notificationError);
-        // No interrumpir el flujo si falla la notificación
       }
 
-      // Send partner registration confirmation email
-      try {
-        Alert.alert(
-          'Registro exitoso',
-          'Tu solicitud para ser aliado ha sido enviada. Te notificaremos cuando sea aprobada.',
-          [{ text: 'OK', onPress: () => router.back() }]
-        );
-      } catch (error) {
-        console.error('Error registering partner:', error);
-        Alert.alert('Error', 'No se pudo completar el registro');
-      } finally {
-        setLoading(false);
-      }
+      Alert.alert(
+        'Registro exitoso',
+        'Tu solicitud para ser aliado ha sido enviada. Te notificaremos cuando sea aprobada.',
+        [{ text: 'OK', onPress: () => router.back() }]
+      );
     } catch (error) {
-      console.error('Error registering partner:', error);
-      Alert.alert('Error', 'No se pudo completar el registro');
-    } finally {
-      setLoading(false);
+      console.error('Error creating partner record:', error);
+      throw error;
     }
   };
 
