@@ -570,6 +570,7 @@ export default function EditProfile() {
             size="large"
           />
         </Card>
+        </Card>
       </ScrollView>
 
       {/* Modal de selección de país */}
