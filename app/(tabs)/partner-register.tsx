@@ -11,7 +11,7 @@ import {
   Image,
 } from 'react-native';
 import { router } from 'expo-router';
-import { ArrowLeft, Camera, ImageIcon, MapPin, Check, DollarSign } from 'lucide-react-native';
+import { ArrowLeft, Camera, Image as ImageIcon, MapPin, Check, DollarSign } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
