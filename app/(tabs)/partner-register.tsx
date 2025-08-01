@@ -808,6 +808,36 @@ export default function PartnerRegister() {
             leftIcon={<Mail size={20} color="#6B7280" />}
           />
 
+          {/* Sección de envío para tiendas */}
+          {selectedType === 'shop' && (
+            <View style={styles.shippingSection}>
+              <View style={styles.shippingHeader}>
+                <Text style={styles.shippingTitle}>Configuración de Envío</Text>
+              </View>
+              
+              <TouchableOpacity 
+                style={styles.shippingCheckbox}
+                onPress={() => setHasShipping(!hasShipping)}
+              >
+                <View style={[styles.checkbox, hasShipping && styles.checkedCheckbox]}>
+                  {hasShipping && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+                <Text style={styles.checkboxLabel}>Ofrece servicio de envío</Text>
+              </TouchableOpacity>
+              
+              {hasShipping && (
+                <Input
+                  label="Costo de envío"
+                  placeholder="Ej: 500"
+                  value={shippingCost}
+                  onChangeText={setShippingCost}
+                  keyboardType="numeric"
+                  leftIcon={<DollarSign size={20} color="#6B7280" />}
+                />
+              )}
+            </View>
+          )}
+
           <View style={styles.imageSection}>
             <Text style={styles.sectionTitle}>Logo del negocio</Text>
             <TouchableOpacity style={styles.logoSelector} onPress={handleSelectLogo}>
@@ -1306,5 +1336,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter-Regular',
     color: '#111827',
+  },
+  shippingSection: {
+    marginBottom: 20,
+    padding: 16,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  shippingHeader: {
+    marginBottom: 16,
+  },
+  shippingTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#111827',
+  },
+  shippingCheckbox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
   },
 });
