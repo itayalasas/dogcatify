@@ -336,6 +336,15 @@ export default function BusinessInsights() {
       }));
 
       // 3. Distribución por edad
+      // 3. Distribución por edad - DATOS REALES
+      const { data: petsWithAge, error: ageError } = await supabaseClient
+        .from('pets')
+        .select('age, age_display');
+      
+      if (ageError) {
+        console.error('Error fetching pets age data:', ageError);
+      }
+      
       const petsByAge = [
         { ageRange: 'Cachorros (0-1 año)', count: 0, percentage: 0 },
         { ageRange: 'Jóvenes (1-3 años)', count: 0, percentage: 0 },
@@ -343,10 +352,43 @@ export default function BusinessInsights() {
         { ageRange: 'Seniors (7+ años)', count: 0, percentage: 0 },
       ];
 
-      // Calcular distribución por edad (simulado por ahora)
-      if (petsData) {
-        petsData.forEach(pet => {
-          const age = pet.age || 0;
+      // Calcular distribución por edad REAL
+      if (petsWithAge) {
+        petsWithAge.forEach(pet => {
+          let ageInYears = pet.age || 0;
+          
+          // Convert age to years if using age_display
+          if (pet.age_display) {
+            const { value, unit } = pet.age_display;
+            if (unit === 'months') {
+              ageInYears = value / 12;
+            } else if (unit === 'days') {
+              ageInYears = value / 365;
+            } else {
+              ageInYears = value;
+            }
+          }
+          
+          // Categorize by real age
+          if (ageInYears <= 1) {
+            petsByAge[0].count++;
+          } else if (ageInYears <= 3) {
+            petsByAge[1].count++;
+          } else if (ageInYears <= 7) {
+            petsByAge[2].count++;
+          } else {
+            petsByAge[3].count++;
+          }
+        });
+        
+        // Calculate real percentages
+        const totalPetsWithAge = petsWithAge.length;
+        petsByAge.forEach(ageGroup => {
+          ageGroup.percentage = totalPetsWithAge > 0 
+            ? Math.round((ageGroup.count / totalPetsWithAge) * 100) 
+            : 0;
+        });
+      }
           if (age <= 1) petsByAge[0].count++;
           else if (age <= 3) petsByAge[1].count++;
           else if (age <= 7) petsByAge[2].count++;
@@ -376,36 +418,59 @@ export default function BusinessInsights() {
         .map(([breed, count]: [string, any]) => ({ breed, count }));
 
       // 5. Demanda de servicios
-      const { data: bookingsData } = await supabaseClient
+      const { data: bookingsData, error: bookingsError } = await supabaseClient
         .from('bookings')
-        .select('service_name, created_at')
+        .select('service_name, created_at, time')
         .eq('partner_id', partnerId)
         .gte('created_at', getDateRange(selectedTimeRange));
 
-      const servicesDemand = bookingsData?.reduce((acc: any, booking) => {
+      if (bookingsError) {
+        console.error('Error fetching bookings data:', bookingsError);
+      }
+
+      // Calculate real services demand
+      const servicesDemandMap = bookingsData?.reduce((acc: any, booking) => {
         const service = booking.service_name || 'Otros';
         acc[service] = (acc[service] || 0) + 1;
         return acc;
       }, {}) || {};
 
-      const servicesDemandArray = Object.entries(servicesDemand)
+      const servicesDemandArray = Object.entries(servicesDemandMap)
         .sort(([,a]: [string, any], [,b]: [string, any]) => b - a)
         .slice(0, 5)
         .map(([service, count]: [string, any]) => ({
           service,
           count,
-          trend: Math.random() > 0.5 ? 'up' : 'down' // Simulado
+          trend: 'stable' // Real trend calculation would need historical data
         }));
 
-      // 6. Horas pico
-      const peakHours = [
-        { hour: '09:00', bookings: Math.floor(Math.random() * 20) + 5 },
-        { hour: '10:00', bookings: Math.floor(Math.random() * 25) + 10 },
-        { hour: '11:00', bookings: Math.floor(Math.random() * 30) + 15 },
-        { hour: '14:00', bookings: Math.floor(Math.random() * 25) + 10 },
-        { hour: '15:00', bookings: Math.floor(Math.random() * 35) + 20 },
-        { hour: '16:00', bookings: Math.floor(Math.random() * 30) + 15 },
-      ];
+      // 6. Horas pico - DATOS REALES basados en bookings
+      const hourlyBookings: { [key: string]: number } = {};
+      
+      bookingsData?.forEach(booking => {
+        if (booking.time) {
+          const hour = booking.time.split(':')[0] + ':00';
+          hourlyBookings[hour] = (hourlyBookings[hour] || 0) + 1;
+        }
+      });
+      
+      // Convert to array and get top 6 hours
+      const peakHours = Object.entries(hourlyBookings)
+        .sort(([,a], [,b]) => (b as number) - (a as number))
+        .slice(0, 6)
+        .map(([hour, bookings]) => ({ hour, bookings: bookings as number }));
+      
+      // If no data, show default hours with 0 bookings
+      if (peakHours.length === 0) {
+        peakHours.push(
+          { hour: '09:00', bookings: 0 },
+          { hour: '10:00', bookings: 0 },
+          { hour: '14:00', bookings: 0 },
+          { hour: '15:00', bookings: 0 },
+          { hour: '16:00', bookings: 0 },
+          { hour: '17:00', bookings: 0 }
+        );
+      }
 
       // 7. Oportunidades de mercado
       // Usar oportunidades reales basadas en ubicación si están disponibles
@@ -738,36 +803,49 @@ export default function BusinessInsights() {
 
         {/* Demanda de Servicios */}
         <Card style={styles.chartCard}>
-          <Text style={styles.chartTitle}>📈 Servicios Más Demandados</Text>
+          <Text style={styles.chartTitle}>📈 Servicios Más Demandados (Datos Reales)</Text>
+          <Text style={styles.chartSubtitle}>
+            Basado en reservas de los últimos {selectedTimeRange === '1m' ? '1 mes' : selectedTimeRange === '3m' ? '3 meses' : selectedTimeRange === '6m' ? '6 meses' : '1 año'}
+          </Text>
           <View style={styles.servicesList}>
-            {insights?.servicesDemand.map((service, index) => (
+            {insights?.servicesDemand && insights.servicesDemand.length > 0 ? (
+              insights.servicesDemand.map((service, index) => (
+                <View key={index} style={styles.serviceItem}>
+                  <View style={styles.serviceInfo}>
+                    <Text style={styles.serviceName}>{service.service}</Text>
+                    <Text style={styles.serviceCount}>{service.count} reservas reales</Text>
+                  </View>
+                  <View style={[
+                    styles.serviceTrend,
+                    styles.trendStable
+                  ]}>
+                    <TrendingUp 
+                      size={16} 
+                      color="#3B82F6"
+                    />
+                  </View>
+                </View>
+              ))
+            ) : (
               <View key={index} style={styles.serviceItem}>
-                <View style={styles.serviceInfo}>
-                  <Text style={styles.serviceName}>{service.service}</Text>
-                  <Text style={styles.serviceCount}>{service.count} reservas</Text>
-                </View>
-                <View style={[
-                  styles.serviceTrend,
-                  service.trend === 'up' ? styles.trendUp : styles.trendDown
-                ]}>
-                  <TrendingUp 
-                    size={16} 
-                    color={service.trend === 'up' ? '#10B981' : '#EF4444'}
-                    style={service.trend === 'down' ? { transform: [{ rotate: '180deg' }] } : {}}
-                  />
-                </View>
+                <Text style={styles.noDataText}>
+                  No hay datos de reservas para el período seleccionado
+                </Text>
               </View>
-            ))}
+            )}
           </View>
         </Card>
 
         {/* Horas Pico */}
         <Card style={styles.chartCard}>
-          <Text style={styles.chartTitle}>⏰ Horas de Mayor Demanda</Text>
+          <Text style={styles.chartTitle}>⏰ Horas de Mayor Demanda (Datos Reales)</Text>
+          <Text style={styles.chartSubtitle}>
+            Basado en horarios de reservas confirmadas
+          </Text>
           <View style={styles.peakHoursChart}>
             {insights?.peakHours.map((hour, index) => {
               const maxBookings = Math.max(...(insights?.peakHours.map(h => h.bookings) || [1]));
-              const height = (hour.bookings / maxBookings) * 100;
+              const height = maxBookings > 0 ? (hour.bookings / maxBookings) * 100 : 0;
               
               return (
                 <View key={index} style={styles.hourColumn}>
@@ -775,7 +853,7 @@ export default function BusinessInsights() {
                     <View 
                       style={[
                         styles.hourBarFill,
-                        { height: `${height}%` }
+                        { height: `${Math.max(height, 2)}%` } // Minimum 2% for visibility
                       ]} 
                     />
                   </View>
@@ -785,6 +863,11 @@ export default function BusinessInsights() {
               );
             })}
           </View>
+          {insights?.peakHours.every(h => h.bookings === 0) && (
+            <Text style={styles.noDataText}>
+              No hay datos de reservas para mostrar horas pico
+            </Text>
+          )}
         </Card>
 
         {/* Oportunidades de Mercado */}
@@ -821,7 +904,10 @@ export default function BusinessInsights() {
 
         {/* Distribución por Edad */}
         <Card style={styles.chartCard}>
-          <Text style={styles.chartTitle}>📅 Distribución por Edad</Text>
+          <Text style={styles.chartTitle}>📅 Distribución por Edad (Datos Reales)</Text>
+          <Text style={styles.chartSubtitle}>
+            Basado en edades reales de mascotas registradas
+          </Text>
           <View style={styles.ageChart}>
             {insights?.petsByAge.map((ageGroup, index) => (
               <View key={index} style={styles.ageItem}>
@@ -830,11 +916,13 @@ export default function BusinessInsights() {
                   <View 
                     style={[
                       styles.ageBarFill,
-                      { width: `${ageGroup.percentage}%` }
+                      { width: `${Math.max(ageGroup.percentage, 1)}%` } // Minimum 1% for visibility
                     ]} 
                   />
                 </View>
-                <Text style={styles.agePercentage}>{ageGroup.percentage}%</Text>
+                <Text style={styles.agePercentage}>
+                  {ageGroup.count} mascotas ({ageGroup.percentage}%)
+                </Text>
               </View>
             ))}
           </View>
@@ -1052,6 +1140,24 @@ const styles = StyleSheet.create({
   },
   trendDown: {
     backgroundColor: '#FEE2E2',
+  },
+  trendStable: {
+    backgroundColor: '#F0F9FF',
+  },
+  chartSubtitle: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginBottom: 12,
+    fontStyle: 'italic',
+  },
+  noDataText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
+    textAlign: 'center',
+    padding: 20,
+    fontStyle: 'italic',
   },
   chartCard: {
     marginBottom: 16,
