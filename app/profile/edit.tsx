@@ -487,6 +487,22 @@ export default function EditProfile() {
               rightIcon={<ChevronDown size={20} color="#6B7280" />}
             />
 
+            <View style={styles.departmentInputGroup}>
+              <Text style={styles.departmentLabel}>Departamento</Text>
+              <View style={styles.departmentInputContainer}>
+                <MapPin size={20} color="#6B7280" style={styles.departmentIcon} />
+                <TextInput
+                  style={[
+                    styles.departmentInput,
+                    !selectedCountry && styles.disabledInput
+                  ]}
+                  placeholder={selectedCountry ? "Departamento..." : "Primero selecciona un país"}
+                  value={departmentQuery}
+                  onChangeText={handleDepartmentInputChange}
+                  onFocus={() => selectedCountry && setShowDepartmentSuggestions(true)}
+                  editable={!!selectedCountry}
+                />
+              </View>
               
               {showDepartmentSuggestions && filteredDepartments.length > 0 && selectedCountry && (
                 <View style={styles.departmentSuggestions}>
@@ -562,14 +578,28 @@ export default function EditProfile() {
               numberOfLines={4}
             />
           </View>
-          <Button
-            title={loading || uploadingImage ? "Guardando..." : "Guardar Cambios"}
-            onPress={handleSaveProfile}
+            placeholder={selectedCountry ? "Departamento..." : "Primero selecciona un país"}
+            value={departmentQuery}
+            onChangeText={handleDepartmentInputChange}
+            onFocus={() => selectedCountry && setShowDepartmentSuggestions(true)}
+            editable={!!selectedCountry}
             loading={loading || uploadingImage}
             disabled={uploadingImage}
-            size="large"
           />
-        </Card>
+          
+          {showDepartmentSuggestions && filteredDepartments.length > 0 && selectedCountry && (
+            <View style={styles.departmentSuggestions}>
+              {filteredDepartments.slice(0, 6).map((department) => (
+                <TouchableOpacity
+                  key={department.id}
+                  style={styles.departmentSuggestion}
+                  onPress={() => handleDepartmentSelect(department)}
+                >
+                  <Text style={styles.departmentSuggestionText}>{department.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </Card>
       </ScrollView>
 
@@ -720,46 +750,39 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     color: '#9CA3AF',
   },
-  disabledInputContainer: {
-    backgroundColor: '#F9FAFB',
-    borderColor: '#E5E7EB',
+  departmentInputGroup: {
+    marginBottom: 14,
+    position: 'relative',
   },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    minHeight: 44,
-  },
-  input: {
-    flex: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-    fontFamily: 'Inter-Regular',
-    color: '#111827',
-  },
-  inputWithLeftIcon: {
-    paddingLeft: 0,
-  },
-  icon: {
-    paddingHorizontal: 10,
-  },
-  label: {
+  departmentLabel: {
     fontSize: 15,
     fontFamily: 'Inter-Medium',
     color: '#374151',
     marginBottom: 6,
   },
-  departmentInputGroup: {
-    marginBottom: 14,
-    position: 'relative',
+  departmentInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    minHeight: 50,
+  },
+  departmentIcon: {
+    marginRight: 10,
+  },
+  departmentInput: {
+    flex: 1,
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#111827',
   },
   departmentSuggestions: {
     position: 'absolute',
-    top: '100%',
+    top: 76,
     left: 0,
     right: 0,
     backgroundColor: '#FFFFFF',
