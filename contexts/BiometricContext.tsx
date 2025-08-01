@@ -34,8 +34,19 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const { currentUser } = useAuth();
 
   useEffect(() => {
+    // Check biometric availability immediately when context loads
     checkBiometricAvailability();
-    checkBiometricEnabled();
+    
+    // Check if biometric is enabled regardless of user authentication status
+    checkBiometricEnabledFromDevice();
+  }, []);
+
+  // Separate effect for when user changes
+  useEffect(() => {
+    if (currentUser) {
+      // When user is authenticated, sync with database
+      syncBiometricWithDatabase();
+    }
   }, [currentUser]);
 
   const checkBiometricAvailability = async () => {
@@ -74,35 +85,34 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  const checkBiometricEnabled = async () => {
+  // Check biometric enabled status from device storage only (no database dependency)
+  const checkBiometricEnabledFromDevice = async () => {
     try {
-      if (!currentUser) {
-        setIsBiometricEnabled(false);
-        return;
-      }
-
-      // First check if credentials are stored locally on the device
+      console.log('Checking biometric enabled from device storage...');
       const storedCredentials = await getStoredCredentials();
       
       if (!storedCredentials) {
-        // No credentials stored locally, biometric is not enabled
+        console.log('No stored credentials found, biometric disabled');
         setIsBiometricEnabled(false);
-        
-        // Also update database to reflect this
-        try {
-          await supabaseClient
-            .from('profiles')
-            .update({ 
-              biometric_enabled: false,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', currentUser.id);
-        } catch (dbError) {
-          console.log('Could not update database biometric status:', dbError);
-        }
         return;
       }
 
+      console.log('Stored credentials found, biometric enabled');
+      setIsBiometricEnabled(true);
+    } catch (error) {
+      console.error('Error checking biometric from device:', error);
+      setIsBiometricEnabled(false);
+    }
+  };
+
+  // Sync biometric status with database when user is authenticated
+  const syncBiometricWithDatabase = async () => {
+    if (!currentUser) return;
+    
+    try {
+      console.log('Syncing biometric status with database...');
+      const storedCredentials = await getStoredCredentials();
+      
       try {
         // Check if biometric is enabled in user profile
         const { data, error } = await supabaseClient
@@ -112,55 +122,53 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           .single();
 
         if (error) {
-          // If column doesn't exist or other database errors, gracefully handle it
+          // If column doesn't exist, gracefully handle it
           if (error.code === '42703' || error.code === 'PGRST204') {
             console.log('Biometric columns not yet available in database');
-            // If we have stored credentials but no DB column, consider it enabled
-            setIsBiometricEnabled(!!storedCredentials);
             return;
           }
           console.error('Error checking biometric status:', error);
-          setIsBiometricEnabled(false);
           return;
         }
 
-        // Biometric is enabled only if BOTH database says yes AND credentials are stored locally
         const dbEnabled = data?.biometric_enabled || false;
-        const isEnabled = dbEnabled && !!storedCredentials;
+        const hasLocalCredentials = !!storedCredentials;
         
-        setIsBiometricEnabled(isEnabled);
-        
-        // If database says enabled but no local credentials, update database
-        if (dbEnabled && !storedCredentials) {
+        // Sync database with local storage state
+        if (dbEnabled && !hasLocalCredentials) {
           console.log('Database shows biometric enabled but no local credentials found, updating database...');
-          try {
-            await supabaseClient
-              .from('profiles')
-              .update({ 
-                biometric_enabled: false,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', currentUser.id);
-          } catch (updateError) {
-            console.error('Error updating database biometric status:', updateError);
-          }
+          await supabaseClient
+            .from('profiles')
+            .update({ 
+              biometric_enabled: false,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', currentUser.id);
+        } else if (!dbEnabled && hasLocalCredentials) {
+          console.log('Local credentials found but database shows disabled, updating database...');
+          await supabaseClient
+            .from('profiles')
+            .update({ 
+              biometric_enabled: true,
+              biometric_enabled_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', currentUser.id);
         }
-        
-        console.log('Biometric enabled status:', isEnabled);
       } catch (dbError) {
-        console.log('Database error checking biometric status, using local credentials only:', dbError);
-        // If database fails, rely on local credentials
-        setIsBiometricEnabled(!!storedCredentials);
+        console.log('Database sync failed, but local credentials determine biometric status:', dbError);
       }
     } catch (error) {
-      console.error('Error checking biometric enabled:', error);
-      setIsBiometricEnabled(false);
+      console.error('Error syncing biometric with database:', error);
     }
   };
 
   const checkBiometricStatus = async () => {
     await checkBiometricAvailability();
-    await checkBiometricEnabled();
+    await checkBiometricEnabledFromDevice();
+    if (currentUser) {
+      await syncBiometricWithDatabase();
+    }
   };
 
   const enableBiometric = async (email: string, password: string): Promise<boolean> => {
