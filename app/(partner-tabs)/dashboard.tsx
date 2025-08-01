@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Image, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Calendar, DollarSign, Users, Package, TrendingUp, Clock, MessageCircle } from 'lucide-react-native';
+import { Calendar, DollarSign, Users, Package, TrendingUp, Clock, MessageCircle, ChartBar as BarChart3 } from 'lucide-react-native';
 import { Card } from '../../components/ui/Card';
 import { useAuth } from '../../contexts/AuthContext'; 
 import { supabaseClient } from '../../lib/supabase';
