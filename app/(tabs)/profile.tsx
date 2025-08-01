@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, Image, Platform, Modal, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, Image, Platform, Modal, TextInput, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
-import { ArrowLeft, Camera, Upload, User, Phone, MapPin, Mail, ChevronDown, Check } from 'lucide-react-native';
+import { ArrowLeft, Camera, Upload, User, Phone, MapPin, Mail, ChevronDown, Check, LogOut } from 'lucide-react-native';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -11,7 +11,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { supabaseClient } from '../../lib/supabase';
 
 export default function EditProfile() {
-  const { currentUser } = useAuth();
+  const { currentUser, logout } = useAuth();
   const { t } = useLanguage();
   
   // Form state
@@ -53,6 +53,7 @@ export default function EditProfile() {
   // UI state
   const [loading, setLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     // Load existing user data
@@ -612,6 +613,35 @@ export default function EditProfile() {
     }
   };
 
+  const handleLogout = async () => {
+    Alert.alert(
+      'Cerrar Sesión',
+      '¿Estás seguro de que quieres cerrar sesión?',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel'
+        },
+        {
+          text: 'Cerrar Sesión',
+          style: 'destructive',
+          onPress: async () => {
+            setLoggingOut(true);
+            try {
+              await logout();
+              router.replace('/auth/login');
+            } catch (error) {
+              console.error('Error logging out:', error);
+              Alert.alert('Error', 'No se pudo cerrar la sesión');
+            } finally {
+              setLoggingOut(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const showImageOptions = () => {
     Alert.alert(
       'Foto de perfil',
@@ -851,6 +881,24 @@ export default function EditProfile() {
               disabled={loading || uploadingImage || !displayName.trim()}
             />
           </View>
+
+          {/* Botón de cerrar sesión */}
+          <View style={styles.logoutButtonContainer}>
+            <TouchableOpacity
+              style={[styles.logoutButton, loggingOut && styles.logoutButtonDisabled]}
+              onPress={handleLogout}
+              disabled={loggingOut}
+            >
+              {loggingOut ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <LogOut size={20} color="#FFFFFF" />
+              )}
+              <Text style={styles.logoutButtonText}>
+                {loggingOut ? 'Cerrando sesión...' : 'Cerrar Sesión'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </Card>
       </ScrollView>
 
@@ -1044,6 +1092,29 @@ const styles = StyleSheet.create({
   saveButtonContainer: {
     marginTop: 24,
     marginBottom: 20,
+  },
+  logoutButtonContainer: {
+    marginTop: 16,
+    marginBottom: 20,
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#10B981',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    minHeight: 48,
+    gap: 8,
+  },
+  logoutButtonDisabled: {
+    opacity: 0.6,
+  },
+  logoutButtonText: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#FFFFFF',
   },
   modalOverlay: {
     flex: 1,
