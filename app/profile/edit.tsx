@@ -559,47 +559,6 @@ export default function EditProfile() {
               editable={!!selectedDepartment}
               style={!selectedDepartment ? styles.disabledInput : undefined}
             />
-
-            <Input
-              label="Dirección completa (opcional)"
-              placeholder="Dirección completa para referencia"
-              value={address}
-              onChangeText={setAddress}
-              editable={!!selectedDepartment}
-              style={!selectedDepartment ? styles.disabledInput : undefined}
-            />
-
-            <Input
-              label="Biografía"
-              placeholder="Cuéntanos sobre ti y tus mascotas..."
-              value={bio}
-              onChangeText={setBio}
-              multiline
-              numberOfLines={4}
-            />
-          </View>
-            placeholder={selectedCountry ? "Departamento..." : "Primero selecciona un país"}
-            value={departmentQuery}
-            onChangeText={handleDepartmentInputChange}
-            onFocus={() => selectedCountry && setShowDepartmentSuggestions(true)}
-            editable={!!selectedCountry}
-            loading={loading || uploadingImage}
-            disabled={uploadingImage}
-          />
-          
-          {showDepartmentSuggestions && filteredDepartments.length > 0 && selectedCountry && (
-            <View style={styles.departmentSuggestions}>
-              {filteredDepartments.slice(0, 6).map((department) => (
-                <TouchableOpacity
-                  key={department.id}
-                  style={styles.departmentSuggestion}
-                  onPress={() => handleDepartmentSelect(department)}
-                >
-                  <Text style={styles.departmentSuggestionText}>{department.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
         </Card>
       </ScrollView>
 
