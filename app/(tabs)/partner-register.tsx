@@ -369,65 +369,12 @@ export default function PartnerRegister() {
     }
   };
 
-  const uploadDocument = async (uri: string): Promise<string> => {
-    try {
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      const filename = `partner-documents/${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
-      
-      // Create the bucket if it doesn't exist
-      try {
-        const { data: buckets } = await supabaseClient.storage.listBuckets();
-        const bucketExists = buckets?.some(b => b.name === 'dogcatify');
-        
-        if (!bucketExists) {
-          console.log('Creating dogcatify bucket...');
-          const { error: createError } = await supabaseClient.storage.createBucket('dogcatify', {
-            public: true
-          });
-          
-          if (createError) {
-            console.error('Error creating bucket:', createError);
-          }
-        }
-      } catch (bucketError) {
-        console.error('Error checking/creating bucket:', bucketError);
-      }
-      
-      // Upload the file
-      const formData = new FormData();
-      formData.append('file', {
-        uri,
-        type: 'image/jpeg',
-        name: filename,
-      } as any);
-      
-      const { data, error } = await supabaseClient.storage
-        .from('dogcatify')
-        .upload(filename, formData, {
-          contentType: 'image/jpeg',
-          cacheControl: '3600',
-        });
-      
-      if (error) throw error;
-      
-      // Get the public URL
-      const { data: { publicUrl } } = supabaseClient.storage
-        .from('dogcatify')
-        .getPublicUrl(filename);
-      
-      return publicUrl;
-    } catch (error) {
-      console.error('Error uploading document:', error);
-      throw error;
-    }
-  };
 
   const uploadImage = async (imageUri: string, path: string): Promise<string> => {
     try {
       console.log(`Uploading image to path: ${path}`);
       
-      // Fetch the image and convert to blob
+      // Fetch the image and convert to blob using the correct method for React Native
       const response = await fetch(imageUri);
       if (!response.ok) {
         throw new Error(`Failed to fetch image: ${response.status}`);
@@ -437,13 +384,13 @@ export default function PartnerRegister() {
       
       console.log(`Image blob size: ${blob.size} bytes`);
       
-      // Upload blob to Supabase storage
+      // Upload blob to Supabase storage using the correct method
       const { data, error } = await supabaseClient.storage
         .from('dogcatify')
         .upload(path, blob, {
           contentType: 'image/jpeg',
           cacheControl: '3600',
-          upsert: false
+          upsert: false,
         });
 
       if (error) {
