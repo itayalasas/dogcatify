@@ -1,8 +1,31 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { Platform } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 import { useAuth } from './AuthContext';
 import { supabaseClient } from '../lib/supabase';
+
+// Mock implementations for web platform
+const mockSecureStore = {
+  getItemAsync: async () => null,
+  setItemAsync: async () => {},
+  deleteItemAsync: async () => {},
+};
+
+const mockLocalAuthentication = {
+  hasHardwareAsync: async () => false,
+  isEnrolledAsync: async () => false,
+  supportedAuthenticationTypesAsync: async () => [],
+  authenticateAsync: async () => ({ success: false }),
+  AuthenticationType: {
+    FACIAL_RECOGNITION: 1,
+    FINGERPRINT: 2,
+  },
+};
+
+// Use platform-specific implementations
+const platformSecureStore = Platform.OS === 'web' ? mockSecureStore : SecureStore;
+const platformLocalAuth = Platform.OS === 'web' ? mockLocalAuthentication : LocalAuthentication;
 
 interface BiometricContextType {
   isBiometricAvailable: boolean;
@@ -51,27 +74,26 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const checkBiometricAvailability = async () => {
     try {
-      // Check if running in Expo Go
-      const isExpoGo = __DEV__ && !LocalAuthentication;
-      if (isExpoGo) {
-        console.log('Biometric authentication not available in Expo Go');
+      // Check if running on web or in Expo Go
+      if (Platform.OS === 'web') {
+        console.log('Biometric authentication not available on web platform');
         setIsBiometricAvailable(false);
         setIsBiometricSupported(false);
         setBiometricType(null);
         return;
       }
 
-      const compatible = await LocalAuthentication.hasHardwareAsync();
-      const enrolled = await LocalAuthentication.isEnrolledAsync();
+      const compatible = await platformLocalAuth.hasHardwareAsync();
+      const enrolled = await platformLocalAuth.isEnrolledAsync();
       const available = compatible && enrolled;
       setIsBiometricAvailable(available);
       setIsBiometricSupported(available);
       
       if (available) {
-        const supportedTypes = await LocalAuthentication.supportedAuthenticationTypesAsync();
-        if (supportedTypes.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
+        const supportedTypes = await platformLocalAuth.supportedAuthenticationTypesAsync();
+        if (supportedTypes.includes(platformLocalAuth.AuthenticationType.FACIAL_RECOGNITION)) {
           setBiometricType('Face ID');
-        } else if (supportedTypes.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
+        } else if (supportedTypes.includes(platformLocalAuth.AuthenticationType.FINGERPRINT)) {
           setBiometricType('Touch ID');
         } else {
           setBiometricType('biometría');
@@ -175,9 +197,9 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try {
       console.log('Starting biometric setup...');
       
-      // Check if running in Expo Go
-      if (!LocalAuthentication || !SecureStore) {
-        console.log('Biometric authentication not available in Expo Go');
+      // Check if running on web platform
+      if (Platform.OS === 'web') {
+        console.log('Biometric authentication not available on web platform');
         return false;
       }
 
@@ -194,7 +216,7 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
 
       // Authenticate with biometric first
-      const result = await LocalAuthentication.authenticateAsync({
+      const result = await platformLocalAuth.authenticateAsync({
         promptMessage: 'Configura tu autenticación biométrica',
         cancelLabel: 'Cancelar',
         fallbackLabel: 'Usar contraseña',
@@ -208,8 +230,8 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       console.log('Biometric authentication successful, storing credentials...');
 
       // Store credentials securely
-      await SecureStore.setItemAsync('biometric_email', email);
-      await SecureStore.setItemAsync('biometric_password', password);
+      await platformSecureStore.setItemAsync('biometric_email', email);
+      await platformSecureStore.setItemAsync('biometric_password', password);
       
       console.log('Credentials stored, updating user profile...');
 
@@ -233,8 +255,8 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           }
           console.error('Error updating biometric status in Supabase:', error);
           // Clean up stored credentials if database update fails
-          await SecureStore.deleteItemAsync('biometric_email');
-          await SecureStore.deleteItemAsync('biometric_password');
+          await platformSecureStore.deleteItemAsync('biometric_email');
+          await platformSecureStore.deleteItemAsync('biometric_password');
           throw error;
         }
         
@@ -253,8 +275,8 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       console.error('Error enabling biometric:', error);
       // Clean up any stored credentials on error
       try {
-        await SecureStore.deleteItemAsync('biometric_email');
-        await SecureStore.deleteItemAsync('biometric_password');
+        await platformSecureStore.deleteItemAsync('biometric_email');
+        await platformSecureStore.deleteItemAsync('biometric_password');
       } catch (cleanupError) {
         console.error('Error cleaning up credentials:', cleanupError);
       }
@@ -269,8 +291,8 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
 
       // Remove stored credentials
-      await SecureStore.deleteItemAsync('biometric_email');
-      await SecureStore.deleteItemAsync('biometric_password');
+      await platformSecureStore.deleteItemAsync('biometric_email');
+      await platformSecureStore.deleteItemAsync('biometric_password');
 
       // Update user profile (gracefully handle missing column)
       try {
@@ -308,7 +330,7 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         return null;
       }
 
-      const result = await LocalAuthentication.authenticateAsync({
+      const result = await platformLocalAuth.authenticateAsync({
         promptMessage: 'Autentícate para iniciar sesión',
         cancelLabel: 'Cancelar',
         fallbackLabel: 'Usar contraseña',
@@ -327,8 +349,8 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const getStoredCredentials = async (): Promise<{ email: string; password: string } | null> => {
     try {
-      const email = await SecureStore.getItemAsync('biometric_email');
-      const password = await SecureStore.getItemAsync('biometric_password');
+      const email = await platformSecureStore.getItemAsync('biometric_email');
+      const password = await platformSecureStore.getItemAsync('biometric_password');
 
       if (email && password) {
         return { email, password };
