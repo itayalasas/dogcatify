@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, Image, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, Image, Platform, TextInput } from 'react-native';
 import { router } from 'expo-router';
 import { ArrowLeft, Camera, Upload, User, Phone, MapPin, Mail } from 'lucide-react-native';
 import { Input } from '../../components/ui/Input';
@@ -22,6 +22,9 @@ export default function EditProfile() {
   const [bio, setBio] = useState('');
   const [profileImage, setProfileImage] = useState<string | null>(currentUser?.photoURL || null);
   const [selectedImage, setSelectedImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [departmentQuery, setDepartmentQuery] = useState('');
+  const [selectedCountry, setSelectedCountry] = useState(null);
+  const [showDepartmentSuggestions, setShowDepartmentSuggestions] = useState(false);
   
   // UI state
   const [loading, setLoading] = useState(false);
@@ -165,6 +168,10 @@ export default function EditProfile() {
     }
   };
 
+  const handleDepartmentInputChange = (text: string) => {
+    setDepartmentQuery(text);
+  };
+
   const handleSaveProfile = async () => {
     if (!displayName.trim()) {
       Alert.alert('Error', 'El nombre es obligatorio');
@@ -283,6 +290,12 @@ export default function EditProfile() {
                 )}
                 <View style={styles.photoOverlay}>
                   <Camera size={20} color="#FFFFFF" />
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.section}>
             <View style={styles.departmentInputWrapper}>
               <TextInput
                 style={[styles.departmentInput, !selectedCountry && styles.disabledInput]}
@@ -405,6 +418,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#D1D5DB',
     borderRadius: 12,
+  },
+  departmentInput: {
+    padding: 12,
   },
   photoContainer: {
     alignItems: 'center',
