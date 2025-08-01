@@ -489,20 +489,6 @@ export default function EditProfile() {
 
             <View style={styles.departmentInputGroup}>
               <Text style={styles.label}>Departamento</Text>
-              <View style={styles.inputContainer}>
-                <View style={styles.icon}>
-                  <MapPin size={20} color="#6B7280" />
-                </View>
-                <TextInput
-                  style={[
-                    styles.input,
-                    styles.inputWithLeftIcon,
-                    !selectedCountry && styles.disabledInput
-                  ]}
-                  placeholder={selectedCountry ? "Escribe para buscar departamento..." : "Primero selecciona un país"}
-                  placeholderTextColor="#9CA3AF"
-            <View style={styles.departmentInputGroup}>
-              <Text style={styles.label}>Departamento</Text>
               <View style={[
                 styles.inputContainer,
                 !selectedCountry && styles.disabledInputContainer
@@ -793,35 +779,6 @@ const styles = StyleSheet.create({
   departmentInputGroup: {
     marginBottom: 14,
     position: 'relative',
-  },
-  label: {
-    fontSize: 15,
-    fontFamily: 'Inter-Medium',
-    color: '#374151',
-    marginBottom: 6,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    minHeight: 44,
-  },
-  input: {
-    flex: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-    fontFamily: 'Inter-Regular',
-    color: '#111827',
-  },
-  inputWithLeftIcon: {
-    paddingLeft: 0,
-  },
-  icon: {
-    paddingHorizontal: 10,
   },
   departmentSuggestions: {
     position: 'absolute',
