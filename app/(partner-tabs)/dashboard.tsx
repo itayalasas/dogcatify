@@ -499,6 +499,17 @@ export default function PartnerDashboard() {
               <Text style={styles.quickActionText}>Ver Clientes</Text>
             </TouchableOpacity>
             
+            <TouchableOpacity 
+              style={styles.quickAction} 
+              onPress={() => router.push({
+                pathname: '/partner/business-insights',
+                params: { partnerId: partnerProfile?.id }
+              })}
+            >
+              <BarChart3 size={24} color="#8B5CF6" />
+              <Text style={styles.quickActionText}>Inteligencia de Negocio</Text>
+            </TouchableOpacity>
+            
             {/* Mostrar contactos de adopción solo para refugios */}
             {partnerProfile?.business_type === 'shelter' && (
               <TouchableOpacity 
