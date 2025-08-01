@@ -335,6 +335,7 @@ export default function BusinessInsights() {
         percentage: Math.round((count / (totalPets || 1)) * 100)
       }));
 
+      // 3. Distribución por edad
       // 3. Distribución por edad - DATOS REALES
       const { data: petsWithAge, error: ageError } = await supabaseClient
         .from('pets')
@@ -792,36 +793,49 @@ export default function BusinessInsights() {
 
         {/* Demanda de Servicios */}
         <Card style={styles.chartCard}>
-          <Text style={styles.chartTitle}>📈 Servicios Más Demandados</Text>
+          <Text style={styles.chartTitle}>📈 Servicios Más Demandados (Datos Reales)</Text>
+          <Text style={styles.chartSubtitle}>
+            Basado en reservas de los últimos {selectedTimeRange === '1m' ? '1 mes' : selectedTimeRange === '3m' ? '3 meses' : selectedTimeRange === '6m' ? '6 meses' : '1 año'}
+          </Text>
           <View style={styles.servicesList}>
-            {insights?.servicesDemand.map((service, index) => (
-              <View key={index} style={styles.serviceItem}>
-                <View style={styles.serviceInfo}>
-                  <Text style={styles.serviceName}>{service.service}</Text>
-                  <Text style={styles.serviceCount}>{service.count} reservas</Text>
+            {insights?.servicesDemand && insights.servicesDemand.length > 0 ? (
+              insights.servicesDemand.map((service, index) => (
+                <View key={index} style={styles.serviceItem}>
+                  <View style={styles.serviceInfo}>
+                    <Text style={styles.serviceName}>{service.service}</Text>
+                    <Text style={styles.serviceCount}>{service.count} reservas reales</Text>
+                  </View>
+                  <View style={[
+                    styles.serviceTrend,
+                    styles.trendStable
+                  ]}>
+                    <TrendingUp 
+                      size={16} 
+                      color="#3B82F6"
+                    />
+                  </View>
                 </View>
-                <View style={[
-                  styles.serviceTrend,
-                  service.trend === 'up' ? styles.trendUp : styles.trendDown
-                ]}>
-                  <TrendingUp 
-                    size={16} 
-                    color={service.trend === 'up' ? '#10B981' : '#EF4444'}
-                    style={service.trend === 'down' ? { transform: [{ rotate: '180deg' }] } : {}}
-                  />
-                </View>
+              ))
+            ) : (
+              <View style={styles.serviceItem}>
+                <Text style={styles.noDataText}>
+                  No hay datos de reservas para el período seleccionado
+                </Text>
               </View>
-            ))}
+            )}
           </View>
         </Card>
 
         {/* Horas Pico */}
         <Card style={styles.chartCard}>
-          <Text style={styles.chartTitle}>⏰ Horas de Mayor Demanda</Text>
+          <Text style={styles.chartTitle}>⏰ Horas de Mayor Demanda (Datos Reales)</Text>
+          <Text style={styles.chartSubtitle}>
+            Basado en horarios de reservas confirmadas
+          </Text>
           <View style={styles.peakHoursChart}>
             {insights?.peakHours.map((hour, index) => {
               const maxBookings = Math.max(...(insights?.peakHours.map(h => h.bookings) || [1]));
-              const height = (hour.bookings / maxBookings) * 100;
+              const height = maxBookings > 0 ? (hour.bookings / maxBookings) * 100 : 0;
               
               return (
                 <View key={index} style={styles.hourColumn}>
@@ -829,7 +843,7 @@ export default function BusinessInsights() {
                     <View 
                       style={[
                         styles.hourBarFill,
-                        { height: `${height}%` }
+                        { height: `${Math.max(height, 2)}%` } // Minimum 2% for visibility
                       ]} 
                     />
                   </View>
@@ -839,6 +853,11 @@ export default function BusinessInsights() {
               );
             })}
           </View>
+          {insights?.peakHours.every(h => h.bookings === 0) && (
+            <Text style={styles.noDataText}>
+              No hay datos de reservas para mostrar horas pico
+            </Text>
+          )}
         </Card>
 
         {/* Oportunidades de Mercado */}
@@ -1116,6 +1135,12 @@ const styles = StyleSheet.create({
     color: '#111827',
     marginBottom: 16,
   },
+  chartSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginBottom: 16,
+  },
   speciesChart: {
     gap: 12,
   },
@@ -1206,6 +1231,16 @@ const styles = StyleSheet.create({
   serviceTrend: {
     padding: 4,
     borderRadius: 8,
+  },
+  trendStable: {
+    backgroundColor: '#DBEAFE',
+  },
+  noDataText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
   peakHoursChart: {
     flexDirection: 'row',
