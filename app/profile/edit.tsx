@@ -283,15 +283,17 @@ export default function EditProfile() {
                 )}
                 <View style={styles.photoOverlay}>
                   <Camera size={20} color="#FFFFFF" />
-                </View>
-              </TouchableOpacity>
-              <Text style={styles.photoHint}>Toca para cambiar la foto</Text>
+            <View style={styles.departmentInputWrapper}>
+              <TextInput
+                style={[styles.departmentInput, !selectedCountry && styles.disabledInput]}
+                placeholder={selectedCountry ? "Escribe para buscar departamento..." : "Primero selecciona un país"}
+                value={departmentQuery}
+                onChangeText={handleDepartmentInputChange}
+                onFocus={() => setShowDepartmentSuggestions(true)}
+                editable={!!selectedCountry}
+                placeholderTextColor={selectedCountry ? "#9CA3AF" : "#D1D5DB"}
+              />
             </View>
-          </View>
-
-          {/* Basic Information */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Información Básica</Text>
             
             <Input
               label="Nombre completo *"
@@ -398,9 +400,11 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
-    marginBottom: 16,
+  },
+  departmentInputWrapper: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
   },
   photoContainer: {
     alignItems: 'center',
