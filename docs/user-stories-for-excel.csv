@@ -1,0 +1,81 @@
+Title,Description,Acceptance Criteria
+HU-UC-001: Gestión de Perfil de Usuario,"Como usuario autenticado quiero gestionar mi perfil personal para mantener mi información actualizada y personalizar mi experiencia","- Dado que soy un usuario autenticado, cuando accedo a mi perfil, entonces puedo ver toda mi información personal
+- Dado que edito mi perfil, cuando guardo los cambios, entonces la información se actualiza en toda la plataforma
+- Dado que cambio mi foto de perfil, cuando la subo, entonces se refleja en mis publicaciones y comentarios
+- Dado que configuro mi ubicación, cuando la geocodifico, entonces el sistema encuentra mi dirección exacta"
+HU-UC-002: Gestión de Mascotas,"Como dueño de mascotas quiero crear y gestionar perfiles de mis mascotas para llevar un registro completo de su información","- Dado que agrego una mascota, cuando completo el formulario, entonces se crea un perfil completo con información de raza
+- Dado que selecciono una raza, cuando el sistema la busca, entonces obtengo información detallada de características
+- Dado que registro información de salud, cuando la guardo, entonces queda disponible para consultas futuras
+- Dado que elimino una mascota, cuando confirmo, entonces se eliminan todos los datos relacionados"
+HU-UC-003: Álbumes y Fotos,"Como usuario quiero crear álbumes de fotos de mis mascotas para preservar y compartir momentos especiales","- Dado que creo un álbum, cuando agrego fotos, entonces se organizan cronológicamente
+- Dado que tomo fotos, cuando las valido, entonces el sistema verifica que contengan mascotas
+- Dado que comparto un álbum, cuando lo publico, entonces aparece en el feed como publicación
+- Dado que gestiono álbumes, cuando los edito, entonces puedo modificar título, descripción y fotos"
+HU-UC-004: Feed Social y Publicaciones,"Como usuario quiero interactuar en el feed social para conectar con otros dueños de mascotas","- Dado que veo el feed, cuando se carga, entonces veo publicaciones intercaladas con promociones
+- Dado que me gusta una publicación, cuando hago doble tap, entonces se registra el like con animación
+- Dado que comento una publicación, cuando escribo, entonces puedo responder a otros comentarios
+- Dado que sigo a un usuario, cuando interactúo, entonces veo un botón de seguir en sus publicaciones"
+HU-UC-005: Tienda y Compras,"Como usuario quiero comprar productos para mascotas para satisfacer las necesidades de mis compañeros","- Dado que navego la tienda, cuando filtro productos, entonces veo solo los de la categoría seleccionada
+- Dado que agrego al carrito, cuando confirmo, entonces el producto se guarda con la cantidad seleccionada
+- Dado que realizo checkout, cuando pago, entonces se procesa con Mercado Pago y split automático
+- Dado que completo la compra, cuando se confirma, entonces recibo confirmación y seguimiento"
+HU-UC-006: Servicios y Reservas,"Como dueño de mascotas quiero reservar servicios profesionales para el cuidado de mis mascotas","- Dado que busco servicios, cuando filtro por categoría, entonces veo solo proveedores de ese tipo
+- Dado que selecciono un servicio, cuando elijo fecha y hora, entonces veo solo horarios disponibles
+- Dado que confirmo reserva, cuando se procesa, entonces se notifica al proveedor automáticamente
+- Dado que califico un servicio, cuando termina, entonces puedo dejar reseña y calificación"
+HU-UC-007: Lugares Pet-Friendly,"Como usuario quiero encontrar lugares que acepten mascotas para planificar salidas con mis compañeros","- Dado que busco lugares, cuando filtro por categoría, entonces veo solo lugares de ese tipo
+- Dado que veo un lugar, cuando reviso detalles, entonces veo servicios específicos para mascotas
+- Dado que contacto un lugar, cuando toco llamar, entonces se abre la aplicación de teléfono
+- Dado que contribuyo un lugar, cuando lo envío, entonces queda pendiente de moderación"
+HU-UC-008: Chat y Adopciones,"Como usuario interesado en adopción quiero comunicarme con refugios para encontrar una mascota","- Dado que veo una mascota en adopción, cuando inicio chat, entonces se crea conversación automáticamente
+- Dado que chatea con refugio, cuando envío mensaje, entonces se notifica al refugio en tiempo real
+- Dado que el refugio responde, cuando recibo mensaje, entonces se actualiza la conversación
+- Dado que completo adopción, cuando se confirma, entonces se marca la mascota como adoptada"
+HU-AP-001: Dashboard de Aliado,"Como aliado comercial quiero acceder a un dashboard centralizado para gestionar mi negocio eficientemente","- Dado que accedo al dashboard, cuando se carga, entonces veo métricas del día actual
+- Dado que reviso estadísticas, cuando las consulto, entonces están actualizadas en tiempo real
+- Dado que tengo múltiples negocios, cuando selecciono uno, entonces veo datos específicos de ese negocio
+- Dado que hay notificaciones, cuando las reviso, entonces puedo actuar sobre reservas y pedidos pendientes"
+HU-AP-002: Gestión de Servicios,"Como proveedor de servicios quiero gestionar mi catálogo de servicios para ofrecer opciones claras a los clientes","- Dado que agrego un servicio, cuando completo la información, entonces queda disponible para reservas
+- Dado que configuro horarios, cuando los establezco, entonces los clientes solo ven horarios disponibles
+- Dado que edito un servicio, cuando modifico precio o duración, entonces se actualiza para nuevas reservas
+- Dado que desactivo un servicio, cuando lo hago, entonces ya no aparece en búsquedas públicas"
+HU-AP-003: Gestión de Productos,"Como aliado comercial quiero gestionar mi inventario de productos para vender a través de la plataforma","- Dado que agrego un producto, cuando subo imágenes y detalles, entonces queda disponible en la tienda
+- Dado que gestiono stock, cuando se agota, entonces se marca automáticamente como no disponible
+- Dado que actualizo precios, cuando los cambio, entonces se reflejan inmediatamente en la tienda
+- Dado que recibo pedidos, cuando los proceso, entonces puedo cambiar el estado de entrega"
+HU-AP-004: Agenda y Reservas,"Como proveedor de servicios quiero gestionar mi agenda de citas para organizar mi tiempo eficientemente","- Dado que configuro horarios, cuando establezco disponibilidad, entonces los clientes ven solo horarios libres
+- Dado que recibo una reserva, cuando la reviso, entonces puedo confirmarla o rechazarla
+- Dado que confirmo una cita, cuando lo hago, entonces se notifica automáticamente al cliente
+- Dado que completo un servicio, cuando lo marco, entonces el cliente puede dejar una reseña"
+HU-AP-005: Gestión de Pedidos,"Como aliado comercial quiero gestionar pedidos de productos para cumplir con las ventas eficientemente","- Dado que recibo un pedido, cuando lo reviso, entonces veo todos los detalles del cliente y productos
+- Dado que proceso un pedido, cuando cambio el estado, entonces se notifica automáticamente al cliente
+- Dado que gestiono envíos, cuando marco como enviado, entonces el cliente recibe información de seguimiento
+- Dado que completo la entrega, cuando se confirma, entonces se libera el pago con split automático"
+HU-AP-006: Adopciones (Refugios),"Como refugio de mascotas quiero gestionar adopciones para encontrar hogares responsables para las mascotas","- Dado que publico una mascota, cuando completo el perfil, entonces incluyo información completa de salud y comportamiento
+- Dado que recibo consultas, cuando alguien se interesa, entonces puedo chatear para evaluar al candidato
+- Dado que gestiono el proceso, cuando evalúo candidatos, entonces puedo llevar seguimiento hasta la adopción
+- Dado que completo adopción, cuando se entrega, entonces marco la mascota como adoptada exitosamente"
+HU-AP-007: Configuración de Mercado Pago,"Como aliado comercial quiero configurar Mercado Pago para recibir pagos con split automático de comisiones","- Dado que configuro MP, cuando ingreso credenciales, entonces el sistema las valida antes de guardar
+- Dado que proceso un pago, cuando se completa, entonces recibo automáticamente 95% del monto
+- Dado que hay una venta, cuando se procesa, entonces DogCatiFy retiene automáticamente 5% de comisión
+- Dado que reviso configuración, cuando accedo, entonces puedo ver el estado de conexión y estadísticas"
+HU-AP-008: Inteligencia de Negocio,"Como aliado comercial quiero acceder a insights de mi negocio para tomar decisiones informadas y crecer","- Dado que accedo a insights, cuando reviso datos, entonces veo estadísticas del mercado local
+- Dado que analizo demanda, cuando consulto métricas, entonces veo servicios más solicitados y horarios pico
+- Dado que busco oportunidades, cuando reviso recomendaciones, entonces recibo sugerencias personalizadas
+- Dado que comparo rendimiento, cuando veo ranking, entonces conozco mi posición vs competidores"
+HU-AD-001: Gestión de Solicitudes,"Como administrador del sistema quiero gestionar solicitudes de aliados para mantener la calidad de la plataforma","- Dado que hay solicitudes pendientes, cuando accedo al panel, entonces veo todas con detalles completos
+- Dado que reviso una solicitud, cuando tomo decisión, entonces puedo aprobar o rechazar con comentarios
+- Dado que proceso solicitudes, cuando cambio estado, entonces se envía notificación automática al solicitante
+- Dado que apruebo un aliado, cuando se activa, entonces puede acceder inmediatamente a funcionalidades"
+HU-AD-002: Moderación de Contenido,"Como administrador quiero moderar contenido de la plataforma para mantener un ambiente seguro y apropiado","- Dado que hay contenido reportado, cuando accedo a moderación, entonces puedo revisar y tomar acciones
+- Dado que hay usuarios problemáticos, cuando los reviso, entonces puedo suspender o eliminar cuentas
+- Dado que usuarios contribuyen lugares, cuando los reviso, entonces puedo aprobar o rechazar lugares pet-friendly
+- Dado que modero contenido, cuando tomo acción, entonces se notifica automáticamente a los usuarios afectados"
+HU-AD-003: Sistema de Promociones,"Como administrador quiero gestionar promociones en la plataforma para impulsar el engagement y apoyar a los aliados","- Dado que creo promociones, cuando las configuro, entonces puedo establecer imagen, texto, enlaces y audiencia
+- Dado que programo promociones, cuando las activo, entonces se muestran automáticamente en el feed según fechas
+- Dado que analizo rendimiento, cuando reviso métricas, entonces veo vistas, clics y engagement en tiempo real
+- Dado que gestiono promociones, cuando las edito, entonces los cambios se reflejan inmediatamente"
+HU-AD-004: Configuraciones del Sistema,"Como administrador quiero configurar parámetros del sistema para mantener la plataforma funcionando óptimamente","- Dado que configuro MP marketplace, cuando establezco credenciales, entonces se habilitan pagos con split automático
+- Dado que ajusto parámetros, cuando modifico configuraciones, entonces se aplican inmediatamente en todo el sistema
+- Dado que monitoreo sistema, cuando reviso métricas, entonces veo estadísticas generales y salud del sistema
+- Dado que gestiono configuraciones, cuando las cambio, entonces se mantiene log de auditoría de cambios"
