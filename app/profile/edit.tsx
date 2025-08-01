@@ -549,15 +549,19 @@ export default function EditProfile() {
       console.log('Profile references will be updated automatically via joins');
 
       console.log('Profile save completed successfully');
+      
+      // Clear loading state BEFORE showing alert
+      setLoading(false);
+      
+      // Show success message and navigate back
       Alert.alert('Éxito', 'Perfil actualizado correctamente', [
         { text: 'OK', onPress: () => router.back() }
       ]);
+      
     } catch (error) {
       console.error('Error updating profile:', error);
-      Alert.alert('Error', `No se pudo actualizar el perfil: ${error.message || error}`);
-    } finally {
-      console.log('Setting loading to false');
       setLoading(false);
+      Alert.alert('Error', `No se pudo actualizar el perfil: ${error.message || error}`);
     }
   };
 
