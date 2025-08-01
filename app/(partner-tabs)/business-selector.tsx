@@ -164,12 +164,11 @@ export default function BusinessSelector() {
   };
 
   const handleConfigureBusiness = (business: Business) => {
-    // Navegar a la configuración del negocio
+    // Navegar a la edición del negocio
     router.push({
-      pathname: '/partner/configure-business',  
+      pathname: '/partner/edit-business',  
       params: {  
-        businessId: business.id, 
-        businessType: business.businessType 
+        businessId: business.id
       }
     });
   };

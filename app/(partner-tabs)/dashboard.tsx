@@ -499,17 +499,6 @@ export default function PartnerDashboard() {
               <Text style={styles.quickActionText}>Inteligencia de Negocio</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity 
-              style={styles.quickAction}
-              onPress={() => router.push({
-                pathname: '/partner/edit-business',
-                params: { businessId: partnerProfile?.id }
-              })}
-            >
-              <Settings size={24} color="#6B7280" />
-              <Text style={styles.quickActionText}>Editar Negocio</Text>
-            </TouchableOpacity>
-            
             {/* Mostrar contactos de adopción solo para refugios */}
             {partnerProfile?.business_type === 'shelter' && (
               <TouchableOpacity 
