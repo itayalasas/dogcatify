@@ -387,6 +387,14 @@ export default function Profile() {
 
         {/* Menu Options */}
         <Card style={styles.menuCard}>
+          <TouchableOpacity style={styles.menuOption} onPress={handleEditProfile}>
+            <View style={styles.menuOptionLeft}>
+              <Edit size={20} color="#6B7280" />
+              <Text style={styles.menuOptionText}>Editar perfil</Text>
+            </View>
+            <ChevronRight size={16} color="#6B7280" />
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.menuOption} onPress={handleMyOrders}>
             <View style={styles.menuOptionLeft}>
               <ShoppingBag size={20} color="#6B7280" />
