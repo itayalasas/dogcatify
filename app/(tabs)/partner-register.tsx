@@ -1,292 +1,411 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  Modal,
-  SafeAreaView,
-  Image,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, Image } from 'react-native';
 import { router } from 'expo-router';
-import { ArrowLeft, Camera, Image as ImageIcon, MapPin, Check, DollarSign } from 'lucide-react-native';
+import { ArrowLeft, Building, Camera, MapPin, Phone, Mail, FileText, DollarSign } from 'lucide-react-native';
+import { ChevronDown, Check } from 'lucide-react-native';
+import { Input } from '../../components/ui/Input';
+import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
+import { useAuth } from '../../contexts/AuthContext';
+import { useNotifications } from '../../contexts/NotificationContext';
 import * as ImagePicker from 'expo-image-picker';
-import { Card } from '@/components/ui/Card';
-import { Input } from '@/components/ui/Input';
-import { Button } from '@/components/ui/Button';
-import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/contexts/AuthContext';
+import { Modal, TextInput } from 'react-native';
+import { supabaseClient } from '../../lib/supabase';
+import { NotificationService } from '@/utils/notifications';
 
-interface BusinessType {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-}
+const replicateMercadoPagoConfig = async (userId: string) => {
+  try {
+    console.log('Checking for existing Mercado Pago configuration for user:', userId);
+    
+    // Find any existing business from this user with Mercado Pago configured
+    const { data: existingPartners, error } = await supabaseClient
+      .from('partners')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('mercadopago_connected', true)
+      .limit(1);
+    
+    if (error) {
+      console.error('Error checking existing partners:', error);
+      return;
+    }
+    
+    if (existingPartners && existingPartners.length > 0) {
+      const sourcePartner = existingPartners[0];
+      console.log('Found existing partner with MP config:', sourcePartner.business_name);
+      
+      if (sourcePartner.mercadopago_config) {
+        console.log('Replicating Mercado Pago configuration to new business...');
+        
+        // Get the newly created partner (last one created by this user)
+        const { data: newPartners, error: newPartnerError } = await supabaseClient
+          .from('partners')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        
+        if (newPartnerError || !newPartners || newPartners.length === 0) {
+          console.error('Error finding new partner:', newPartnerError);
+          return;
+        }
+        
+        const newPartner = newPartners[0];
+        
+        // Replicate the Mercado Pago configuration
+        const { error: updateError } = await supabaseClient
+          .from('partners')
+          .update({
+            mercadopago_connected: true,
+            mercadopago_config: sourcePartner.mercadopago_config,
+            commission_percentage: sourcePartner.commission_percentage || 5.0,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', newPartner.id);
+        
+        if (updateError) {
+          console.error('Error replicating MP config:', updateError);
+        } else {
+          console.log('Mercado Pago configuration replicated successfully to:', newPartner.business_name);
+        }
+      }
+    } else {
+      console.log('No existing Mercado Pago configuration found for user');
+    }
+  } catch (error) {
+    console.error('Error in replicateMercadoPagoConfig:', error);
+    // Don't throw error to avoid breaking the registration process
+  }
+};
 
-interface Country {
-  id: string;
-  name: string;
-}
-
-interface Department {
-  id: string;
-  name: string;
-  country_id: string;
-}
-
-interface GeocodingResult {
-  display_name: string;
-  lat: string;
-  lon: string;
-  type: string;
-}
-
-const businessTypes: BusinessType[] = [
-  {
-    id: 'veterinary',
-    name: 'Veterinaria',
-    description: 'Servicios médicos para mascotas',
-    icon: '🏥',
-  },
-  {
-    id: 'petshop',
-    name: 'Pet Shop',
-    description: 'Venta de productos para mascotas',
-    icon: '🛍️',
-  },
-  {
-    id: 'grooming',
-    name: 'Peluquería',
-    description: 'Servicios de estética y cuidado',
-    icon: '✂️',
-  },
-  {
-    id: 'hotel',
-    name: 'Hotel/Guardería',
-    description: 'Hospedaje y cuidado temporal',
-    icon: '🏨',
-  },
-  {
-    id: 'training',
-    name: 'Entrenamiento',
-    description: 'Adiestramiento y educación',
-    icon: '🎯',
-  },
-  {
-    id: 'shelter',
-    name: 'Refugio',
-    description: 'Adopción y rescate de mascotas',
-    icon: '🏠',
-  },
+const businessTypes = [
+  { id: 'veterinary', name: 'Veterinaria', icon: '🏥', description: 'Servicios médicos para mascotas' },
+  { id: 'grooming', name: 'Peluquería', icon: '✂️', description: 'Servicios de estética y cuidado' },
+  { id: 'walking', name: 'Paseador', icon: '🚶', description: 'Servicios de paseo y ejercicio' },
+  { id: 'boarding', name: 'Pensión', icon: '🏠', description: 'Hospedaje temporal para mascotas' },
+  { id: 'shop', name: 'Tienda', icon: '🛍️', description: 'Venta de productos para mascotas' },
+  { id: 'shelter', name: 'Refugio', icon: '🐾', description: 'Adopción y rescate de mascotas' },
 ];
 
 export default function PartnerRegister() {
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
-  
-  // Form data
+  const { currentUser } = useAuth();
+  const { sendNotificationToAdmin } = useNotifications();
+  const [selectedType, setSelectedType] = useState<string>('');
   const [businessName, setBusinessName] = useState('');
-  const [businessType, setBusinessType] = useState('');
   const [description, setDescription] = useState('');
   const [phone, setPhone] = useState('');
-  const [whatsapp, setWhatsapp] = useState('');
-  const [website, setWebsite] = useState('');
-  const [instagram, setInstagram] = useState('');
-  const [facebook, setFacebook] = useState('');
-  
-  // Address data
-  const [address, setAddress] = useState('');
-  const [neighborhood, setNeighborhood] = useState('');
-  const [city, setCity] = useState('');
-  const [department, setDepartment] = useState('');
-  const [departmentInput, setDepartmentInput] = useState('');
-  const [showDepartmentSuggestions, setShowDepartmentSuggestions] = useState(false);
-  const [departmentSuggestions, setDepartmentSuggestions] = useState<Department[]>([]);
-  const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
-  const [showCountryModal, setShowCountryModal] = useState(false);
-  const [postalCode, setPostalCode] = useState('');
-  const [latitude, setLatitude] = useState<number | null>(null);
-  const [longitude, setLongitude] = useState<number | null>(null);
-  
-  // Geocoding
-  const [isGeocoding, setIsGeocoding] = useState(false);
-  const [geocodingResults, setGeocodingResults] = useState<GeocodingResult[]>([]);
-  
-  // Images
+  const [email, setEmail] = useState(currentUser?.email || '');
   const [logo, setLogo] = useState<string | null>(null);
-  const [galleryImages, setGalleryImages] = useState<string[]>([]);
-  
-  // Shipping
+  const [images, setImages] = useState<string[]>([]);
   const [hasShipping, setHasShipping] = useState(false);
   const [shippingCost, setShippingCost] = useState('');
+  const [loading, setLoading] = useState(false);
   
-  // Data
-  const [countries, setCountries] = useState<Country[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
+  // Nuevos campos de ubicación
+  const [selectedCountry, setSelectedCountry] = useState<any>(null);
+  const [selectedDepartment, setSelectedDepartment] = useState<any>(null);
+  const [departmentQuery, setDepartmentQuery] = useState('');
+  const [showDepartmentSuggestions, setShowDepartmentSuggestions] = useState(false);
+  const [calle, setCalle] = useState('');
+  const [numero, setNumero] = useState('');
+  const [barrio, setBarrio] = useState('');
+  const [codigoPostal, setCodigoPostal] = useState('');
+  const [latitud, setLatitud] = useState('');
+  const [longitud, setLongitud] = useState('');
+  
+  // Estados para los dropdowns
+  const [countries, setCountries] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [filteredDepartments, setFilteredDepartments] = useState<any[]>([]);
+  const [showCountryModal, setShowCountryModal] = useState(false);
+  
+  // Estados para geocodificación
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [geocodingResults, setGeocodingResults] = useState<any[]>([]);
+  const [showGeocodingResults, setShowGeocodingResults] = useState(false);
+  const [selectedGeocodingResult, setSelectedGeocodingResult] = useState<any>(null);
 
   useEffect(() => {
     loadCountries();
-    loadDepartments();
   }, []);
 
   const loadCountries = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseClient
         .from('countries')
         .select('*')
-        .order('name');
+        .order('name', { ascending: true });
       
       if (error) throw error;
       setCountries(data || []);
+      
+      // Seleccionar Uruguay por defecto
+      if (data && data.length > 0) {
+        const uruguay = data.find(country => country.code === 'UY');
+        if (uruguay) {
+          setSelectedCountry(uruguay);
+          loadDepartments(uruguay.id);
+        }
+      }
     } catch (error) {
       console.error('Error loading countries:', error);
     }
   };
 
-  const loadDepartments = async () => {
+  const loadDepartments = async (countryId: string) => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseClient
         .from('departments')
         .select('*')
-        .order('name');
+        .eq('country_id', countryId)
+        .order('name', { ascending: true });
       
       if (error) throw error;
       setDepartments(data || []);
+      setFilteredDepartments(data || []);
     } catch (error) {
       console.error('Error loading departments:', error);
     }
   };
 
-  const handleDepartmentInputChange = (text: string) => {
-    setDepartmentInput(text);
-    setDepartment(text);
-    
-    if (text.length > 0) {
-      const filtered = departments.filter(dept =>
-        dept.name.toLowerCase().includes(text.toLowerCase()) &&
-        (!selectedCountry || dept.country_id === selectedCountry.id)
-      );
-      setDepartmentSuggestions(filtered);
-      setShowDepartmentSuggestions(true);
-    } else {
-      setShowDepartmentSuggestions(false);
-    }
+  const handleCountrySelect = async (country: any) => {
+    setSelectedCountry(country);
+    setSelectedDepartment(null);
+    setDepartmentQuery('');
+    setShowCountryModal(false);
+    await loadDepartments(country.id);
   };
 
-  const selectDepartment = (dept: Department) => {
-    setDepartment(dept.name);
-    setDepartmentInput(dept.name);
+  const handleDepartmentSelect = (department: any) => {
+    setSelectedDepartment(department);
+    setDepartmentQuery(department.name);
     setShowDepartmentSuggestions(false);
   };
 
-  const handleCountrySelect = (country: Country) => {
-    setSelectedCountry(country);
-    setShowCountryModal(false);
-    setDepartment('');
-    setDepartmentInput('');
+  const handleDepartmentInputChange = (text: string) => {
+    setDepartmentQuery(text);
+    
+    if (text.trim()) {
+      const filtered = departments.filter(dept =>
+        dept.name.toLowerCase().includes(text.toLowerCase())
+      );
+      setFilteredDepartments(filtered);
+      setShowDepartmentSuggestions(true);
+    } else {
+      setFilteredDepartments(departments);
+      setShowDepartmentSuggestions(false);
+      setSelectedDepartment(null);
+    }
+    
+    const exactMatch = departments.find(dept => 
+      dept.name.toLowerCase() === text.toLowerCase()
+    );
+    if (exactMatch && selectedDepartment?.id !== exactMatch.id) {
+      setSelectedDepartment(exactMatch);
+    } else if (!exactMatch && selectedDepartment) {
+      setSelectedDepartment(null);
+    }
   };
 
-  const geocodeAddress = async () => {
-    if (!address || !city) {
-      Alert.alert('Error', 'Por favor ingresa la dirección y ciudad');
+  const performGeocoding = async () => {
+    if (!calle.trim() || !numero.trim() || !selectedDepartment || !selectedCountry) {
+      Alert.alert('Información incompleta', 'Por favor completa calle, número, departamento y país para buscar la ubicación');
       return;
     }
 
     setIsGeocoding(true);
+    setGeocodingResults([]);
+    setShowGeocodingResults(false);
+
     try {
-      const fullAddress = `${address}, ${city}, ${department}, ${selectedCountry?.name || ''}`;
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fullAddress)}&limit=5`
-      );
-      const results = await response.json();
+      const query = `${calle.trim()}+${numero.trim()}+${selectedDepartment.name}+${selectedCountry.name}`;
+      const nominatimBaseUrl = process.env.EXPO_PUBLIC_NOMINATIM_BASE_URL || 'https://nominatim.openstreetmap.org';
+      const searchUrl = `${nominatimBaseUrl}/search?q=${query}&format=json&limit=4&addressdetails=1`;
       
-      if (results.length > 0) {
-        setGeocodingResults(results);
-      } else {
-        Alert.alert('Sin resultados', 'No se encontraron coordenadas para esta dirección');
+      const response = await fetch(searchUrl, {
+        headers: {
+          'User-Agent': 'DogCatiFy/1.0 (contact@dogcatify.com)'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error en la API de geocodificación: ${response.status}`);
       }
+
+      const results = await response.json();
+
+      if (!results || results.length === 0) {
+        Alert.alert('Sin resultados', 'No se encontraron ubicaciones para la dirección ingresada.');
+        return;
+      }
+
+      setGeocodingResults(results.slice(0, 5));
+      setShowGeocodingResults(true);
     } catch (error) {
-      console.error('Geocoding error:', error);
-      Alert.alert('Error', 'Error al buscar coordenadas');
+      console.error('Error en geocodificación:', error);
+      Alert.alert('Error', 'No se pudo obtener la ubicación.');
     } finally {
       setIsGeocoding(false);
     }
   };
 
-  const selectGeocodingResult = (result: GeocodingResult) => {
-    setLatitude(parseFloat(result.lat));
-    setLongitude(parseFloat(result.lon));
-    setGeocodingResults([]);
+  const handleSelectGeocodingResult = (result: any) => {
+    const displayName = result.display_name || '';
+    const parts = displayName.split(',').map((part: string) => part.trim());
+    
+    // Buscar código postal
+    const postalCodeMatch = displayName.match(/\b\d{5}\b/);
+    if (postalCodeMatch) {
+      setCodigoPostal(postalCodeMatch[0]);
+    }
+    
+    // Extraer barrio
+    let barrioFound = '';
+    const streetIndex = parts.findIndex(part => 
+      part.toLowerCase().includes(calle.toLowerCase())
+    );
+    
+    if (streetIndex >= 0 && streetIndex + 1 < parts.length) {
+      const possibleBarrio = parts[streetIndex + 1];
+      if (possibleBarrio && 
+          possibleBarrio !== selectedDepartment?.name && 
+          possibleBarrio !== selectedCountry?.name &&
+          !possibleBarrio.match(/\b\d{5}\b/) && 
+          possibleBarrio.length > 2) {
+        barrioFound = possibleBarrio;
+      }
+    }
+    
+    if (!barrioFound && result.address) {
+      const address = result.address;
+      barrioFound = address.neighbourhood || 
+                   address.suburb || 
+                   address.quarter || 
+                   address.district || '';
+    }
+    
+    if (barrioFound) {
+      setBarrio(barrioFound);
+    }
+    
+    setLatitud(result.lat);
+    setLongitud(result.lon);
+    setSelectedGeocodingResult(result);
+    setShowGeocodingResults(false);
+    
+    Alert.alert(
+      'Ubicación encontrada',
+      `Se ha encontrado la ubicación exacta de tu negocio.\n\nCoordenadas: ${result.lat}, ${result.lon}${barrioFound ? `\nBarrio: ${barrioFound}` : ''}`,
+      [{ text: 'Perfecto' }]
+    );
   };
 
-  const pickLogo = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permisos requeridos', 'Necesitamos permisos para acceder a tus fotos');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-
-    if (!result.canceled) {
-      setLogo(result.assets[0].uri);
-    }
-  };
-
-  const pickGalleryImages = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permisos requeridos', 'Necesitamos permisos para acceder a tus fotos');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsMultipleSelection: true,
-      quality: 0.8,
-    });
-
-    if (!result.canceled) {
-      const newImages = result.assets.map(asset => asset.uri);
-      setGalleryImages(prev => [...prev, ...newImages].slice(0, 5)); // Max 5 images
-    }
-  };
-
-  const uploadImage = async (uri: string, path: string): Promise<string | null> => {
+  const pickDocument = async () => {
     try {
-      console.log('Uploading image to path:', path);
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaType.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setLogo(result.assets[0].uri);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo seleccionar la imagen');
+    }
+  };
+
+  const handleTakePhoto = async () => {
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaType.Images,
+        quality: 0.8,
+        allowsEditing: true,
+        aspect: [4, 3],
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setLogo(result.assets[0].uri);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo tomar la foto');
+    }
+  };
+
+  const handleSelectLogo = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setLogo(result.assets[0].uri);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo seleccionar la imagen');
+    }
+  };
+
+  const handleSelectImages = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        quality: 0.8,
+        selectionLimit: 5,
+      });
+
+      if (!result.canceled && result.assets) {
+        const newImages = result.assets.map(asset => asset.uri);
+        setImages(prev => [...prev, ...newImages].slice(0, 5));
+      }
+    } catch (error) {
+      Alert.alert('Error', 'No se pudieron seleccionar las imágenes');
+    }
+  };
+
+
+  const uploadImage = async (imageUri: string, path: string): Promise<string> => {
+    try {
+      console.log(`Uploading image to path: ${path}`);
       
-      const response = await fetch(uri);
+      // Fetch the image and convert to blob using the correct method for React Native
+      const response = await fetch(imageUri);
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`Failed to fetch image: ${response.status}`);
       }
       
       const blob = await response.blob();
-      console.log('Image blob size:', blob.size, 'bytes');
-
-      const { data, error } = await supabase.storage
+      
+      console.log(`Image blob size: ${blob.size} bytes`);
+      
+      // Upload blob to Supabase storage using the correct method
+      const { data, error } = await supabaseClient.storage
         .from('dogcatify')
         .upload(path, blob, {
           contentType: 'image/jpeg',
-          upsert: false
+          cacheControl: '3600',
+          upsert: false,
         });
 
       if (error) {
-        console.error('Supabase upload error:', error);
+        console.error('Supabase storage error:', error);
         throw error;
       }
 
-      const { data: { publicUrl } } = supabase.storage
+      console.log('Upload successful, getting public URL...');
+      
+      const { data: urlData } = supabaseClient.storage
         .from('dogcatify')
         .getPublicUrl(path);
+      
+      const publicUrl = urlData.publicUrl;
+      console.log(`Generated public URL: ${publicUrl}`);
 
       return publicUrl;
     } catch (error) {
@@ -296,133 +415,175 @@ export default function PartnerRegister() {
   };
 
   const handleSubmit = async () => {
-    if (!user) {
-      Alert.alert('Error', 'Usuario no autenticado');
-      return;
-    }
-
-    if (!businessName || !businessType || !address || !city || !phone) {
+    if (!selectedType || !businessName || !description || !calle || !numero || !selectedCountry || !selectedDepartment || !phone) {
       Alert.alert('Error', 'Por favor completa todos los campos obligatorios');
       return;
     }
 
-    if (!selectedCountry) {
-      Alert.alert('Error', 'Por favor selecciona un país');
+    if (!currentUser) {
+      Alert.alert('Error', 'Usuario no autenticado');
       return;
     }
 
     setLoading(true);
-
     try {
       let logoUrl = null;
-      let galleryUrls: string[] = [];
-
-      // Upload logo if exists
       if (logo) {
         try {
           console.log('Uploading logo...');
-          const logoPath = `partners/${user.id}/${Date.now()}_logo.jpg`;
-          logoUrl = await uploadImage(logo, logoPath);
+          logoUrl = await uploadImage(logo, `partners/${currentUser.id}/${Date.now()}_logo.jpg`);
           console.log('Logo uploaded successfully:', logoUrl);
-        } catch (error) {
-          console.error('Error uploading logo:', error);
-          const shouldContinue = await new Promise((resolve) => {
-            Alert.alert(
-              'Error al subir logo',
-              '¿Deseas continuar sin logo?',
-              [
-                { text: 'Cancelar', onPress: () => resolve(false) },
-                { text: 'Continuar', onPress: () => resolve(true) }
-              ]
-            );
-          });
-          if (!shouldContinue) {
-            setLoading(false);
-            return;
-          }
+        } catch (logoError) {
+          console.error('Error uploading logo:', logoError);
+          Alert.alert(
+            'Error al subir logo',
+            'No se pudo subir el logo. ¿Deseas continuar sin logo?',
+            [
+              { text: 'Cancelar', style: 'cancel', onPress: () => setLoading(false) },
+              { text: 'Continuar sin logo', onPress: () => proceedWithoutLogo() }
+            ]
+          );
+          return;
         }
       }
 
-      // Upload gallery images if exist
-      if (galleryImages.length > 0) {
+      const imageUrls: string[] = [];
+      if (images.length > 0) {
         try {
-          console.log('Uploading gallery images...');
-          for (let i = 0; i < galleryImages.length; i++) {
-            const imagePath = `partners/${user.id}/${Date.now()}_gallery_${i}.jpg`;
-            const imageUrl = await uploadImage(galleryImages[i], imagePath);
-            if (imageUrl) {
-              galleryUrls.push(imageUrl);
-            }
+          console.log(`Uploading ${images.length} gallery images...`);
+          for (let i = 0; i < images.length; i++) {
+            console.log(`Uploading image ${i + 1} of ${images.length}...`);
+            const imageUrl = await uploadImage(images[i], `partners/${currentUser.id}/gallery/${Date.now()}_${i}.jpg`);
+            imageUrls.push(imageUrl);
           }
-          console.log('Gallery images uploaded successfully:', galleryUrls);
-        } catch (error) {
-          console.error('Error uploading gallery:', error);
-          const shouldContinue = await new Promise((resolve) => {
-            Alert.alert(
-              'Error al subir galería',
-              '¿Deseas continuar sin galería?',
-              [
-                { text: 'Cancelar', onPress: () => resolve(false) },
-                { text: 'Continuar', onPress: () => resolve(true) }
-              ]
-            );
-          });
-          if (!shouldContinue) {
-            setLoading(false);
-            return;
-          }
+          console.log('All gallery images uploaded successfully');
+        } catch (galleryError) {
+          console.error('Error uploading gallery images:', galleryError);
+          Alert.alert(
+            'Error al subir imágenes',
+            'No se pudieron subir las imágenes de la galería. ¿Deseas continuar sin galería?',
+            [
+              { text: 'Cancelar', style: 'cancel', onPress: () => setLoading(false) },
+              { text: 'Continuar sin galería', onPress: () => proceedWithoutGallery() }
+            ]
+          );
+          return;
         }
       }
 
-      // Build complete address
-      const completeAddress = [address, neighborhood, city, department, selectedCountry.name, postalCode]
-        .filter(Boolean)
-        .join(', ');
+      await createPartnerRecord(logoUrl, imageUrls);
+    } catch (error) {
+      console.error('Error registering partner:', error);
+      Alert.alert('Error', 'No se pudo completar el registro');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      // Create partner application
-      const { error } = await supabase
-        .from('partner_applications')
+  const proceedWithoutLogo = async () => {
+    try {
+      await createPartnerRecord(null, []);
+    } catch (error) {
+      console.error('Error registering partner without logo:', error);
+      Alert.alert('Error', 'No se pudo completar el registro');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const proceedWithoutGallery = async () => {
+    try {
+      let logoUrl = null;
+      if (logo) {
+        logoUrl = await uploadImage(logo, `partners/${currentUser.id}/${Date.now()}_logo.jpg`);
+      }
+      await createPartnerRecord(logoUrl, []);
+    } catch (error) {
+      console.error('Error registering partner without gallery:', error);
+      Alert.alert('Error', 'No se pudo completar el registro');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createPartnerRecord = async (logoUrl: string | null, imageUrls: string[]) => {
+    try {
+      console.log('Creating partner record in database...');
+      
+      // Create partner request
+      const { error } = await supabaseClient
+        .from('partners')
         .insert({
-          user_id: user.id,
-          business_name: businessName,
-          business_type: businessType,
-          description,
-          phone,
-          whatsapp: whatsapp || null,
-          website: website || null,
-          instagram: instagram || null,
-          facebook: facebook || null,
-          address: completeAddress,
-          neighborhood: neighborhood || null,
-          city,
-          department,
-          country: selectedCountry.name,
-          postal_code: postalCode || null,
-          latitude,
-          longitude,
-          logo_url: logoUrl,
-          gallery_images: galleryUrls,
+          user_id: currentUser.id,
+          business_name: businessName.trim(),
+          business_type: selectedType,
+          description: description.trim(),
+          address: `${calle.trim()} ${numero.trim()}${barrio ? ', ' + barrio : ''}, ${selectedDepartment?.name || ''}, ${selectedCountry?.name || ''}`,
+          phone: phone.trim(),
+          email: email.trim(),
+          logo: logoUrl,
+          images: imageUrls,
           has_shipping: hasShipping,
-          shipping_cost: hasShipping ? parseFloat(shippingCost) || 0 : null,
-          status: 'pending'
+          shipping_cost: hasShipping ? parseFloat(shippingCost) || 0 : 0,
+          country_id: selectedCountry?.id,
+          department_id: selectedDepartment?.id,
+          calle: calle.trim(),
+          numero: numero.trim(),
+          barrio: barrio.trim() || null,
+          codigo_postal: codigoPostal.trim() || null,
+          latitud: latitud.trim() || null,
+          longitud: longitud.trim() || null,
+          is_active: true,
+          is_verified: false,
+          rating: 0,
+          reviews_count: 0,
+          created_at: new Date().toISOString(),
         });
 
-      if (error) {
-        console.error('Error registering partner:', error);
-        throw error;
+      if (error) throw error;
+      
+      console.log('Partner record created successfully');
+
+      // Check if user has other businesses with Mercado Pago configured
+      await replicateMercadoPagoConfig(currentUser.id);
+      
+      // Update user profile to be a partner
+      const { error: profileError } = await supabaseClient
+        .from('profiles')
+        .update({
+          is_partner: true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', currentUser.id);
+
+      if (profileError) throw profileError;
+
+      // Enviar notificación push al admin
+      try {
+        await sendNotificationToAdmin(
+          'Nueva solicitud de aliado',
+          `${businessName.trim()} ha solicitado unirse como ${businessTypes.find(t => t.id === selectedType)?.name}`,
+          {
+            type: 'partner_request',
+            businessName: businessName.trim(),
+            businessType: selectedType,
+            userId: currentUser.id,
+            deepLink: '(admin-tabs)/requests'
+          }
+        );
+        console.log('Push notification sent to admin');
+      } catch (notificationError) {
+        console.error('Error sending push notification:', notificationError);
       }
 
       Alert.alert(
-        'Solicitud Enviada',
-        'Tu solicitud ha sido enviada exitosamente. Te notificaremos cuando sea revisada.',
+        'Registro exitoso',
+        'Tu solicitud para ser aliado ha sido enviada. Te notificaremos cuando sea aprobada.',
         [{ text: 'OK', onPress: () => router.back() }]
       );
-
     } catch (error) {
-      console.error('Error registering partner:', error);
-      Alert.alert('Error', 'Hubo un problema al enviar tu solicitud. Inténtalo de nuevo.');
-    } finally {
-      setLoading(false);
+      console.error('Error creating partner record:', error);
+      throw error;
     }
   };
 
@@ -432,43 +593,34 @@ export default function PartnerRegister() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <ArrowLeft size={24} color="#111827" />
         </TouchableOpacity>
-        <Text style={styles.title}>Registro de Aliado</Text>
+        <Text style={styles.title}>Convertirse en Aliado</Text>
         <View style={styles.placeholder} />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <Card style={styles.introCard}>
-          <Text style={styles.introTitle}>¡Únete a nuestra red de aliados!</Text>
+          <Text style={styles.introTitle}>🤝 Únete como Aliado</Text>
           <Text style={styles.introDescription}>
-            Completa el formulario para solicitar ser parte de nuestra comunidad de negocios pet-friendly.
+            Ofrece tus servicios a la comunidad de Patitas y haz crecer tu negocio
           </Text>
         </Card>
 
         <Card style={styles.formCard}>
-          <Text style={styles.sectionTitle}>Información del Negocio</Text>
-          
-          <Input
-            label="Nombre del negocio *"
-            placeholder="Ej: Veterinaria San Martín"
-            value={businessName}
-            onChangeText={setBusinessName}
-          />
-
-          <Text style={styles.sectionTitle}>Tipo de Negocio *</Text>
+          <Text style={styles.sectionTitle}>Tipo de Negocio</Text>
           <View style={styles.businessTypes}>
             {businessTypes.map((type) => (
               <TouchableOpacity
                 key={type.id}
                 style={[
                   styles.businessType,
-                  businessType === type.id && styles.selectedBusinessType
+                  selectedType === type.id && styles.selectedBusinessType
                 ]}
-                onPress={() => setBusinessType(type.id)}
+                onPress={() => setSelectedType(type.id)}
               >
                 <Text style={styles.businessTypeIcon}>{type.icon}</Text>
                 <Text style={[
                   styles.businessTypeName,
-                  businessType === type.id && styles.selectedBusinessTypeName
+                  selectedType === type.id && styles.selectedBusinessTypeName
                 ]}>
                   {type.name}
                 </Text>
@@ -478,201 +630,221 @@ export default function PartnerRegister() {
           </View>
 
           <Input
-            label="Descripción"
+            label="Nombre del negocio *"
+            placeholder="Ej: Veterinaria San Martín"
+            value={businessName}
+            onChangeText={setBusinessName}
+            leftIcon={<Building size={20} color="#6B7280" />}
+          />
+
+          <Input
+            label="Descripción *"
             placeholder="Describe tu negocio y servicios..."
             value={description}
             onChangeText={setDescription}
             multiline
             numberOfLines={3}
+            leftIcon={<FileText size={20} color="#6B7280" />}
           />
 
-          <View style={styles.imageSection}>
-            <Text style={styles.sectionTitle}>Logo del Negocio</Text>
-            <TouchableOpacity onPress={pickLogo} style={styles.logoSelector}>
-              {logo ? (
-                <Image source={{ uri: logo }} style={styles.logoPreview} />
-              ) : (
-                <View style={styles.logoPlaceholder}>
-                  <Camera size={32} color="#9CA3AF" />
-                  <Text style={styles.logoPlaceholderText}>Subir Logo</Text>
-                </View>
-              )}
-            </TouchableOpacity>
+          <TouchableOpacity onPress={() => setShowCountryModal(true)}>
+            <Input
+              label="País *"
+              placeholder="Selecciona tu país"
+              value={selectedCountry?.name || ''}
+              editable={false}
+              leftIcon={<MapPin size={20} color="#6B7280" />}
+              rightIcon={<ChevronDown size={20} color="#6B7280" />}
+            />
+          </TouchableOpacity>
 
-            <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Galería de Fotos</Text>
-            <TouchableOpacity onPress={pickGalleryImages} style={styles.gallerySelector}>
-              <ImageIcon size={20} color="#3B82F6" />
-              <Text style={styles.gallerySelectorText}>
-                Agregar Fotos ({galleryImages.length}/5)
-              </Text>
-            </TouchableOpacity>
+          <View style={styles.departmentInputGroup}>
+            <Input
+              label="Departamento *"
+              placeholder={selectedCountry ? "Departamento..." : "Primero selecciona un país"}
+              value={departmentQuery}
+              onChangeText={handleDepartmentInputChange}
+              onFocus={() => selectedCountry && setShowDepartmentSuggestions(true)}
+              editable={!!selectedCountry}
+              leftIcon={<MapPin size={20} color="#6B7280" />}
+              style={!selectedCountry ? styles.disabledInput : undefined}
+            />
             
-            {galleryImages.length > 0 && (
-              <ScrollView horizontal style={styles.imagePreview}>
-                {galleryImages.map((uri, index) => (
-                  <Image key={index} source={{ uri }} style={styles.previewImage} />
+            {showDepartmentSuggestions && filteredDepartments.length > 0 && selectedCountry && (
+              <View style={styles.departmentSuggestions}>
+                {filteredDepartments.slice(0, 6).map((department) => (
+                  <TouchableOpacity
+                    key={department.id}
+                    style={styles.departmentSuggestion}
+                    onPress={() => handleDepartmentSelect(department)}
+                  >
+                    <Text style={styles.departmentSuggestionText}>{department.name}</Text>
+                  </TouchableOpacity>
                 ))}
-              </ScrollView>
+              </View>
             )}
           </View>
 
-          <Text style={styles.sectionTitle}>Información de Contacto</Text>
-          
           <Input
-            label="Teléfono *"
-            placeholder="Ej: +57 300 123 4567"
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-          />
-
-          <Input
-            label="WhatsApp"
-            placeholder="Ej: +57 300 123 4567"
-            value={whatsapp}
-            onChangeText={setWhatsapp}
-            keyboardType="phone-pad"
-          />
-
-          <Input
-            label="Sitio Web"
-            placeholder="Ej: https://miveterinaria.com"
-            value={website}
-            onChangeText={setWebsite}
-            keyboardType="url"
+            label="Calle *"
+            placeholder="Nombre de la calle"
+            value={calle}
+            onChangeText={setCalle}
+            editable={!!selectedDepartment}
+            style={!selectedDepartment ? styles.disabledInput : undefined}
           />
 
           <View style={styles.row}>
             <View style={styles.halfWidth}>
               <Input
-                label="Instagram"
-                placeholder="@usuario"
-                value={instagram}
-                onChangeText={setInstagram}
+                label="Número *"
+                placeholder="1234"
+                value={numero}
+                onChangeText={setNumero}
+                editable={!!selectedDepartment}
+                style={!selectedDepartment ? styles.disabledInput : undefined}
               />
             </View>
             <View style={styles.halfWidth}>
               <Input
-                label="Facebook"
-                placeholder="@pagina"
-                value={facebook}
-                onChangeText={setFacebook}
+                label="Código Postal"
+                placeholder="11800"
+                value={codigoPostal}
+                onChangeText={setCodigoPostal}
+                editable={!!selectedDepartment}
+                style={!selectedDepartment ? styles.disabledInput : undefined}
               />
             </View>
           </View>
 
-          <Text style={styles.sectionTitle}>Ubicación</Text>
-          
-          <TouchableOpacity
-            onPress={() => setShowCountryModal(true)}
-            style={[styles.input, !selectedCountry && styles.disabledInput]}
-          >
-            <Text style={[styles.inputText, !selectedCountry && styles.disabledText]}>
-              {selectedCountry ? selectedCountry.name : 'Seleccionar País *'}
-            </Text>
-          </TouchableOpacity>
+          <Input
+            label="Barrio"
+            placeholder="Nombre del barrio"
+            value={barrio}
+            onChangeText={setBarrio}
+            editable={!!selectedDepartment}
+            style={!selectedDepartment ? styles.disabledInput : undefined}
+          />
 
-          <View style={styles.departmentInputGroup}>
-            <Input
-              label="Departamento/Estado *"
-              placeholder="Ej: Cundinamarca"
-              value={departmentInput}
-              onChangeText={handleDepartmentInputChange}
-            />
-            {showDepartmentSuggestions && departmentSuggestions.length > 0 && (
-              <ScrollView style={styles.departmentSuggestions} nestedScrollEnabled>
-                {departmentSuggestions.map((dept) => (
-                  <TouchableOpacity
-                    key={dept.id}
-                    style={styles.departmentSuggestion}
-                    onPress={() => selectDepartment(dept)}
-                  >
-                    <Text style={styles.departmentSuggestionText}>{dept.name}</Text>
-                  </TouchableOpacity>
+          {/* Botón de geocodificación */}
+          {calle.trim() && numero.trim() && selectedDepartment && selectedCountry && (
+            <View style={styles.geocodingSection}>
+              <Button
+                title={isGeocoding ? "Buscando ubicación..." : "🌍 Buscar ubicación exacta"}
+                onPress={performGeocoding}
+                loading={isGeocoding}
+                variant="outline"
+                size="medium"
+              />
+              <Text style={styles.geocodingHint}>
+                Esto completará automáticamente el código postal, barrio y coordenadas GPS
+              </Text>
+            </View>
+          )}
+
+          {/* Resultados de geocodificación */}
+          {showGeocodingResults && geocodingResults.length > 0 && (
+            <View style={styles.geocodingResults}>
+              <Text style={styles.geocodingResultsTitle}>
+                📍 Selecciona la ubicación correcta:
+              </Text>
+              {geocodingResults.map((result, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.geocodingResultItem}
+                  onPress={() => handleSelectGeocodingResult(result)}
+                >
+                  <Text style={styles.geocodingResultAddress}>
+                    {result.display_name}
+                  </Text>
+                  <Text style={styles.geocodingResultType}>
+                    Coordenadas: {result.lat}, {result.lon}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity
+                style={styles.cancelGeocodingButton}
+                onPress={() => setShowGeocodingResults(false)}
+              >
+                <Text style={styles.cancelGeocodingText}>Cancelar búsqueda</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Mostrar coordenadas si están disponibles */}
+          {(latitud || longitud) && (
+            <View style={styles.coordinatesDisplay}>
+              <Text style={styles.coordinatesTitle}>📍 Coordenadas GPS:</Text>
+              <Text style={styles.coordinatesText}>
+                Latitud: {latitud || 'No disponible'}
+              </Text>
+              <Text style={styles.coordinatesText}>
+                Longitud: {longitud || 'No disponible'}
+              </Text>
+              {selectedGeocodingResult && (
+                <Text style={styles.coordinatesNote}>
+                  ✅ Ubicación verificada automáticamente
+                </Text>
+              )}
+            </View>
+          )}
+
+          <Input
+            label="Teléfono *"
+            placeholder="Número de contacto"
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+            leftIcon={<Phone size={20} color="#6B7280" />}
+          />
+
+          <Input
+            label="Email de contacto *"
+            placeholder="email@negocio.com"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            leftIcon={<Mail size={20} color="#6B7280" />}
+          />
+
+          <View style={styles.imageSection}>
+            <Text style={styles.sectionTitle}>Logo del negocio</Text>
+            <TouchableOpacity style={styles.logoSelector} onPress={handleSelectLogo}>
+              {logo ? (
+                <Image source={{ uri: logo }} style={styles.logoPreview} />
+              ) : (
+                <View style={styles.logoPlaceholder}>
+                  <Camera size={32} color="#9CA3AF" />
+                  <Text style={styles.logoPlaceholderText}>Seleccionar logo</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.imageSection}>
+            <Text style={styles.sectionTitle}>Galería de imágenes (máx. 5)</Text>
+            <TouchableOpacity style={styles.gallerySelector} onPress={handleSelectImages}>
+              <Camera size={24} color="#3B82F6" />
+              <Text style={styles.gallerySelectorText}>Agregar imágenes</Text>
+            </TouchableOpacity>
+            
+            {images.length > 0 && (
+              <ScrollView horizontal style={styles.imagePreview} showsHorizontalScrollIndicator={false}>
+                {images.map((image, index) => (
+                  <Image key={index} source={{ uri: image }} style={styles.previewImage} />
                 ))}
               </ScrollView>
             )}
           </View>
 
-          <Input
-            label="Ciudad *"
-            placeholder="Ej: Bogotá"
-            value={city}
-            onChangeText={setCity}
-          />
-
-          <Input
-            label="Barrio/Zona"
-            placeholder="Ej: Chapinero"
-            value={neighborhood}
-            onChangeText={setNeighborhood}
-          />
-
-          <Input
-            label="Dirección *"
-            placeholder="Ej: Calle 123 #45-67"
-            value={address}
-            onChangeText={setAddress}
-          />
-
-          <Input
-            label="Código Postal"
-            placeholder="Ej: 110111"
-            value={postalCode}
-            onChangeText={setPostalCode}
-            keyboardType="numeric"
-          />
-
-          <View style={styles.geocodingSection}>
-            <Button
-              title={isGeocoding ? "Buscando..." : "Obtener Coordenadas GPS"}
-              onPress={geocodeAddress}
-              loading={isGeocoding}
-              leftIcon={<MapPin size={16} color="#FFFFFF" />}
-            />
-            <Text style={styles.geocodingHint}>
-              Las coordenadas GPS ayudan a los usuarios a encontrar tu negocio más fácilmente
-            </Text>
-          </View>
-
-          {geocodingResults.length > 0 && (
-            <View style={styles.geocodingResults}>
-              <Text style={styles.geocodingResultsTitle}>Selecciona la ubicación correcta:</Text>
-              {geocodingResults.map((result, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.geocodingResultItem}
-                  onPress={() => selectGeocodingResult(result)}
-                >
-                  <Text style={styles.geocodingResultAddress}>{result.display_name}</Text>
-                  <Text style={styles.geocodingResultType}>Tipo: {result.type}</Text>
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity
-                style={styles.cancelGeocodingButton}
-                onPress={() => setGeocodingResults([])}
-              >
-                <Text style={styles.cancelGeocodingText}>Cancelar</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {latitude && longitude && (
-            <View style={styles.coordinatesDisplay}>
-              <Text style={styles.coordinatesTitle}>📍 Coordenadas Confirmadas</Text>
-              <Text style={styles.coordinatesText}>Latitud: {latitude.toFixed(6)}</Text>
-              <Text style={styles.coordinatesText}>Longitud: {longitude.toFixed(6)}</Text>
-              <Text style={styles.coordinatesNote}>✅ Tu negocio será fácil de encontrar</Text>
-            </View>
-          )}
-
-          {businessType === 'petshop' && (
+          {selectedType === 'shop' && (
             <View style={styles.shippingSection}>
               <View style={styles.shippingHeader}>
-                <Text style={styles.shippingTitle}>Opciones de Envío</Text>
+                <Text style={styles.shippingTitle}>Configuración de Envío</Text>
               </View>
               
-              <TouchableOpacity
+              <TouchableOpacity 
                 style={styles.shippingCheckbox}
                 onPress={() => setHasShipping(!hasShipping)}
               >
@@ -901,28 +1073,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginRight: 8,
   },
-  input: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginBottom: 16,
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#111827',
-  },
-  inputText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#111827',
-  },
   disabledInput: {
     backgroundColor: '#F9FAFB',
-    color: '#9CA3AF',
-  },
-  disabledText: {
     color: '#9CA3AF',
   },
   departmentInputGroup: {
