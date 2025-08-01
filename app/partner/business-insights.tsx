@@ -28,11 +28,13 @@ export default function BusinessInsights() {
   const [partnerProfile, setPartnerProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedTimeRange, setSelectedTimeRange] = useState<'1m' | '3m' | '6m' | '1y'>('3m');
+  const [locationInsights, setLocationInsights] = useState<any>(null);
 
   useEffect(() => {
     if (partnerId) {
       fetchPartnerProfile();
       fetchBusinessInsights();
+      fetchLocationBasedInsights();
     }
   }, [partnerId, selectedTimeRange]);
 
@@ -57,6 +59,254 @@ export default function BusinessInsights() {
       });
     } catch (error) {
       console.error('Error fetching partner profile:', error);
+    }
+  };
+
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // Radio de la Tierra en kilómetros
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const distance = R * c; // Distancia en kilómetros
+    return distance;
+  };
+
+  const fetchLocationBasedInsights = async () => {
+    try {
+      console.log('Fetching location-based insights for partner:', partnerId);
+      
+      // 1. Obtener ubicación del negocio
+      const { data: partnerData, error: partnerError } = await supabaseClient
+        .from('partners')
+        .select('latitud, longitud, address, barrio, department_id, country_id')
+        .eq('id', partnerId)
+        .single();
+      
+      if (partnerError) {
+        console.error('Error fetching partner location:', partnerError);
+        return;
+      }
+      
+      if (!partnerData?.latitud || !partnerData?.longitud) {
+        console.log('Partner does not have GPS coordinates');
+        setLocationInsights({
+          nearbyPets: 0,
+          sameNeighborhood: 0,
+          sameDepartment: 0,
+          withinRadius: { '5km': 0, '10km': 0, '20km': 0 },
+          hasCoordinates: false,
+          message: 'Configure las coordenadas GPS de tu negocio para ver análisis de ubicación'
+        });
+        return;
+      }
+      
+      const partnerLat = parseFloat(partnerData.latitud);
+      const partnerLon = parseFloat(partnerData.longitud);
+      
+      console.log('Partner coordinates:', { lat: partnerLat, lon: partnerLon });
+      
+      // 2. Obtener todos los usuarios con mascotas y sus ubicaciones
+      const { data: usersWithPets, error: usersError } = await supabaseClient
+        .from('profiles')
+        .select(`
+          id,
+          latitud,
+          longitud,
+          barrio,
+          department_id,
+          country_id,
+          pets:pets(id, name, species, breed, age)
+        `)
+        .not('pets', 'is', null);
+      
+      if (usersError) {
+        console.error('Error fetching users with pets:', usersError);
+        return;
+      }
+      
+      console.log('Found users with pets:', usersWithPets?.length || 0);
+      
+      // 3. Calcular distancias y categorizar mascotas
+      let nearbyPets = 0;
+      let sameNeighborhood = 0;
+      let sameDepartment = 0;
+      const withinRadius = { '5km': 0, '10km': 0, '20km': 0 };
+      const petsBySpecies = { dogs: 0, cats: 0, others: 0 };
+      const petsByAge = { puppies: 0, young: 0, adult: 0, senior: 0 };
+      const nearbyBreeds: { [key: string]: number } = {};
+      
+      usersWithPets?.forEach(user => {
+        if (!user.pets || user.pets.length === 0) return;
+        
+        const userPetsCount = user.pets.length;
+        
+        // Verificar si está en el mismo barrio
+        if (user.barrio && partnerData.barrio && 
+            user.barrio.toLowerCase() === partnerData.barrio.toLowerCase()) {
+          sameNeighborhood += userPetsCount;
+        }
+        
+        // Verificar si está en el mismo departamento
+        if (user.department_id && partnerData.department_id && 
+            user.department_id === partnerData.department_id) {
+          sameDepartment += userPetsCount;
+        }
+        
+        // Calcular distancia si tiene coordenadas GPS
+        if (user.latitud && user.longitud) {
+          const userLat = parseFloat(user.latitud);
+          const userLon = parseFloat(user.longitud);
+          
+          if (!isNaN(userLat) && !isNaN(userLon)) {
+            const distance = calculateDistance(partnerLat, partnerLon, userLat, userLon);
+            
+            console.log(`User ${user.id}: ${distance.toFixed(2)}km away, ${userPetsCount} pets`);
+            
+            // Categorizar por distancia
+            if (distance <= 5) {
+              withinRadius['5km'] += userPetsCount;
+              nearbyPets += userPetsCount;
+            }
+            if (distance <= 10) {
+              withinRadius['10km'] += userPetsCount;
+            }
+            if (distance <= 20) {
+              withinRadius['20km'] += userPetsCount;
+            }
+            
+            // Si está dentro de 10km, analizar las mascotas
+            if (distance <= 10) {
+              user.pets.forEach((pet: any) => {
+                // Contar por especie
+                if (pet.species === 'dog') petsBySpecies.dogs++;
+                else if (pet.species === 'cat') petsBySpecies.cats++;
+                else petsBySpecies.others++;
+                
+                // Contar por edad
+                const age = pet.age || 0;
+                if (age <= 1) petsByAge.puppies++;
+                else if (age <= 3) petsByAge.young++;
+                else if (age <= 7) petsByAge.adult++;
+                else petsByAge.senior++;
+                
+                // Contar razas
+                if (pet.breed) {
+                  nearbyBreeds[pet.breed] = (nearbyBreeds[pet.breed] || 0) + 1;
+                }
+              });
+            }
+          }
+        }
+      });
+      
+      // 4. Generar recomendaciones basadas en datos reales
+      const recommendations = [];
+      
+      if (nearbyPets > 0) {
+        recommendations.push({
+          type: 'Oportunidad Local',
+          count: nearbyPets,
+          description: `Hay ${nearbyPets} mascotas dentro de 5km de tu negocio`,
+          action: 'Crear campaña de marketing local'
+        });
+      }
+      
+      if (sameNeighborhood > 0) {
+        recommendations.push({
+          type: 'Vecindario',
+          count: sameNeighborhood,
+          description: `${sameNeighborhood} mascotas en tu mismo barrio (${partnerData.barrio})`,
+          action: 'Ofrecer descuentos para vecinos'
+        });
+      }
+      
+      // Recomendar servicios basados en especies más comunes
+      const totalNearbyPets = petsBySpecies.dogs + petsBySpecies.cats + petsBySpecies.others;
+      if (totalNearbyPets > 0) {
+        const dogPercentage = (petsBySpecies.dogs / totalNearbyPets) * 100;
+        const catPercentage = (petsBySpecies.cats / totalNearbyPets) * 100;
+        
+        if (dogPercentage > 60) {
+          recommendations.push({
+            type: 'Especialización en Perros',
+            count: petsBySpecies.dogs,
+            description: `${dogPercentage.toFixed(0)}% de mascotas cercanas son perros`,
+            action: 'Enfocar servicios en perros'
+          });
+        }
+        
+        if (catPercentage > 40) {
+          recommendations.push({
+            type: 'Oportunidad Felina',
+            count: petsBySpecies.cats,
+            description: `${catPercentage.toFixed(0)}% de mascotas cercanas son gatos`,
+            action: 'Desarrollar servicios para gatos'
+          });
+        }
+      }
+      
+      // Recomendar servicios basados en edad
+      if (petsByAge.puppies > 5) {
+        recommendations.push({
+          type: 'Cachorros en la Zona',
+          count: petsByAge.puppies,
+          description: `${petsByAge.puppies} cachorros necesitan servicios especializados`,
+          action: 'Ofrecer paquetes para cachorros'
+        });
+      }
+      
+      if (petsByAge.senior > 3) {
+        recommendations.push({
+          type: 'Mascotas Senior',
+          count: petsByAge.senior,
+          description: `${petsByAge.senior} mascotas senior requieren cuidados especiales`,
+          action: 'Servicios geriátricos especializados'
+        });
+      }
+      
+      // Top razas cercanas
+      const topNearbyBreeds = Object.entries(nearbyBreeds)
+        .sort(([,a], [,b]) => (b as number) - (a as number))
+        .slice(0, 5)
+        .map(([breed, count]) => ({ breed, count }));
+      
+      setLocationInsights({
+        nearbyPets,
+        sameNeighborhood,
+        sameDepartment,
+        withinRadius,
+        petsBySpecies,
+        petsByAge,
+        topNearbyBreeds,
+        recommendations,
+        hasCoordinates: true,
+        partnerLocation: {
+          lat: partnerLat,
+          lon: partnerLon,
+          address: partnerData.address,
+          barrio: partnerData.barrio
+        }
+      });
+      
+      console.log('Location insights calculated:', {
+        nearbyPets,
+        sameNeighborhood,
+        sameDepartment,
+        withinRadius,
+        recommendationsCount: recommendations.length
+      });
+      
+    } catch (error) {
+      console.error('Error fetching location-based insights:', error);
+      setLocationInsights({
+        nearbyPets: 0,
+        hasCoordinates: false,
+        message: 'Error al calcular insights de ubicación'
+      });
     }
   };
 
@@ -129,6 +379,7 @@ export default function BusinessInsights() {
       const { data: bookingsData } = await supabaseClient
         .from('bookings')
         .select('service_name, created_at')
+        .eq('partner_id', partnerId)
         .gte('created_at', getDateRange(selectedTimeRange));
 
       const servicesDemand = bookingsData?.reduce((acc: any, booking) => {
@@ -157,22 +408,14 @@ export default function BusinessInsights() {
       ];
 
       // 7. Oportunidades de mercado
-      const opportunities = [
+      // Usar oportunidades reales basadas en ubicación si están disponibles
+      const opportunities = locationInsights?.recommendations || [
         {
-          type: 'Vacunación',
-          count: Math.floor(Math.random() * 50) + 20,
-          description: 'Mascotas que podrían necesitar vacunas'
-        },
-        {
-          type: 'Peluquería',
-          count: Math.floor(Math.random() * 80) + 30,
-          description: 'Mascotas sin peluquería en 2+ meses'
-        },
-        {
-          type: 'Paseo',
-          count: Math.floor(Math.random() * 60) + 25,
-          description: 'Mascotas jóvenes sin servicios de ejercicio'
-        },
+          type: 'Análisis Pendiente',
+          count: 0,
+          description: 'Configure la ubicación de su negocio para ver oportunidades reales',
+          action: 'Actualizar dirección con coordenadas GPS'
+        }
       ];
 
       // 8. Ranking competitivo
@@ -193,7 +436,7 @@ export default function BusinessInsights() {
         petsBySpecies,
         petsByAge,
         topBreeds,
-        nearbyPets: Math.floor((totalPets || 0) * 0.15), // Simulado: 15% cerca
+        nearbyPets: locationInsights?.nearbyPets || 0, // Datos reales de ubicación
         servicesDemand: servicesDemandArray,
         peakHours,
         monthlyTrends: [], // Se puede implementar después
@@ -320,6 +563,25 @@ export default function BusinessInsights() {
         {/* Métricas Principales */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>📊 Panorama del Mercado</Text>
+          
+          {/* Información de ubicación del negocio */}
+          {locationInsights?.hasCoordinates && (
+            <Card style={styles.locationCard}>
+              <Text style={styles.locationTitle}>📍 Tu Ubicación</Text>
+              <Text style={styles.locationText}>
+                {locationInsights.partnerLocation.address}
+              </Text>
+              {locationInsights.partnerLocation.barrio && (
+                <Text style={styles.locationBarrio}>
+                  Barrio: {locationInsights.partnerLocation.barrio}
+                </Text>
+              )}
+              <Text style={styles.locationCoords}>
+                GPS: {locationInsights.partnerLocation.lat.toFixed(4)}, {locationInsights.partnerLocation.lon.toFixed(4)}
+              </Text>
+            </Card>
+          )}
+          
           <View style={styles.metricsGrid}>
             {renderMetricCard(
               'Total Mascotas',
@@ -329,8 +591,8 @@ export default function BusinessInsights() {
             )}
             {renderMetricCard(
               'En tu Zona',
-              insights?.nearbyPets || 0,
-              'Mascotas cerca de tu negocio',
+              locationInsights?.nearbyPets || 0,
+              locationInsights?.hasCoordinates ? 'Dentro de 5km de tu negocio' : 'Configure ubicación GPS',
               <MapPin size={24} color="#10B981" />
             )}
             {renderMetricCard(
@@ -341,6 +603,96 @@ export default function BusinessInsights() {
             )}
           </View>
         </View>
+
+        {/* Análisis de Ubicación Detallado */}
+        {locationInsights?.hasCoordinates && (
+          <Card style={styles.chartCard}>
+            <Text style={styles.chartTitle}>🗺️ Análisis de Ubicación Detallado</Text>
+            
+            <View style={styles.locationAnalysis}>
+              <View style={styles.locationMetric}>
+                <Text style={styles.locationMetricTitle}>Mismo Barrio</Text>
+                <Text style={styles.locationMetricValue}>{locationInsights.sameNeighborhood}</Text>
+                <Text style={styles.locationMetricLabel}>mascotas</Text>
+              </View>
+              
+              <View style={styles.locationMetric}>
+                <Text style={styles.locationMetricTitle}>Mismo Departamento</Text>
+                <Text style={styles.locationMetricValue}>{locationInsights.sameDepartment}</Text>
+                <Text style={styles.locationMetricLabel}>mascotas</Text>
+              </View>
+              
+              <View style={styles.locationMetric}>
+                <Text style={styles.locationMetricTitle}>Dentro de 10km</Text>
+                <Text style={styles.locationMetricValue}>{locationInsights.withinRadius['10km']}</Text>
+                <Text style={styles.locationMetricLabel}>mascotas</Text>
+              </View>
+              
+              <View style={styles.locationMetric}>
+                <Text style={styles.locationMetricTitle}>Dentro de 20km</Text>
+                <Text style={styles.locationMetricValue}>{locationInsights.withinRadius['20km']}</Text>
+                <Text style={styles.locationMetricLabel}>mascotas</Text>
+              </View>
+            </View>
+            
+            {/* Distribución por especies en la zona */}
+            {locationInsights.petsBySpecies && (
+              <View style={styles.nearbySpeciesSection}>
+                <Text style={styles.nearbySpeciesTitle}>Mascotas en tu Zona (10km)</Text>
+                <View style={styles.nearbySpeciesGrid}>
+                  <View style={styles.nearbySpeciesItem}>
+                    <Text style={styles.nearbySpeciesIcon}>🐕</Text>
+                    <Text style={styles.nearbySpeciesCount}>{locationInsights.petsBySpecies.dogs}</Text>
+                    <Text style={styles.nearbySpeciesLabel}>Perros</Text>
+                  </View>
+                  <View style={styles.nearbySpeciesItem}>
+                    <Text style={styles.nearbySpeciesIcon}>🐱</Text>
+                    <Text style={styles.nearbySpeciesCount}>{locationInsights.petsBySpecies.cats}</Text>
+                    <Text style={styles.nearbySpeciesLabel}>Gatos</Text>
+                  </View>
+                  <View style={styles.nearbySpeciesItem}>
+                    <Text style={styles.nearbySpeciesIcon}>🐾</Text>
+                    <Text style={styles.nearbySpeciesCount}>{locationInsights.petsBySpecies.others}</Text>
+                    <Text style={styles.nearbySpeciesLabel}>Otros</Text>
+                  </View>
+                </View>
+              </View>
+            )}
+            
+            {/* Top razas cercanas */}
+            {locationInsights.topNearbyBreeds && locationInsights.topNearbyBreeds.length > 0 && (
+              <View style={styles.nearbyBreedsSection}>
+                <Text style={styles.nearbyBreedsTitle}>Razas Más Comunes Cerca (10km)</Text>
+                {locationInsights.topNearbyBreeds.slice(0, 5).map((breed: any, index: number) => (
+                  <View key={index} style={styles.nearbyBreedItem}>
+                    <Text style={styles.nearbyBreedName}>{breed.breed}</Text>
+                    <Text style={styles.nearbyBreedCount}>{breed.count} mascotas</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </Card>
+        )}
+        
+        {/* Mensaje si no tiene coordenadas */}
+        {!locationInsights?.hasCoordinates && (
+          <Card style={styles.noLocationCard}>
+            <Text style={styles.noLocationTitle}>📍 Mejora tu Análisis de Ubicación</Text>
+            <Text style={styles.noLocationText}>
+              {locationInsights?.message || 'Para obtener insights precisos sobre mascotas en tu zona, configura las coordenadas GPS de tu negocio.'}
+            </Text>
+            <TouchableOpacity 
+              style={styles.configureLocationButton}
+              onPress={() => router.push({
+                pathname: '/partner/configure-business',
+                params: { businessId: partnerId }
+              })}
+            >
+              <MapPin size={16} color="#3B82F6" />
+              <Text style={styles.configureLocationText}>Configurar Ubicación</Text>
+            </TouchableOpacity>
+          </Card>
+        )}
 
         {/* Distribución por Especies */}
         <Card style={styles.chartCard}>
@@ -438,11 +790,17 @@ export default function BusinessInsights() {
         {/* Oportunidades de Mercado */}
         <Card style={styles.opportunitiesCard}>
           <Text style={styles.chartTitle}>🎯 Oportunidades de Mercado</Text>
-          <Text style={styles.opportunitiesSubtitle}>
-            Identifica nichos de mercado para hacer crecer tu negocio
-          </Text>
+          {locationInsights?.hasCoordinates ? (
+            <Text style={styles.opportunitiesSubtitle}>
+              Oportunidades reales basadas en mascotas en tu zona
+            </Text>
+          ) : (
+            <Text style={styles.opportunitiesSubtitle}>
+              Configure su ubicación GPS para ver oportunidades reales
+            </Text>
+          )}
           
-          {insights?.opportunities.map((opportunity, index) => (
+          {(locationInsights?.recommendations || insights?.opportunities || []).map((opportunity: any, index: number) => (
             <View key={index} style={styles.opportunityItem}>
               <View style={styles.opportunityHeader}>
                 <Text style={styles.opportunityType}>{opportunity.type}</Text>
@@ -451,10 +809,12 @@ export default function BusinessInsights() {
                 </View>
               </View>
               <Text style={styles.opportunityDescription}>{opportunity.description}</Text>
-              <TouchableOpacity style={styles.opportunityAction}>
-                <Target size={16} color="#3B82F6" />
-                <Text style={styles.opportunityActionText}>Crear campaña dirigida</Text>
-              </TouchableOpacity>
+              {opportunity.action && (
+                <TouchableOpacity style={styles.opportunityAction}>
+                  <Target size={16} color="#3B82F6" />
+                  <Text style={styles.opportunityActionText}>{opportunity.action}</Text>
+                </TouchableOpacity>
+              )}
             </View>
           ))}
         </Card>
@@ -489,9 +849,14 @@ export default function BusinessInsights() {
               <TrendingUp size={20} color="#10B981" />
             </View>
             <View style={styles.recommendationContent}>
-              <Text style={styles.recommendationTitle}>Oportunidad de Crecimiento</Text>
+              <Text style={styles.recommendationTitle}>
+                {locationInsights?.hasCoordinates ? 'Análisis de Zona Real' : 'Oportunidad de Crecimiento'}
+              </Text>
               <Text style={styles.recommendationText}>
-                Hay {insights?.nearbyPets || 0} mascotas en tu zona. Considera ofrecer promociones para atraer nuevos clientes.
+                {locationInsights?.hasCoordinates 
+                  ? `Hay ${locationInsights.nearbyPets} mascotas dentro de 5km de tu negocio. ${locationInsights.sameNeighborhood > 0 ? `${locationInsights.sameNeighborhood} están en tu mismo barrio.` : ''}`
+                  : `Configure las coordenadas GPS de su negocio para obtener análisis precisos de mascotas en su zona.`
+                }
               </Text>
             </View>
           </View>
@@ -515,7 +880,10 @@ export default function BusinessInsights() {
             <View style={styles.recommendationContent}>
               <Text style={styles.recommendationTitle}>Segmentación</Text>
               <Text style={styles.recommendationText}>
-                {insights?.petsBySpecies[0]?.species || 'Perros'} representan el {insights?.petsBySpecies[0]?.percentage || 0}% del mercado. Enfoca tus servicios en esta audiencia.
+                {locationInsights?.hasCoordinates && locationInsights.petsBySpecies
+                  ? `En tu zona: ${locationInsights.petsBySpecies.dogs} perros y ${locationInsights.petsBySpecies.cats} gatos. Ajusta tus servicios según la demanda local.`
+                  : `${insights?.petsBySpecies[0]?.species || 'Perros'} representan el ${insights?.petsBySpecies[0]?.percentage || 0}% del mercado general.`
+                }
               </Text>
             </View>
           </View>
@@ -941,5 +1309,163 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
     lineHeight: 18,
+  },
+  locationCard: {
+    marginBottom: 16,
+    backgroundColor: '#F0F9FF',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  locationTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#0369A1',
+    marginBottom: 8,
+  },
+  locationText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#0369A1',
+    marginBottom: 4,
+  },
+  locationBarrio: {
+    fontSize: 13,
+    fontFamily: 'Inter-Medium',
+    color: '#0369A1',
+    marginBottom: 4,
+  },
+  locationCoords: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#0369A1',
+    opacity: 0.8,
+  },
+  locationAnalysis: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  locationMetric: {
+    width: '48%',
+    backgroundColor: '#F8FAFC',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  locationMetricTitle: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  locationMetricValue: {
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
+    color: '#10B981',
+    marginBottom: 2,
+  },
+  locationMetricLabel: {
+    fontSize: 11,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+  },
+  nearbySpeciesSection: {
+    marginBottom: 20,
+  },
+  nearbySpeciesTitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#111827',
+    marginBottom: 12,
+  },
+  nearbySpeciesGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  nearbySpeciesItem: {
+    alignItems: 'center',
+  },
+  nearbySpeciesIcon: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  nearbySpeciesCount: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: '#111827',
+    marginBottom: 2,
+  },
+  nearbySpeciesLabel: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+  },
+  nearbyBreedsSection: {
+    marginTop: 16,
+  },
+  nearbyBreedsTitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#111827',
+    marginBottom: 12,
+  },
+  nearbyBreedItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 6,
+    marginBottom: 4,
+  },
+  nearbyBreedName: {
+    fontSize: 13,
+    fontFamily: 'Inter-Medium',
+    color: '#111827',
+  },
+  nearbyBreedCount: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+  },
+  noLocationCard: {
+    marginBottom: 16,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  noLocationTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#92400E',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  noLocationText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#92400E',
+    textAlign: 'center',
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  configureLocationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#3B82F6',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  configureLocationText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#FFFFFF',
+    marginLeft: 6,
   },
 });
