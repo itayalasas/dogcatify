@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Image, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Calendar, DollarSign, Users, Package, TrendingUp, Clock, MessageCircle, ChartBar as BarChart3 } from 'lucide-react-native';
+import { Calendar, DollarSign, Users, Package, TrendingUp, Clock, MessageCircle, ChartBar as BarChart3, Settings } from 'lucide-react-native';
 import { Card } from '../../components/ui/Card';
 import { useAuth } from '../../contexts/AuthContext'; 
 import { supabaseClient } from '../../lib/supabase';
@@ -401,6 +401,17 @@ export default function PartnerDashboard() {
           >
             <BarChart3 size={24} color="#8B5CF6" />
             <Text style={styles.quickActionText}>Inteligencia de Negocio</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.quickAction} 
+            onPress={() => router.push({
+              pathname: '/partner/edit-business',
+              params: { businessId: partnerProfile?.id }
+            })}
+          >
+            <Settings size={24} color="#6B7280" />
+            <Text style={styles.quickActionText}>Editar Negocio</Text>
           </TouchableOpacity>
           
   return (
