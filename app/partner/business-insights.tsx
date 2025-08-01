@@ -894,7 +894,10 @@ export default function BusinessInsights() {
 
         {/* Distribución por Edad */}
         <Card style={styles.chartCard}>
-          <Text style={styles.chartTitle}>📅 Distribución por Edad</Text>
+          <Text style={styles.chartTitle}>📅 Distribución por Edad (Datos Reales)</Text>
+          <Text style={styles.chartSubtitle}>
+            Basado en edades reales de mascotas registradas
+          </Text>
           <View style={styles.ageChart}>
             {insights?.petsByAge.map((ageGroup, index) => (
               <View key={index} style={styles.ageItem}>
@@ -903,11 +906,13 @@ export default function BusinessInsights() {
                   <View 
                     style={[
                       styles.ageBarFill,
-                      { width: `${ageGroup.percentage}%` }
+                      { width: `${Math.max(ageGroup.percentage, 1)}%` } // Minimum 1% for visibility
                     ]} 
                   />
                 </View>
-                <Text style={styles.agePercentage}>{ageGroup.percentage}%</Text>
+                <Text style={styles.agePercentage}>
+                  {ageGroup.count} mascotas ({ageGroup.percentage}%)
+                </Text>
               </View>
             ))}
           </View>
@@ -1235,13 +1240,6 @@ const styles = StyleSheet.create({
   trendStable: {
     backgroundColor: '#DBEAFE',
   },
-  noDataText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
   peakHoursChart: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -1556,5 +1554,12 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
     color: '#FFFFFF',
     marginLeft: 6,
+  },
+  noDataText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });
