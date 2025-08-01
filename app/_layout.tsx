@@ -64,6 +64,7 @@ export default function RootLayout() {
                 <Stack.Screen name="partner/orders" />
                 <Stack.Screen name="partner/clients" />
                 <Stack.Screen name="partner/manage-products" />
+                <Stack.Screen name="partner/business-insights" />
                 <Stack.Screen name="profile/edit" />
                 <Stack.Screen name="profile/mercadopago-config" />
                 <Stack.Screen name="payment/success" />
