@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Dimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, TrendingUp, Users, MapPin, Calendar, Target, Award, BarChart3, PieChart, Activity } from 'lucide-react-native';
+import { ArrowLeft, TrendingUp, Users, MapPin, Calendar, Target, Award, ChartBar as BarChart3, ChartPie as PieChart, Activity } from 'lucide-react-native';
 import { Card } from '../../components/ui/Card';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabaseClient } from '../../lib/supabase';
