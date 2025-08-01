@@ -559,6 +559,7 @@ export default function EditProfile() {
               editable={!!selectedDepartment}
               style={!selectedDepartment ? styles.disabledInput : undefined}
             />
+          </View>
         </Card>
       </ScrollView>
 
