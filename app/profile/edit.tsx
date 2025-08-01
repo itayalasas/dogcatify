@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, Image, Platform, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, Image, Platform, Modal } from 'react-native';
 import { router } from 'expo-router';
-import { ArrowLeft, Camera, Upload, User, Phone, MapPin, Mail } from 'lucide-react-native';
+import { ArrowLeft, Camera, Upload, User, Phone, MapPin, Mail, ChevronDown, Check } from 'lucide-react-native';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -18,13 +18,31 @@ export default function EditProfile() {
   const [displayName, setDisplayName] = useState(currentUser?.displayName || '');
   const [email, setEmail] = useState(currentUser?.email || '');
   const [phone, setPhone] = useState('');
+  const [location, setLocation] = useState('');
   const [address, setAddress] = useState('');
+  
+  // Nuevos campos de dirección
+  const [selectedCountry, setSelectedCountry] = useState<any>(null);
+  const [selectedDepartment, setSelectedDepartment] = useState<any>(null);
+  const [departmentQuery, setDepartmentQuery] = useState('');
+  const [showDepartmentSuggestions, setShowDepartmentSuggestions] = useState(false);
+  const [calle, setCalle] = useState('');
+  const [numero, setNumero] = useState('');
+  const [barrio, setBarrio] = useState('');
+  const [codigoPostal, setCodigoPostal] = useState('');
+  const [latitud, setLatitud] = useState('');
+  const [longitud, setLongitud] = useState('');
+  
+  // Estados para los dropdowns
+  const [countries, setCountries] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [filteredDepartments, setFilteredDepartments] = useState<any[]>([]);
+  const [showCountrySelector, setShowCountrySelector] = useState(false);
+  const [showCountryModal, setShowCountryModal] = useState(false);
+  
   const [bio, setBio] = useState('');
   const [profileImage, setProfileImage] = useState<string | null>(currentUser?.photoURL || null);
   const [selectedImage, setSelectedImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
-  const [departmentQuery, setDepartmentQuery] = useState('');
-  const [selectedCountry, setSelectedCountry] = useState(null);
-  const [showDepartmentSuggestions, setShowDepartmentSuggestions] = useState(false);
   
   // UI state
   const [loading, setLoading] = useState(false);
@@ -36,12 +54,137 @@ export default function EditProfile() {
       setDisplayName(currentUser.displayName || '');
       setEmail(currentUser.email || '');
       setPhone(currentUser.phone || '');
-      setAddress(currentUser.location || '');
+      setLocation(currentUser.location || '');
       setBio(currentUser.bio || '');
       setProfileImage(currentUser.photoURL || null);
     }
+    
+    // Cargar países y datos de dirección
+    loadCountries();
+    loadUserAddressData();
   }, [currentUser]);
 
+  const loadCountries = async () => {
+    try {
+      const { data, error } = await supabaseClient
+        .from('countries')
+        .select('*')
+        .order('name', { ascending: true });
+      
+      if (error) throw error;
+      setCountries(data || []);
+      
+      // Seleccionar Uruguay por defecto si no hay país seleccionado
+      if (!selectedCountry && data && data.length > 0) {
+        const uruguay = data.find(country => country.code === 'UY');
+        if (uruguay) {
+          setSelectedCountry(uruguay);
+          loadDepartments(uruguay.id);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading countries:', error);
+    }
+  };
+
+  const loadDepartments = async (countryId: string) => {
+    try {
+      const { data, error } = await supabaseClient
+        .from('departments')
+        .select('*')
+        .eq('country_id', countryId)
+        .order('name', { ascending: true });
+      
+      if (error) throw error;
+      setDepartments(data || []);
+      setFilteredDepartments(data || []);
+    } catch (error) {
+      console.error('Error loading departments:', error);
+    }
+  };
+
+  const loadUserAddressData = async () => {
+    if (!currentUser) return;
+    
+    try {
+      const { data, error } = await supabaseClient
+        .from('profiles')
+        .select(`
+          *,
+          countries(*),
+          departments(*)
+        `)
+        .eq('id', currentUser.id)
+        .single();
+      
+      if (error) throw error;
+      
+      if (data) {
+        setCalle(data.calle || '');
+        setNumero(data.numero || '');
+        setBarrio(data.barrio || '');
+        setCodigoPostal(data.codigo_postal || '');
+        setLatitud(data.latitud || '');
+        setLongitud(data.longitud || '');
+        
+        if (data.countries) {
+          setSelectedCountry(data.countries);
+          // Cargar departamentos del país seleccionado
+          await loadDepartments(data.countries.id);
+        }
+        
+        if (data.departments) {
+          setSelectedDepartment(data.departments);
+          setDepartmentQuery(data.departments.name);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading user address data:', error);
+    }
+  };
+
+  const handleCountrySelect = async (country: any) => {
+    setSelectedCountry(country);
+    setSelectedDepartment(null); // Reset department when country changes
+    setDepartmentQuery(''); // Reset department query
+    setShowCountryModal(false);
+    
+    // Cargar departamentos del país seleccionado
+    await loadDepartments(country.id);
+  };
+
+  const handleDepartmentSelect = (department: any) => {
+    setSelectedDepartment(department);
+    setDepartmentQuery(department.name);
+    setShowDepartmentSuggestions(false);
+  };
+
+  const handleDepartmentInputChange = (text: string) => {
+    setDepartmentQuery(text);
+    
+    // Filter departments based on input
+    if (text.trim()) {
+      const filtered = departments.filter(dept =>
+        dept.name.toLowerCase().includes(text.toLowerCase())
+      );
+      setFilteredDepartments(filtered);
+      setShowDepartmentSuggestions(true);
+    } else {
+      setFilteredDepartments(departments);
+      setShowDepartmentSuggestions(false);
+      setSelectedDepartment(null);
+    }
+    
+    // Check if the text matches exactly a department
+    const exactMatch = departments.find(dept => 
+      dept.name.toLowerCase() === text.toLowerCase()
+    );
+    if (exactMatch && selectedDepartment?.id !== exactMatch.id) {
+      setSelectedDepartment(exactMatch);
+    } else if (!exactMatch && selectedDepartment) {
+      setSelectedDepartment(null);
+    }
+  };
   const handleSelectPhoto = async () => {
     try {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -168,10 +311,6 @@ export default function EditProfile() {
     }
   };
 
-  const handleDepartmentInputChange = (text: string) => {
-    setDepartmentQuery(text);
-  };
-
   const handleSaveProfile = async () => {
     if (!displayName.trim()) {
       Alert.alert('Error', 'El nombre es obligatorio');
@@ -207,8 +346,17 @@ export default function EditProfile() {
           display_name: displayName.trim(),
           photo_url: photoURL || null,
           phone: phone.trim() || null,
-          location: address.trim() || null,
+          location: address.trim() || null, // Mantener para compatibilidad
           bio: bio.trim() || null,
+          // Nuevos campos de dirección
+          country_id: selectedCountry?.id || null,
+          department_id: selectedDepartment?.id || null,
+          calle: calle.trim() || null,
+          numero: numero.trim() || null,
+          barrio: barrio.trim() || null,
+          codigo_postal: codigoPostal.trim() || null,
+          latitud: latitud.trim() || null,
+          longitud: longitud.trim() || null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', currentUser.id);
@@ -292,21 +440,13 @@ export default function EditProfile() {
                   <Camera size={20} color="#FFFFFF" />
                 </View>
               </TouchableOpacity>
+              <Text style={styles.photoHint}>Toca para cambiar la foto</Text>
             </View>
           </View>
 
+          {/* Basic Information */}
           <View style={styles.section}>
-            <View style={styles.departmentInputWrapper}>
-              <TextInput
-                style={[styles.departmentInput, !selectedCountry && styles.disabledInput]}
-                placeholder={selectedCountry ? "Escribe para buscar departamento..." : "Primero selecciona un país"}
-                value={departmentQuery}
-                onChangeText={handleDepartmentInputChange}
-                onFocus={() => setShowDepartmentSuggestions(true)}
-                editable={!!selectedCountry}
-                placeholderTextColor={selectedCountry ? "#9CA3AF" : "#D1D5DB"}
-              />
-            </View>
+            <Text style={styles.sectionTitle}>Información Básica</Text>
             
             <Input
               label="Nombre completo *"
@@ -338,11 +478,95 @@ export default function EditProfile() {
             />
 
             <Input
-              label="Dirección"
-              placeholder="Tu dirección completa"
+              label="País"
+              placeholder="Selecciona tu país"
+              value={selectedCountry?.name || ''}
+              editable={false}
+              onTouchStart={() => setShowCountryModal(true)}
+              leftIcon={<MapPin size={20} color="#6B7280" />}
+              rightIcon={<ChevronDown size={20} color="#6B7280" />}
+            />
+
+            <View style={styles.departmentInputGroup}>
+              <Text style={styles.departmentLabel}>Departamento</Text>
+              <View style={styles.departmentInputContainer}>
+                <MapPin size={20} color="#6B7280" style={styles.departmentIcon} />
+                <TextInput
+                  style={[
+                    styles.departmentInput,
+                    !selectedCountry && styles.disabledInput
+                  ]}
+                  placeholder={selectedCountry ? "Escribe para buscar departamento..." : "Primero selecciona un país"}
+                  value={departmentQuery}
+                  onChangeText={handleDepartmentInputChange}
+                  onFocus={() => selectedCountry && setShowDepartmentSuggestions(true)}
+                  editable={!!selectedCountry}
+                />
+              </View>
+              
+              {showDepartmentSuggestions && filteredDepartments.length > 0 && selectedCountry && (
+                <View style={styles.departmentSuggestions}>
+                  {filteredDepartments.slice(0, 6).map((department) => (
+                    <TouchableOpacity
+                      key={department.id}
+                      style={styles.departmentSuggestion}
+                      onPress={() => handleDepartmentSelect(department)}
+                    >
+                      <Text style={styles.departmentSuggestionText}>{department.name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </View>
+
+            <Input
+              label="Calle"
+              placeholder="Nombre de la calle"
+              value={calle}
+              onChangeText={setCalle}
+              editable={!!selectedDepartment}
+              style={!selectedDepartment ? styles.disabledInput : undefined}
+            />
+
+            <View style={styles.row}>
+              <View style={styles.halfWidth}>
+                <Input
+                  label="Número"
+                  placeholder="1234"
+                  value={numero}
+                  onChangeText={setNumero}
+                  editable={!!selectedDepartment}
+                  style={!selectedDepartment ? styles.disabledInput : undefined}
+                />
+              </View>
+              <View style={styles.halfWidth}>
+                <Input
+                  label="Código Postal"
+                  placeholder="11800"
+                  value={codigoPostal}
+                  onChangeText={setCodigoPostal}
+                  editable={!!selectedDepartment}
+                  style={!selectedDepartment ? styles.disabledInput : undefined}
+                />
+              </View>
+            </View>
+
+            <Input
+              label="Barrio"
+              placeholder="Nombre del barrio"
+              value={barrio}
+              onChangeText={setBarrio}
+              editable={!!selectedDepartment}
+              style={!selectedDepartment ? styles.disabledInput : undefined}
+            />
+
+            <Input
+              label="Dirección completa (opcional)"
+              placeholder="Dirección completa para referencia"
               value={address}
               onChangeText={setAddress}
-              leftIcon={<MapPin size={20} color="#6B7280" />}
+              editable={!!selectedDepartment}
+              style={!selectedDepartment ? styles.disabledInput : undefined}
             />
 
             <Input
@@ -354,16 +578,74 @@ export default function EditProfile() {
               numberOfLines={4}
             />
           </View>
-
-          <Button
-            title={uploadingImage ? "Subiendo foto..." : "Guardar Cambios"}
-            onPress={handleSaveProfile}
+            placeholder={selectedCountry ? "Escribe para buscar departamento..." : "Primero selecciona un país"}
+            value={departmentQuery}
+            onChangeText={handleDepartmentInputChange}
+            onFocus={() => selectedCountry && setShowDepartmentSuggestions(true)}
+            editable={!!selectedCountry}
             loading={loading || uploadingImage}
-            size="large"
             disabled={uploadingImage}
           />
+          
+          {showDepartmentSuggestions && filteredDepartments.length > 0 && selectedCountry && (
+            <View style={styles.departmentSuggestions}>
+              {filteredDepartments.slice(0, 6).map((department) => (
+                <TouchableOpacity
+                  key={department.id}
+                  style={styles.departmentSuggestion}
+                  onPress={() => handleDepartmentSelect(department)}
+                >
+                  <Text style={styles.departmentSuggestionText}>{department.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </Card>
       </ScrollView>
+
+      {/* Modal de selección de país */}
+      <Modal
+        visible={showCountryModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCountryModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Seleccionar País</Text>
+              <TouchableOpacity onPress={() => setShowCountryModal(false)}>
+                <Text style={styles.modalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.optionsList}>
+              {countries.map((country) => (
+                <TouchableOpacity
+                  key={country.id}
+                  style={[
+                    styles.optionItem,
+                    selectedCountry?.id === country.id && styles.selectedOptionItem
+                  ]}
+                  onPress={() => handleCountrySelect(country)}
+                >
+                  <Text style={[
+                    styles.optionText,
+                    selectedCountry?.id === country.id && styles.selectedOptionText
+                  ]}>
+                    {country.name}
+                  </Text>
+                  {selectedCountry?.id === country.id && (
+                    <Check size={16} color="#2D6A6F" />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de selección de departamento */}
     </SafeAreaView>
   );
 }
@@ -413,14 +695,9 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
-  },
-  departmentInputWrapper: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 12,
-  },
-  departmentInput: {
-    padding: 12,
+    fontFamily: 'Inter-SemiBold',
+    color: '#111827',
+    marginBottom: 16,
   },
   photoContainer: {
     alignItems: 'center',
@@ -472,5 +749,126 @@ const styles = StyleSheet.create({
   disabledInput: {
     backgroundColor: '#F9FAFB',
     color: '#9CA3AF',
+  },
+  departmentInputGroup: {
+    marginBottom: 14,
+    position: 'relative',
+  },
+  departmentLabel: {
+    fontSize: 15,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+    marginBottom: 6,
+  },
+  departmentInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    minHeight: 50,
+  },
+  departmentIcon: {
+    marginRight: 10,
+  },
+  departmentInput: {
+    flex: 1,
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#111827',
+  },
+  departmentSuggestions: {
+    position: 'absolute',
+    top: 76,
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    marginTop: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 1000,
+    maxHeight: 200,
+  },
+  departmentSuggestion: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  departmentSuggestionText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  halfWidth: {
+    flex: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: '70%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: '#111827',
+  },
+  modalCloseText: {
+    fontSize: 18,
+    color: '#6B7280',
+  },
+  optionsList: {
+    maxHeight: 400,
+  },
+  optionItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  selectedOptionItem: {
+    backgroundColor: '#F0F9FF',
+  },
+  optionText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+    flex: 1,
+  },
+  selectedOptionText: {
+    color: '#2D6A6F',
+    fontFamily: 'Inter-Medium',
   },
 });
