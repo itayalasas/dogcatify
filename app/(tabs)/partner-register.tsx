@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, Image } from 'react-native';
 import { router } from 'expo-router';
 import { ArrowLeft, Building, Camera, MapPin, Phone, Mail, FileText, DollarSign } from 'lucide-react-native';
+import { ChevronDown, Check } from 'lucide-react-native';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotifications } from '../../contexts/NotificationContext';
 import * as ImagePicker from 'expo-image-picker';
+import { Modal, TextInput } from 'react-native';
 import { supabaseClient } from '../../lib/supabase';
 import { NotificationService } from '@/utils/notifications';
 
@@ -91,7 +93,6 @@ export default function PartnerRegister() {
   const [selectedType, setSelectedType] = useState<string>('');
   const [businessName, setBusinessName] = useState('');
   const [description, setDescription] = useState('');
-  const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState(currentUser?.email || '');
   const [logo, setLogo] = useState<string | null>(null);
@@ -99,6 +100,205 @@ export default function PartnerRegister() {
   const [hasShipping, setHasShipping] = useState(false);
   const [shippingCost, setShippingCost] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // Nuevos campos de ubicación
+  const [selectedCountry, setSelectedCountry] = useState<any>(null);
+  const [selectedDepartment, setSelectedDepartment] = useState<any>(null);
+  const [departmentQuery, setDepartmentQuery] = useState('');
+  const [showDepartmentSuggestions, setShowDepartmentSuggestions] = useState(false);
+  const [calle, setCalle] = useState('');
+  const [numero, setNumero] = useState('');
+  const [barrio, setBarrio] = useState('');
+  const [codigoPostal, setCodigoPostal] = useState('');
+  const [latitud, setLatitud] = useState('');
+  const [longitud, setLongitud] = useState('');
+  
+  // Estados para los dropdowns
+  const [countries, setCountries] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [filteredDepartments, setFilteredDepartments] = useState<any[]>([]);
+  const [showCountryModal, setShowCountryModal] = useState(false);
+  
+  // Estados para geocodificación
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [geocodingResults, setGeocodingResults] = useState<any[]>([]);
+  const [showGeocodingResults, setShowGeocodingResults] = useState(false);
+  const [selectedGeocodingResult, setSelectedGeocodingResult] = useState<any>(null);
+
+  useEffect(() => {
+    loadCountries();
+  }, []);
+
+  const loadCountries = async () => {
+    try {
+      const { data, error } = await supabaseClient
+        .from('countries')
+        .select('*')
+        .order('name', { ascending: true });
+      
+      if (error) throw error;
+      setCountries(data || []);
+      
+      // Seleccionar Uruguay por defecto
+      if (data && data.length > 0) {
+        const uruguay = data.find(country => country.code === 'UY');
+        if (uruguay) {
+          setSelectedCountry(uruguay);
+          loadDepartments(uruguay.id);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading countries:', error);
+    }
+  };
+
+  const loadDepartments = async (countryId: string) => {
+    try {
+      const { data, error } = await supabaseClient
+        .from('departments')
+        .select('*')
+        .eq('country_id', countryId)
+        .order('name', { ascending: true });
+      
+      if (error) throw error;
+      setDepartments(data || []);
+      setFilteredDepartments(data || []);
+    } catch (error) {
+      console.error('Error loading departments:', error);
+    }
+  };
+
+  const handleCountrySelect = async (country: any) => {
+    setSelectedCountry(country);
+    setSelectedDepartment(null);
+    setDepartmentQuery('');
+    setShowCountryModal(false);
+    await loadDepartments(country.id);
+  };
+
+  const handleDepartmentSelect = (department: any) => {
+    setSelectedDepartment(department);
+    setDepartmentQuery(department.name);
+    setShowDepartmentSuggestions(false);
+  };
+
+  const handleDepartmentInputChange = (text: string) => {
+    setDepartmentQuery(text);
+    
+    if (text.trim()) {
+      const filtered = departments.filter(dept =>
+        dept.name.toLowerCase().includes(text.toLowerCase())
+      );
+      setFilteredDepartments(filtered);
+      setShowDepartmentSuggestions(true);
+    } else {
+      setFilteredDepartments(departments);
+      setShowDepartmentSuggestions(false);
+      setSelectedDepartment(null);
+    }
+    
+    const exactMatch = departments.find(dept => 
+      dept.name.toLowerCase() === text.toLowerCase()
+    );
+    if (exactMatch && selectedDepartment?.id !== exactMatch.id) {
+      setSelectedDepartment(exactMatch);
+    } else if (!exactMatch && selectedDepartment) {
+      setSelectedDepartment(null);
+    }
+  };
+
+  const performGeocoding = async () => {
+    if (!calle.trim() || !numero.trim() || !selectedDepartment || !selectedCountry) {
+      Alert.alert('Información incompleta', 'Por favor completa calle, número, departamento y país para buscar la ubicación');
+      return;
+    }
+
+    setIsGeocoding(true);
+    setGeocodingResults([]);
+    setShowGeocodingResults(false);
+
+    try {
+      const query = `${calle.trim()}+${numero.trim()}+${selectedDepartment.name}+${selectedCountry.name}`;
+      const nominatimBaseUrl = process.env.EXPO_PUBLIC_NOMINATIM_BASE_URL || 'https://nominatim.openstreetmap.org';
+      const searchUrl = `${nominatimBaseUrl}/search?q=${query}&format=json&limit=4&addressdetails=1`;
+      
+      const response = await fetch(searchUrl, {
+        headers: {
+          'User-Agent': 'DogCatiFy/1.0 (contact@dogcatify.com)'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error en la API de geocodificación: ${response.status}`);
+      }
+
+      const results = await response.json();
+
+      if (!results || results.length === 0) {
+        Alert.alert('Sin resultados', 'No se encontraron ubicaciones para la dirección ingresada.');
+        return;
+      }
+
+      setGeocodingResults(results.slice(0, 5));
+      setShowGeocodingResults(true);
+    } catch (error) {
+      console.error('Error en geocodificación:', error);
+      Alert.alert('Error', 'No se pudo obtener la ubicación.');
+    } finally {
+      setIsGeocoding(false);
+    }
+  };
+
+  const handleSelectGeocodingResult = (result: any) => {
+    const displayName = result.display_name || '';
+    const parts = displayName.split(',').map((part: string) => part.trim());
+    
+    // Buscar código postal
+    const postalCodeMatch = displayName.match(/\b\d{5}\b/);
+    if (postalCodeMatch) {
+      setCodigoPostal(postalCodeMatch[0]);
+    }
+    
+    // Extraer barrio
+    let barrioFound = '';
+    const streetIndex = parts.findIndex(part => 
+      part.toLowerCase().includes(calle.toLowerCase())
+    );
+    
+    if (streetIndex >= 0 && streetIndex + 1 < parts.length) {
+      const possibleBarrio = parts[streetIndex + 1];
+      if (possibleBarrio && 
+          possibleBarrio !== selectedDepartment?.name && 
+          possibleBarrio !== selectedCountry?.name &&
+          !possibleBarrio.match(/\b\d{5}\b/) && 
+          possibleBarrio.length > 2) {
+        barrioFound = possibleBarrio;
+      }
+    }
+    
+    if (!barrioFound && result.address) {
+      const address = result.address;
+      barrioFound = address.neighbourhood || 
+                   address.suburb || 
+                   address.quarter || 
+                   address.district || '';
+    }
+    
+    if (barrioFound) {
+      setBarrio(barrioFound);
+    }
+    
+    setLatitud(result.lat);
+    setLongitud(result.lon);
+    setSelectedGeocodingResult(result);
+    setShowGeocodingResults(false);
+    
+    Alert.alert(
+      'Ubicación encontrada',
+      `Se ha encontrado la ubicación exacta de tu negocio.\n\nCoordenadas: ${result.lat}, ${result.lon}${barrioFound ? `\nBarrio: ${barrioFound}` : ''}`,
+      [{ text: 'Perfecto' }]
+    );
+  };
 
   const pickDocument = async () => {
     try {
@@ -263,7 +463,7 @@ export default function PartnerRegister() {
   };
 
   const handleSubmit = async () => {
-    if (!selectedType || !businessName || !description || !address || !phone) {
+    if (!selectedType || !businessName || !description || !calle || !numero || !selectedCountry || !selectedDepartment || !phone) {
       Alert.alert('Error', 'Por favor completa todos los campos obligatorios');
       return;
     }
@@ -296,13 +496,22 @@ export default function PartnerRegister() {
           business_name: businessName.trim(),
           business_type: selectedType,
           description: description.trim(),
-          address: address.trim(),
+          address: fullAddress,
           phone: phone.trim(),
           email: email.trim(),
           logo: logoUrl,
           images: imageUrls,
           has_shipping: hasShipping,
           shipping_cost: hasShipping ? parseFloat(shippingCost) || 0 : 0,
+          // Nuevos campos de ubicación
+          country_id: selectedCountry.id,
+          department_id: selectedDepartment.id,
+          calle: calle.trim(),
+          numero: numero.trim(),
+          barrio: barrio.trim() || null,
+          codigo_postal: codigoPostal.trim() || null,
+          latitud: latitud.trim() || null,
+          longitud: longitud.trim() || null,
           is_active: true,
           is_verified: false,
           rating: 0,
@@ -314,6 +523,10 @@ export default function PartnerRegister() {
 
       // Check if user has other businesses with Mercado Pago configured
       await replicateMercadoPagoConfig(currentUser.id);
+      
+      // Construir dirección completa para compatibilidad
+      const fullAddress = `${calle} ${numero}, ${barrio ? barrio + ', ' : ''}${selectedDepartment.name}, ${selectedCountry.name}`;
+      
       // Update user profile to be a partner
       const { error: profileError } = await supabaseClient
         .from('profiles')
@@ -425,13 +638,147 @@ export default function PartnerRegister() {
             leftIcon={<FileText size={20} color="#6B7280" />}
           />
 
+          <TouchableOpacity onPress={() => setShowCountryModal(true)}>
+            <Input
+              label="País *"
+              placeholder="Selecciona tu país"
+              value={selectedCountry?.name || ''}
+              editable={false}
+              leftIcon={<MapPin size={20} color="#6B7280" />}
+              rightIcon={<ChevronDown size={20} color="#6B7280" />}
+            />
+          </TouchableOpacity>
+
+          <View style={styles.departmentInputGroup}>
+            <Input
+              label="Departamento *"
+              placeholder={selectedCountry ? "Departamento..." : "Primero selecciona un país"}
+              value={departmentQuery}
+              onChangeText={handleDepartmentInputChange}
+              onFocus={() => selectedCountry && setShowDepartmentSuggestions(true)}
+              editable={!!selectedCountry}
+              leftIcon={<MapPin size={20} color="#6B7280" />}
+              style={!selectedCountry ? styles.disabledInput : undefined}
+            />
+            
+            {showDepartmentSuggestions && filteredDepartments.length > 0 && selectedCountry && (
+              <View style={styles.departmentSuggestions}>
+                {filteredDepartments.slice(0, 6).map((department) => (
+                  <TouchableOpacity
+                    key={department.id}
+                    style={styles.departmentSuggestion}
+                    onPress={() => handleDepartmentSelect(department)}
+                  >
+                    <Text style={styles.departmentSuggestionText}>{department.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+
           <Input
-            label="Dirección *"
-            placeholder="Dirección completa del negocio"
-            value={address}
-            onChangeText={setAddress}
-            leftIcon={<MapPin size={20} color="#6B7280" />}
+            label="Calle *"
+            placeholder="Nombre de la calle"
+            value={calle}
+            onChangeText={setCalle}
+            editable={!!selectedDepartment}
+            style={!selectedDepartment ? styles.disabledInput : undefined}
           />
+
+          <View style={styles.row}>
+            <View style={styles.halfWidth}>
+              <Input
+                label="Número *"
+                placeholder="1234"
+                value={numero}
+                onChangeText={setNumero}
+                editable={!!selectedDepartment}
+                style={!selectedDepartment ? styles.disabledInput : undefined}
+              />
+            </View>
+            <View style={styles.halfWidth}>
+              <Input
+                label="Código Postal"
+                placeholder="11800"
+                value={codigoPostal}
+                onChangeText={setCodigoPostal}
+                editable={!!selectedDepartment}
+                style={!selectedDepartment ? styles.disabledInput : undefined}
+              />
+            </View>
+          </View>
+
+          <Input
+            label="Barrio"
+            placeholder="Nombre del barrio"
+            value={barrio}
+            onChangeText={setBarrio}
+            editable={!!selectedDepartment}
+            style={!selectedDepartment ? styles.disabledInput : undefined}
+          />
+
+          {/* Botón de geocodificación */}
+          {calle.trim() && numero.trim() && selectedDepartment && selectedCountry && (
+            <View style={styles.geocodingSection}>
+              <Button
+                title={isGeocoding ? "Buscando ubicación..." : "🌍 Buscar ubicación exacta"}
+                onPress={performGeocoding}
+                loading={isGeocoding}
+                variant="outline"
+                size="medium"
+              />
+              <Text style={styles.geocodingHint}>
+                Esto completará automáticamente el código postal, barrio y coordenadas GPS
+              </Text>
+            </View>
+          )}
+
+          {/* Resultados de geocodificación */}
+          {showGeocodingResults && geocodingResults.length > 0 && (
+            <View style={styles.geocodingResults}>
+              <Text style={styles.geocodingResultsTitle}>
+                📍 Selecciona la ubicación correcta:
+              </Text>
+              {geocodingResults.map((result, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.geocodingResultItem}
+                  onPress={() => handleSelectGeocodingResult(result)}
+                >
+                  <Text style={styles.geocodingResultAddress}>
+                    {result.display_name}
+                  </Text>
+                  <Text style={styles.geocodingResultType}>
+                    Coordenadas: {result.lat}, {result.lon}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity
+                style={styles.cancelGeocodingButton}
+                onPress={() => setShowGeocodingResults(false)}
+              >
+                <Text style={styles.cancelGeocodingText}>Cancelar búsqueda</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Mostrar coordenadas si están disponibles */}
+          {(latitud || longitud) && (
+            <View style={styles.coordinatesDisplay}>
+              <Text style={styles.coordinatesTitle}>📍 Coordenadas GPS:</Text>
+              <Text style={styles.coordinatesText}>
+                Latitud: {latitud || 'No disponible'}
+              </Text>
+              <Text style={styles.coordinatesText}>
+                Longitud: {longitud || 'No disponible'}
+              </Text>
+              {selectedGeocodingResult && (
+                <Text style={styles.coordinatesNote}>
+                  ✅ Ubicación verificada automáticamente
+                </Text>
+              )}
+            </View>
+          )}
 
           <Input
             label="Teléfono *"
@@ -519,6 +866,48 @@ export default function PartnerRegister() {
           />
         </Card>
       </ScrollView>
+
+      {/* Modal de selección de país */}
+      <Modal
+        visible={showCountryModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCountryModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Seleccionar País</Text>
+              <TouchableOpacity onPress={() => setShowCountryModal(false)}>
+                <Text style={styles.modalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.optionsList}>
+              {countries.map((country) => (
+                <TouchableOpacity
+                  key={country.id}
+                  style={[
+                    styles.optionItem,
+                    selectedCountry?.id === country.id && styles.selectedOptionItem
+                  ]}
+                  onPress={() => handleCountrySelect(country)}
+                >
+                  <Text style={[
+                    styles.optionText,
+                    selectedCountry?.id === country.id && styles.selectedOptionText
+                  ]}>
+                    {country.name}
+                  </Text>
+                  {selectedCountry?.id === country.id && (
+                    <Check size={16} color="#2D6A6F" />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -674,6 +1063,195 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 8,
     marginRight: 8,
+  },
+  disabledInput: {
+    backgroundColor: '#F9FAFB',
+    color: '#9CA3AF',
+  },
+  departmentInputGroup: {
+    position: 'relative',
+    zIndex: 1000,
+  },
+  departmentSuggestions: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    marginTop: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 1001,
+    maxHeight: 200,
+  },
+  departmentSuggestion: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  departmentSuggestionText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  halfWidth: {
+    flex: 1,
+  },
+  geocodingSection: {
+    marginBottom: 20,
+    padding: 16,
+    backgroundColor: '#F0F9FF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  geocodingHint: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#0369A1',
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 16,
+  },
+  geocodingResults: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  geocodingResultsTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#111827',
+    padding: 16,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  geocodingResultItem: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  geocodingResultAddress: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#111827',
+    marginBottom: 4,
+    lineHeight: 20,
+  },
+  geocodingResultType: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+  },
+  cancelGeocodingButton: {
+    padding: 16,
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+  },
+  cancelGeocodingText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+  },
+  coordinatesDisplay: {
+    backgroundColor: '#F0FDF4',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    marginBottom: 16,
+  },
+  coordinatesTitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#166534',
+    marginBottom: 8,
+  },
+  coordinatesText: {
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+    color: '#166534',
+    marginBottom: 2,
+  },
+  coordinatesNote: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#059669',
+    marginTop: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: '70%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: '#111827',
+  },
+  modalCloseText: {
+    fontSize: 18,
+    color: '#6B7280',
+  },
+  optionsList: {
+    maxHeight: 400,
+  },
+  optionItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  selectedOptionItem: {
+    backgroundColor: '#F0F9FF',
+  },
+  optionText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+    flex: 1,
+  },
+  selectedOptionText: {
+    color: '#2D6A6F',
+    fontFamily: 'Inter-Medium',
   },
   shippingSection: {
     marginBottom: 20,
