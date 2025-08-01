@@ -487,30 +487,6 @@ export default function EditProfile() {
               rightIcon={<ChevronDown size={20} color="#6B7280" />}
             />
 
-            <View style={styles.departmentInputGroup}>
-              <Text style={styles.label}>Departamento</Text>
-              <View style={[
-                styles.inputContainer,
-                !selectedCountry && styles.disabledInputContainer
-              ]}>
-                <View style={styles.icon}>
-                  <MapPin size={20} color="#6B7280" />
-                </View>
-                <TextInput
-                  style={[
-                    styles.input,
-                    styles.inputWithLeftIcon,
-                    !selectedCountry && styles.disabledInput
-                  ]}
-                  placeholder={selectedCountry ? "Escribe para buscar departamento..." : "Primero selecciona un país"}
-                  placeholderTextColor="#9CA3AF"
-                  value={departmentQuery}
-                  onChangeText={handleDepartmentInputChange}
-                  onFocus={() => selectedCountry && setShowDepartmentSuggestions(true)}
-                  onBlur={() => setTimeout(() => setShowDepartmentSuggestions(false), 200)}
-                  editable={!!selectedCountry}
-                />
-              </View>
               
               {showDepartmentSuggestions && filteredDepartments.length > 0 && selectedCountry && (
                 <View style={styles.departmentSuggestions}>

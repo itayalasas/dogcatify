@@ -18,6 +18,7 @@ config.resolver.sourceExts = [
   'tsx',
   'js',
   'jsx',
+  'mjs',
   'json',
   'wasm',
   'svg',
