@@ -335,7 +335,6 @@ export default function BusinessInsights() {
         percentage: Math.round((count / (totalPets || 1)) * 100)
       }));
 
-      // 3. Distribución por edad
       // 3. Distribución por edad - DATOS REALES
       const { data: petsWithAge, error: ageError } = await supabaseClient
         .from('pets')
@@ -387,16 +386,6 @@ export default function BusinessInsights() {
           ageGroup.percentage = totalPetsWithAge > 0 
             ? Math.round((ageGroup.count / totalPetsWithAge) * 100) 
             : 0;
-        });
-      }
-          if (age <= 1) petsByAge[0].count++;
-          else if (age <= 3) petsByAge[1].count++;
-          else if (age <= 7) petsByAge[2].count++;
-          else petsByAge[3].count++;
-        });
-        
-        petsByAge.forEach(ageGroup => {
-          ageGroup.percentage = Math.round((ageGroup.count / (totalPets || 1)) * 100);
         });
       }
 
@@ -803,49 +792,36 @@ export default function BusinessInsights() {
 
         {/* Demanda de Servicios */}
         <Card style={styles.chartCard}>
-          <Text style={styles.chartTitle}>📈 Servicios Más Demandados (Datos Reales)</Text>
-          <Text style={styles.chartSubtitle}>
-            Basado en reservas de los últimos {selectedTimeRange === '1m' ? '1 mes' : selectedTimeRange === '3m' ? '3 meses' : selectedTimeRange === '6m' ? '6 meses' : '1 año'}
-          </Text>
+          <Text style={styles.chartTitle}>📈 Servicios Más Demandados</Text>
           <View style={styles.servicesList}>
-            {insights?.servicesDemand && insights.servicesDemand.length > 0 ? (
-              insights.servicesDemand.map((service, index) => (
-                <View key={index} style={styles.serviceItem}>
-                  <View style={styles.serviceInfo}>
-                    <Text style={styles.serviceName}>{service.service}</Text>
-                    <Text style={styles.serviceCount}>{service.count} reservas reales</Text>
-                  </View>
-                  <View style={[
-                    styles.serviceTrend,
-                    styles.trendStable
-                  ]}>
-                    <TrendingUp 
-                      size={16} 
-                      color="#3B82F6"
-                    />
-                  </View>
-                </View>
-              ))
-            ) : (
+            {insights?.servicesDemand.map((service, index) => (
               <View key={index} style={styles.serviceItem}>
-                <Text style={styles.noDataText}>
-                  No hay datos de reservas para el período seleccionado
-                </Text>
+                <View style={styles.serviceInfo}>
+                  <Text style={styles.serviceName}>{service.service}</Text>
+                  <Text style={styles.serviceCount}>{service.count} reservas</Text>
+                </View>
+                <View style={[
+                  styles.serviceTrend,
+                  service.trend === 'up' ? styles.trendUp : styles.trendDown
+                ]}>
+                  <TrendingUp 
+                    size={16} 
+                    color={service.trend === 'up' ? '#10B981' : '#EF4444'}
+                    style={service.trend === 'down' ? { transform: [{ rotate: '180deg' }] } : {}}
+                  />
+                </View>
               </View>
-            )}
+            ))}
           </View>
         </Card>
 
         {/* Horas Pico */}
         <Card style={styles.chartCard}>
-          <Text style={styles.chartTitle}>⏰ Horas de Mayor Demanda (Datos Reales)</Text>
-          <Text style={styles.chartSubtitle}>
-            Basado en horarios de reservas confirmadas
-          </Text>
+          <Text style={styles.chartTitle}>⏰ Horas de Mayor Demanda</Text>
           <View style={styles.peakHoursChart}>
             {insights?.peakHours.map((hour, index) => {
               const maxBookings = Math.max(...(insights?.peakHours.map(h => h.bookings) || [1]));
-              const height = maxBookings > 0 ? (hour.bookings / maxBookings) * 100 : 0;
+              const height = (hour.bookings / maxBookings) * 100;
               
               return (
                 <View key={index} style={styles.hourColumn}>
@@ -853,7 +829,7 @@ export default function BusinessInsights() {
                     <View 
                       style={[
                         styles.hourBarFill,
-                        { height: `${Math.max(height, 2)}%` } // Minimum 2% for visibility
+                        { height: `${height}%` }
                       ]} 
                     />
                   </View>
@@ -863,11 +839,6 @@ export default function BusinessInsights() {
               );
             })}
           </View>
-          {insights?.peakHours.every(h => h.bookings === 0) && (
-            <Text style={styles.noDataText}>
-              No hay datos de reservas para mostrar horas pico
-            </Text>
-          )}
         </Card>
 
         {/* Oportunidades de Mercado */}
@@ -904,10 +875,7 @@ export default function BusinessInsights() {
 
         {/* Distribución por Edad */}
         <Card style={styles.chartCard}>
-          <Text style={styles.chartTitle}>📅 Distribución por Edad (Datos Reales)</Text>
-          <Text style={styles.chartSubtitle}>
-            Basado en edades reales de mascotas registradas
-          </Text>
+          <Text style={styles.chartTitle}>📅 Distribución por Edad</Text>
           <View style={styles.ageChart}>
             {insights?.petsByAge.map((ageGroup, index) => (
               <View key={index} style={styles.ageItem}>
@@ -916,13 +884,11 @@ export default function BusinessInsights() {
                   <View 
                     style={[
                       styles.ageBarFill,
-                      { width: `${Math.max(ageGroup.percentage, 1)}%` } // Minimum 1% for visibility
+                      { width: `${ageGroup.percentage}%` }
                     ]} 
                   />
                 </View>
-                <Text style={styles.agePercentage}>
-                  {ageGroup.count} mascotas ({ageGroup.percentage}%)
-                </Text>
+                <Text style={styles.agePercentage}>{ageGroup.percentage}%</Text>
               </View>
             ))}
           </View>
@@ -1140,24 +1106,6 @@ const styles = StyleSheet.create({
   },
   trendDown: {
     backgroundColor: '#FEE2E2',
-  },
-  trendStable: {
-    backgroundColor: '#F0F9FF',
-  },
-  chartSubtitle: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    marginBottom: 12,
-    fontStyle: 'italic',
-  },
-  noDataText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#9CA3AF',
-    textAlign: 'center',
-    padding: 20,
-    fontStyle: 'italic',
   },
   chartCard: {
     marginBottom: 16,
