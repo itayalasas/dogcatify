@@ -496,7 +496,7 @@ export default function PartnerRegister() {
           business_name: businessName.trim(),
           business_type: selectedType,
           description: description.trim(),
-          address: fullAddress,
+          address: `${calle.trim()} ${numero.trim()}, ${barrio ? barrio + ', ' : ''}${selectedDepartment?.name}, ${selectedCountry?.name}`,
           phone: phone.trim(),
           email: email.trim(),
           logo: logoUrl,
@@ -504,8 +504,8 @@ export default function PartnerRegister() {
           has_shipping: hasShipping,
           shipping_cost: hasShipping ? parseFloat(shippingCost) || 0 : 0,
           // Nuevos campos de ubicación
-          country_id: selectedCountry.id,
-          department_id: selectedDepartment.id,
+          country_id: selectedCountry?.id,
+          department_id: selectedDepartment?.id,
           calle: calle.trim(),
           numero: numero.trim(),
           barrio: barrio.trim() || null,
@@ -523,9 +523,6 @@ export default function PartnerRegister() {
 
       // Check if user has other businesses with Mercado Pago configured
       await replicateMercadoPagoConfig(currentUser.id);
-      
-      // Construir dirección completa para compatibilidad
-      const fullAddress = `${calle} ${numero}, ${barrio ? barrio + ', ' : ''}${selectedDepartment.name}, ${selectedCountry.name}`;
       
       // Update user profile to be a partner
       const { error: profileError } = await supabaseClient
