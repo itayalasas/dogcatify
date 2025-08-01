@@ -335,7 +335,6 @@ export default function BusinessInsights() {
         percentage: Math.round((count / (totalPets || 1)) * 100)
       }));
 
-      // 3. Distribución por edad
       // 3. Distribución por edad - DATOS REALES
       const { data: petsWithAge, error: ageError } = await supabaseClient
         .from('pets')
@@ -828,14 +827,11 @@ export default function BusinessInsights() {
 
         {/* Horas Pico */}
         <Card style={styles.chartCard}>
-          <Text style={styles.chartTitle}>⏰ Horas de Mayor Demanda (Datos Reales)</Text>
-          <Text style={styles.chartSubtitle}>
-            Basado en horarios de reservas confirmadas
-          </Text>
+          <Text style={styles.chartTitle}>⏰ Horas de Mayor Demanda</Text>
           <View style={styles.peakHoursChart}>
             {insights?.peakHours.map((hour, index) => {
               const maxBookings = Math.max(...(insights?.peakHours.map(h => h.bookings) || [1]));
-              const height = maxBookings > 0 ? (hour.bookings / maxBookings) * 100 : 0;
+              const height = (hour.bookings / maxBookings) * 100;
               
               return (
                 <View key={index} style={styles.hourColumn}>
@@ -843,7 +839,7 @@ export default function BusinessInsights() {
                     <View 
                       style={[
                         styles.hourBarFill,
-                        { height: `${Math.max(height, 2)}%` } // Minimum 2% for visibility
+                        { height: `${height}%` }
                       ]} 
                     />
                   </View>
@@ -853,11 +849,6 @@ export default function BusinessInsights() {
               );
             })}
           </View>
-          {insights?.peakHours.every(h => h.bookings === 0) && (
-            <Text style={styles.noDataText}>
-              No hay datos de reservas para mostrar horas pico
-            </Text>
-          )}
         </Card>
 
         {/* Oportunidades de Mercado */}
@@ -894,10 +885,7 @@ export default function BusinessInsights() {
 
         {/* Distribución por Edad */}
         <Card style={styles.chartCard}>
-          <Text style={styles.chartTitle}>📅 Distribución por Edad (Datos Reales)</Text>
-          <Text style={styles.chartSubtitle}>
-            Basado en edades reales de mascotas registradas
-          </Text>
+          <Text style={styles.chartTitle}>📅 Distribución por Edad</Text>
           <View style={styles.ageChart}>
             {insights?.petsByAge.map((ageGroup, index) => (
               <View key={index} style={styles.ageItem}>
@@ -906,13 +894,11 @@ export default function BusinessInsights() {
                   <View 
                     style={[
                       styles.ageBarFill,
-                      { width: `${Math.max(ageGroup.percentage, 1)}%` } // Minimum 1% for visibility
+                      { width: `${ageGroup.percentage}%` }
                     ]} 
                   />
                 </View>
-                <Text style={styles.agePercentage}>
-                  {ageGroup.count} mascotas ({ageGroup.percentage}%)
-                </Text>
+                <Text style={styles.agePercentage}>{ageGroup.percentage}%</Text>
               </View>
             ))}
           </View>
@@ -1240,6 +1226,12 @@ const styles = StyleSheet.create({
   trendStable: {
     backgroundColor: '#DBEAFE',
   },
+  noDataText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    fontStyle: 'italic',
+  },
   peakHoursChart: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -1554,12 +1546,5 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
     color: '#FFFFFF',
     marginLeft: 6,
-  },
-  noDataText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    textAlign: 'center',
-    fontStyle: 'italic',
   },
 });
