@@ -488,15 +488,19 @@ export default function EditProfile() {
             />
 
             <View style={styles.departmentInputGroup}>
-              <Text style={styles.departmentLabel}>Departamento</Text>
-              <View style={styles.departmentInputContainer}>
-                <MapPin size={20} color="#6B7280" style={styles.departmentIcon} />
+              <Text style={styles.label}>Departamento</Text>
+              <View style={styles.inputContainer}>
+                <View style={styles.icon}>
+                  <MapPin size={20} color="#6B7280" />
+                </View>
                 <TextInput
                   style={[
-                    styles.departmentInput,
+                    styles.input,
+                    styles.inputWithLeftIcon,
                     !selectedCountry && styles.disabledInput
                   ]}
                   placeholder={selectedCountry ? "Escribe para buscar departamento..." : "Primero selecciona un país"}
+                  placeholderTextColor="#9CA3AF"
                   value={departmentQuery}
                   onChangeText={handleDepartmentInputChange}
                   onFocus={() => selectedCountry && setShowDepartmentSuggestions(true)}
@@ -578,28 +582,13 @@ export default function EditProfile() {
               numberOfLines={4}
             />
           </View>
-            placeholder={selectedCountry ? "Escribe para buscar departamento..." : "Primero selecciona un país"}
-            value={departmentQuery}
-            onChangeText={handleDepartmentInputChange}
-            onFocus={() => selectedCountry && setShowDepartmentSuggestions(true)}
-            editable={!!selectedCountry}
+          <Button
+            title={loading || uploadingImage ? "Guardando..." : "Guardar Cambios"}
+            onPress={handleSaveProfile}
             loading={loading || uploadingImage}
             disabled={uploadingImage}
+            size="large"
           />
-          
-          {showDepartmentSuggestions && filteredDepartments.length > 0 && selectedCountry && (
-            <View style={styles.departmentSuggestions}>
-              {filteredDepartments.slice(0, 6).map((department) => (
-                <TouchableOpacity
-                  key={department.id}
-                  style={styles.departmentSuggestion}
-                  onPress={() => handleDepartmentSelect(department)}
-                >
-                  <Text style={styles.departmentSuggestionText}>{department.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
         </Card>
       </ScrollView>
 
