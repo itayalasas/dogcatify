@@ -501,9 +501,27 @@ export default function EditProfile() {
                   ]}
                   placeholder={selectedCountry ? "Escribe para buscar departamento..." : "Primero selecciona un país"}
                   placeholderTextColor="#9CA3AF"
+            <View style={styles.departmentInputGroup}>
+              <Text style={styles.label}>Departamento</Text>
+              <View style={[
+                styles.inputContainer,
+                !selectedCountry && styles.disabledInputContainer
+              ]}>
+                <View style={styles.icon}>
+                  <MapPin size={20} color="#6B7280" />
+                </View>
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.inputWithLeftIcon,
+                    !selectedCountry && styles.disabledInput
+                  ]}
+                  placeholder={selectedCountry ? "Escribe para buscar departamento..." : "Primero selecciona un país"}
+                  placeholderTextColor="#9CA3AF"
                   value={departmentQuery}
                   onChangeText={handleDepartmentInputChange}
                   onFocus={() => selectedCountry && setShowDepartmentSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowDepartmentSuggestions(false), 200)}
                   editable={!!selectedCountry}
                 />
               </View>
@@ -739,39 +757,75 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     color: '#9CA3AF',
   },
-  departmentInputGroup: {
-    marginBottom: 14,
-    position: 'relative',
+  disabledInputContainer: {
+    backgroundColor: '#F9FAFB',
+    borderColor: '#E5E7EB',
   },
-  departmentLabel: {
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    minHeight: 44,
+  },
+  input: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    fontFamily: 'Inter-Regular',
+    color: '#111827',
+  },
+  inputWithLeftIcon: {
+    paddingLeft: 0,
+  },
+  icon: {
+    paddingHorizontal: 10,
+  },
+  label: {
     fontSize: 15,
     fontFamily: 'Inter-Medium',
     color: '#374151',
     marginBottom: 6,
   },
-  departmentInputContainer: {
+  departmentInputGroup: {
+    marginBottom: 14,
+    position: 'relative',
+  },
+  label: {
+    fontSize: 15,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+    marginBottom: 6,
+  },
+  inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: '#D1D5DB',
     borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
     backgroundColor: '#FFFFFF',
-    minHeight: 50,
+    minHeight: 44,
   },
-  departmentIcon: {
-    marginRight: 10,
-  },
-  departmentInput: {
+  input: {
     flex: 1,
-    fontSize: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
     fontFamily: 'Inter-Regular',
     color: '#111827',
   },
+  inputWithLeftIcon: {
+    paddingLeft: 0,
+  },
+  icon: {
+    paddingHorizontal: 10,
+  },
   departmentSuggestions: {
     position: 'absolute',
-    top: 76,
+    top: '100%',
     left: 0,
     right: 0,
     backgroundColor: '#FFFFFF',
