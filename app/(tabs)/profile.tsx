@@ -490,7 +490,7 @@ export default function Profile() {
         <Card style={styles.logoutCard}>
           <TouchableOpacity style={styles.logoutOption} onPress={handleLogout}>
             <LogOut size={20} color="#EF4444" />
-            <Text style={styles.logoutText}>{t('signOut')}</Text>
+            <Text style={styles.logoutText}>Cerrar sesión</Text>
           </TouchableOpacity>
         </Card>
       </ScrollView>
@@ -734,7 +734,7 @@ const styles = StyleSheet.create({
   logoutText: {
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
-    color: '#EF4444',
+    color: '#2D6A6F',
     marginLeft: 8,
   },
   dangerText: {
