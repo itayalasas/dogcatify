@@ -286,9 +286,7 @@ export default function Profile() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{t('profile')}</Text>
-        <TouchableOpacity onPress={handleEditProfile} style={styles.editButton}>
-          <Edit size={20} color="#3B82F6" />
-        </TouchableOpacity>
+        <View style={styles.placeholder} />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -489,8 +487,8 @@ export default function Profile() {
         {/* Logout */}
         <Card style={styles.logoutCard}>
           <TouchableOpacity style={styles.logoutOption} onPress={handleLogout}>
-            <LogOut size={20} color="#EF4444" />
-            <Text style={styles.logoutText}>{t('signOut')}</Text>
+            <LogOut size={20} color="#10B981" />
+            <Text style={[styles.logoutText, styles.logoutTextGreen]}>{t('signOut')}</Text>
           </TouchableOpacity>
         </Card>
       </ScrollView>
@@ -521,6 +519,9 @@ const styles = StyleSheet.create({
   },
   editButton: {
     padding: 8,
+  },
+  placeholder: {
+    width: 32,
   },
   content: {
     flex: 1,
@@ -736,6 +737,9 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     color: '#EF4444',
     marginLeft: 8,
+  },
+  logoutTextGreen: {
+    color: '#10B981',
   },
   dangerText: {
     color: '#EF4444',
