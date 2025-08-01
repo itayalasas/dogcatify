@@ -477,32 +477,28 @@ export default function EditProfile() {
               leftIcon={<Phone size={20} color="#6B7280" />}
             />
 
-            <Input
-              label="País"
-              placeholder="Selecciona tu país"
-              value={selectedCountry?.name || ''}
-              editable={false}
-              onTouchStart={() => setShowCountryModal(true)}
-              leftIcon={<MapPin size={20} color="#6B7280" />}
-              rightIcon={<ChevronDown size={20} color="#6B7280" />}
-            />
+            <TouchableOpacity onPress={() => setShowCountryModal(true)}>
+              <Input
+                label="País"
+                placeholder="Selecciona tu país"
+                value={selectedCountry?.name || ''}
+                editable={false}
+                leftIcon={<MapPin size={20} color="#6B7280" />}
+                rightIcon={<ChevronDown size={20} color="#6B7280" />}
+              />
+            </TouchableOpacity>
 
             <View style={styles.departmentInputGroup}>
-              <Text style={styles.departmentLabel}>Departamento</Text>
-              <View style={styles.departmentInputContainer}>
-                <MapPin size={20} color="#6B7280" style={styles.departmentIcon} />
-                <TextInput
-                  style={[
-                    styles.departmentInput,
-                    !selectedCountry && styles.disabledInput
-                  ]}
-                  placeholder={selectedCountry ? "Departamento..." : "Primero selecciona un país"}
-                  value={departmentQuery}
-                  onChangeText={handleDepartmentInputChange}
-                  onFocus={() => selectedCountry && setShowDepartmentSuggestions(true)}
-                  editable={!!selectedCountry}
-                />
-              </View>
+              <Input
+                label="Departamento"
+                placeholder={selectedCountry ? "Departamento..." : "Primero selecciona un país"}
+                value={departmentQuery}
+                onChangeText={handleDepartmentInputChange}
+                onFocus={() => selectedCountry && setShowDepartmentSuggestions(true)}
+                editable={!!selectedCountry}
+                leftIcon={<MapPin size={20} color="#6B7280" />}
+                style={!selectedCountry ? styles.disabledInput : undefined}
+              />
               
               {showDepartmentSuggestions && filteredDepartments.length > 0 && selectedCountry && (
                 <View style={styles.departmentSuggestions}>
@@ -558,6 +554,26 @@ export default function EditProfile() {
               onChangeText={setBarrio}
               editable={!!selectedDepartment}
               style={!selectedDepartment ? styles.disabledInput : undefined}
+            />
+
+            <Input
+              label="Biografía"
+              placeholder="Cuéntanos sobre ti..."
+              value={bio}
+              onChangeText={setBio}
+              multiline
+              numberOfLines={3}
+            />
+          </View>
+
+          {/* Botón de guardar */}
+          <View style={styles.saveButtonContainer}>
+            <Button
+              title={loading ? "Guardando..." : "Guardar Cambios"}
+              onPress={handleSaveProfile}
+              loading={loading || uploadingImage}
+              size="large"
+              disabled={loading || uploadingImage || !displayName.trim()}
             />
           </View>
         </Card>
@@ -668,14 +684,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   profilePhoto: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
   },
   placeholderPhoto: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
@@ -711,38 +727,12 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
   },
   departmentInputGroup: {
-    marginBottom: 14,
     position: 'relative',
-  },
-  departmentLabel: {
-    fontSize: 15,
-    fontFamily: 'Inter-Medium',
-    color: '#374151',
-    marginBottom: 6,
-  },
-  departmentInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#D1D5DB',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    minHeight: 50,
-  },
-  departmentIcon: {
-    marginRight: 10,
-  },
-  departmentInput: {
-    flex: 1,
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#111827',
+    zIndex: 1000,
   },
   departmentSuggestions: {
     position: 'absolute',
-    top: 76,
+    top: '100%',
     left: 0,
     right: 0,
     backgroundColor: '#FFFFFF',
@@ -755,7 +745,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 8,
-    zIndex: 1000,
+    zIndex: 1001,
     maxHeight: 200,
   },
   departmentSuggestion: {
@@ -775,6 +765,10 @@ const styles = StyleSheet.create({
   },
   halfWidth: {
     flex: 1,
+  },
+  saveButtonContainer: {
+    marginTop: 24,
+    marginBottom: 20,
   },
   modalOverlay: {
     flex: 1,
