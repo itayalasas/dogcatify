@@ -392,28 +392,6 @@ export default function PartnerDashboard() {
     );
   }
 
-          <TouchableOpacity 
-            style={styles.quickAction} 
-            onPress={() => router.push({
-              pathname: '/partner/business-insights',
-              params: { partnerId: partnerProfile?.id }
-            })}
-          >
-            <BarChart3 size={24} color="#8B5CF6" />
-            <Text style={styles.quickActionText}>Inteligencia de Negocio</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.quickAction} 
-            onPress={() => router.push({
-              pathname: '/partner/edit-business',
-              params: { businessId: partnerProfile?.id }
-            })}
-          >
-            <Settings size={24} color="#6B7280" />
-            <Text style={styles.quickActionText}>Editar Negocio</Text>
-          </TouchableOpacity>
-          
   return (
     <SafeAreaView style={styles.container}> 
       <View style={styles.header}>
