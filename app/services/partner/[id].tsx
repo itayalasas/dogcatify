@@ -270,6 +270,59 @@ export default function ChatScreen() {
     scrollToBottom();
     
     try {
+  const sendNotificationToOtherParticipants = async (messageText: string) => {
+    try {
+      if (!conversation || !currentUser) return;
+
+      // Get conversation participants
+      const { data: conversationData, error } = await supabaseClient
+        .from('chat_conversations')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error || !conversationData) {
+        console.error('Error fetching conversation for notification:', error);
+        return;
+      }
+
+      // Determine who to notify (the other participant)
+      let recipientId = null;
+      if (conversationData.user_id && conversationData.user_id !== currentUser.id) {
+        recipientId = conversationData.user_id;
+      } else if (conversationData.partner_id) {
+        // Get partner user_id
+        const { data: partnerData } = await supabaseClient
+          .from('partners')
+          .select('user_id')
+          .eq('id', conversationData.partner_id)
+          .single();
+        
+        if (partnerData?.user_id && partnerData.user_id !== currentUser.id) {
+          recipientId = partnerData.user_id;
+        }
+      }
+
+      if (!recipientId) {
+        console.log('No recipient found for notification');
+        return;
+      }
+
+      // Get recipient's push token
+      const { data: recipientProfile } = await supabaseClient
+        .from('profiles')
+        .select('push_token, display_name')
+        .eq('id', recipientId)
+        .single();
+
+      if (!recipientProfile?.push_token) {
+        console.log('Recipient does not have push token');
+        return;
+      }
+
+      // Send push notification
+      const notificationData = {
+        to: recipientProfile.push_token,
       const messageData = {
         conversation_id: id,
         sender_id: currentUser.id,
