@@ -56,12 +56,32 @@ export default function ChatScreen() {
           }
         }
       )
+      .on('postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'chat_conversations',
+          filter: `id=eq.${id}`
+        },
+        (payload) => {
+          console.log('Conversation updated:', payload);
+          if (payload.new) {
+            setConversation(payload.new);
+          }
+        }
+      )
       .subscribe((status) => {
         console.log('Chat subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Real-time chat subscription active');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Real-time chat subscription error');
+        }
       });
 
     return () => {
       if (subscription) {
+        console.log('Unsubscribing from chat channel');
         subscription.unsubscribe();
       }
     };
@@ -117,83 +137,15 @@ export default function ChatScreen() {
     }
   };
 
-  const sendMessage = async () => {
-    if (!newMessage.trim() || !currentUser) return;
-
-    const tempId = `temp-${Date.now()}`;
-    const tempMessage = {
-      id: tempId,
-      conversation_id: id,
-      sender_id: currentUser.id,
-      message: newMessage.trim(),
-      message_type: 'text',
-      is_read: false,
-      created_at: new Date().toISOString()
-    };
-
-    // Add message optimistically to UI
-    setMessages(prev => [...prev, tempMessage]);
-    const messageToSend = newMessage.trim();
-    setNewMessage('');
-    scrollToBottom();
-    
+  const markMessageAsRead = async (messageId: string) => {
     try {
-      const messageData = {
-        conversation_id: id,
-        sender_id: currentUser.id,
-        message: messageToSend,
-        message_type: 'text',
-        is_read: false,
-        created_at: new Date().toISOString()
-      };
-
-      const { data, error } = await supabaseClient
+      await supabaseClient
         .from('chat_messages')
-        .insert([messageData])
-        .select()
-        .single();
-
-      if (error) {
-        if (error.code === 'PGRST301' || error.message?.includes('JWT expired')) {
-          Alert.alert('Sesión expirada', 'Tu sesión ha expirado. Inicia sesión nuevamente.');
-          router.replace('/auth/login');
-          return;
-        }
-        
-        // Remove temp message on error
-        setMessages(prev => prev.filter(msg => msg.id !== tempId));
-        setNewMessage(messageToSend); // Restore message
-        throw error;
-      }
-
-      // Replace temp message with real message
-      if (data) {
-        setMessages(prev => prev.map(msg => 
-          msg.id === tempId ? {
-            ...data,
-            id: data.id,
-            conversation_id: data.conversation_id,
-            sender_id: data.sender_id,
-            message: data.message,
-            message_type: data.message_type || 'text',
-            is_read: data.is_read || false,
-            created_at: data.created_at
-          } : msg
-        ));
-      }
-
-      // Send push notification to other participants
-      try {
-        await sendNotificationToOtherParticipants(messageToSend);
-      } catch (notificationError) {
-        console.error('Error sending notification:', notificationError);
-        // Don't fail the message sending if notification fails
-      }
-
-      scrollToBottom();
+        .update({ is_read: true })
+        .eq('id', messageId)
+        .neq('sender_id', currentUser?.id);
     } catch (error) {
-      console.error('Error sending message:', error);
-      Alert.alert('Error', 'No se pudo enviar el mensaje');
+      console.error('Error marking message as read:', error);
     }
   };
 
@@ -294,6 +246,86 @@ export default function ChatScreen() {
 
     } catch (error) {
       console.error('Error sending notification:', error);
+    }
+  };
+
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !currentUser) return;
+
+    const tempId = `temp-${Date.now()}`;
+    const tempMessage = {
+      id: tempId,
+      conversation_id: id,
+      sender_id: currentUser.id,
+      message: newMessage.trim(),
+      message_type: 'text',
+      is_read: false,
+      created_at: new Date().toISOString()
+    };
+
+    // Add message optimistically to UI
+    setMessages(prev => [...prev, tempMessage]);
+    const messageToSend = newMessage.trim();
+    setNewMessage('');
+    scrollToBottom();
+    
+    try {
+      const messageData = {
+        conversation_id: id,
+        sender_id: currentUser.id,
+        message: messageToSend,
+        message_type: 'text',
+        is_read: false,
+        created_at: new Date().toISOString()
+      };
+
+      const { data, error } = await supabaseClient
+        .from('chat_messages')
+        .insert([messageData])
+        .select()
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST301' || error.message?.includes('JWT expired')) {
+          Alert.alert('Sesión expirada', 'Tu sesión ha expirado. Inicia sesión nuevamente.');
+          router.replace('/auth/login');
+          return;
+        }
+        
+        // Remove temp message on error
+        setMessages(prev => prev.filter(msg => msg.id !== tempId));
+        setNewMessage(messageToSend); // Restore message
+        throw error;
+      }
+
+      // Replace temp message with real message
+      if (data) {
+        setMessages(prev => prev.map(msg => 
+          msg.id === tempId ? {
+            ...data,
+            id: data.id,
+            conversation_id: data.conversation_id,
+            sender_id: data.sender_id,
+            message: data.message,
+            message_type: data.message_type || 'text',
+            is_read: data.is_read || false,
+            created_at: data.created_at
+          } : msg
+        ));
+      }
+
+      // Send push notification to other participants
+      try {
+        await sendNotificationToOtherParticipants(messageToSend);
+      } catch (notificationError) {
+        console.error('Error sending notification:', notificationError);
+        // Don't fail the message sending if notification fails
+      }
+
+      scrollToBottom();
+    } catch (error) {
+      console.error('Error sending message:', error);
+      Alert.alert('Error', 'No se pudo enviar el mensaje');
     }
   };
 
