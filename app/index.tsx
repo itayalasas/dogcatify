@@ -51,11 +51,6 @@ export default function Home() {
       return;
     }
   }, []);
-
-  // No renderizar contenido en web
-  if (Platform.OS === 'web') {
-    return null;
-  }
   const [feedItems, setFeedItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -620,48 +615,6 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   authPrompt: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-  },
-  authTitle: {
-    fontSize: 24,
-    fontFamily: 'Inter-Bold',
-    color: '#2D6A6F',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  authSubtitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-  },
-  webContainer: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  webContent: {
-    maxWidth: 600,
-    width: '100%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 32,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  webTitle: {
     fontSize: 32,
     fontFamily: 'Inter-Bold',
     color: '#2D6A6F',
