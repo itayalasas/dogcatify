@@ -175,17 +175,6 @@ export default function ChatContacts() {
     }
   };
 
-        .select('*')
-        .eq('id', id)
-        .single();
-      
-      if (error) throw error;
-      setConversation(data);
-    } catch (error) {
-      console.error('Error fetching conversation:', error);
-    }
-  };
-
   const fetchMessages = async () => {
     try {
       const { data, error } = await supabaseClient
