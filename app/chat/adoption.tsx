@@ -40,6 +40,8 @@ export default function AdoptionChat() {
   const initializeChat = async () => {
     try {
       // Create or get existing chat
+      const chatIdentifier = `adoption_${petId}_${currentUser!.id}`;
+      
       // Check if chat already exists
       const { data: existingChat, error: chatError } = await supabaseClient
         .from('adoption_chats')
@@ -79,9 +81,9 @@ export default function AdoptionChat() {
       setChatId(currentChatId);
       fetchMessages(currentChatId);
       
-      // Set up real-time subscription for this specific chat
+      // Set up real-time subscription
       const subscription = supabaseClient
-        .channel(`adoption-chat-${currentChatId}`)
+        .channel(`chat_${currentChatId}`)
         .on('postgres_changes', 
           { 
             event: 'INSERT', 
@@ -90,20 +92,15 @@ export default function AdoptionChat() {
             filter: `chat_id=eq.${currentChatId}`
           }, 
           (payload) => {
-            console.log('Real-time message received:', payload);
             const newMessage = payload.new as any;
-            
-            // Only add if it's not from current user (to avoid duplicates)
-            if (newMessage.sender_id !== currentUser!.id) {
-              setMessages(prev => [...prev, {
-                id: newMessage.id,
-                senderId: newMessage.sender_id,
-                senderName: newMessage.sender_name,
-                message: newMessage.message,
-                timestamp: new Date(newMessage.created_at),
-                isFromCustomer: newMessage.sender_id === currentUser!.id
-              }]);
-            }
+            setMessages(prev => [...prev, {
+              id: newMessage.id,
+              senderId: newMessage.sender_id,
+              senderName: newMessage.sender_name,
+              message: newMessage.message,
+              timestamp: new Date(newMessage.created_at),
+              isFromCustomer: newMessage.sender_id === currentUser!.id
+            }]);
           }
         )
         .subscribe();
@@ -172,9 +169,6 @@ export default function AdoptionChat() {
 
       if (error) throw error;
 
-      if (!messageText) {
-        setNewMessage('');
-      }
       // Send push notification to partner
       try {
         const { data: partnerData } = await supabaseClient
