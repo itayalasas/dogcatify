@@ -1,692 +1,579 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Image, TextInput, Dimensions, Modal, Alert, Share, Platform, Linking } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, TextInput, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, MapPin, Clock, Phone, Star, Search, User, Heart, MessageCircle } from 'lucide-react-native';
-import { Card } from '../../../components/ui/Card';
-import { Button } from '../../../components/ui/Button';
-import { useAuth } from '../../../contexts/AuthContext';
-import { supabaseClient } from '../../../lib/supabase';
+import { ArrowLeft, Send } from 'lucide-react-native';
+import { useAuth } from '../../contexts/AuthContext';
+import { supabaseClient } from '../../lib/supabase';
 
-const { width } = Dimensions.get('window');
-
-const PartnerServices = () => {
-  const { id } = useLocalSearchParams<{ id: string }>();
+export default function ChatScreen() {
+  const { id, petName } = useLocalSearchParams<{ id: string; petName?: string }>();
   const { currentUser } = useAuth();
-  const [partner, setPartner] = useState<any>(null);
-  const [services, setServices] = useState<any[]>([]);
-  const [filteredServices, setFilteredServices] = useState<any[]>([]);
-  const [adoptionPets, setAdoptionPets] = useState<any[]>([]);
-  const [partnerReviews, setPartnerReviews] = useState<any[]>([]);
-  const [averageRating, setAverageRating] = useState(0);
-  const [totalReviews, setTotalReviews] = useState(0);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [messages, setMessages] = useState<any[]>([]);
+  const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
-  const [showReviewsModal, setShowReviewsModal] = useState(false);
-  const [detailedReviews, setDetailedReviews] = useState<any[]>([]);
-  const [loadingDetailedReviews, setLoadingDetailedReviews] = useState(false);
+  const [conversation, setConversation] = useState<any>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
-    fetchPartnerDetails();
-  }, [id]);
+    if (!currentUser || !id) {
+      router.replace('/auth/login');
+      return;
+    }
+    
+    fetchConversation();
+    fetchMessages();
+    
+    // Set up real-time subscription for new messages with better error handling
+    const subscription = supabaseClient
+      .channel(`chat-${id}`)
+      .on('postgres_changes', 
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'chat_messages',
+          filter: `conversation_id=eq.${id}`
+        }, 
+        (payload) => {
+          console.log('New message received via realtime:', payload);
+          if (payload.new) {
+            const newMessage = {
+              id: payload.new.id,
+              conversation_id: payload.new.conversation_id,
+              sender_id: payload.new.sender_id,
+              message: payload.new.message,
+              message_type: payload.new.message_type || 'text',
+              is_read: payload.new.is_read || false,
+              created_at: payload.new.created_at
+            };
+            
+            setMessages(prev => {
+              // Avoid duplicates
+              const exists = prev.some(msg => msg.id === newMessage.id);
+              if (exists) return prev;
+              return [...prev, newMessage];
+            });
+            scrollToBottom();
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('Chat subscription status:', status);
+      });
 
-  useEffect(() => {
-    if (partner) {
-      if (partner.business_type === 'shelter') {
-        console.log('Partner is shelter, fetching adoption pets...');
-        fetchAdoptionPets();
-      } else {
-        console.log('Partner is not shelter, fetching services...');
-        fetchPartnerServices();
+    return () => {
+      if (subscription) {
+        subscription.unsubscribe();
       }
-      fetchPartnerReviews();
-    }
-  }, [partner]);
+    };
+  }, [currentUser, id]);
 
-  useEffect(() => {
-    if (searchQuery.trim()) {
-      setFilteredServices(
-        services.filter(service => 
-          service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          service.description?.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-      );
-    } else {
-      setFilteredServices(services);
-    }
-    fetchPartnerReviews();
-  }, [id]);
-
-  useEffect(() => {
-    if (searchQuery.trim()) {
-      setFilteredServices(
-        services.filter(service => 
-          service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          service.description?.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-      );
-    } else {
-      setFilteredServices(services);
-    }
-  }, [searchQuery, services]);
-
-  const fetchPartnerDetails = async () => {
+  const fetchConversation = async () => {
     try {
       const { data, error } = await supabaseClient
-        .from('partners')
+        .from('chat_conversations')
         .select('*')
         .eq('id', id)
         .single();
       
-      if (error) throw error;
-      
-      if (data) {
-        setPartner({
-          id: data.id,
-          businessName: data.business_name,
-          businessType: data.business_type,
-          address: data.address,
-          phone: data.phone,
-          logo: data.logo,
-          rating: data.rating,
-          reviewsCount: data.reviews_count,
-          ...data
-        });
+      if (error) {
+        if (error.code === 'PGRST301' || error.message?.includes('JWT expired')) {
+          Alert.alert('Sesión expirada', 'Tu sesión ha expirado. Inicia sesión nuevamente.');
+          router.replace('/auth/login');
+          return;
+        }
+        throw error;
       }
+      
+      setConversation(data);
     } catch (error) {
-      console.error('Error fetching partner details:', error);
+      console.error('Error fetching conversation:', error);
+      Alert.alert('Error', 'No se pudo cargar la conversación');
     }
   };
 
-  const fetchPartnerServices = async () => {
+  const fetchMessages = async () => {
     try {
       const { data, error } = await supabaseClient
-        .from('partner_services')
+        .from('chat_messages')
         .select('*')
-        .eq('partner_id', id)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      
-      const servicesData = data?.map(service => ({
-        id: service.id,
-        name: service.name,
-        description: service.description,
-        price: service.price,
-        duration: service.duration,
-        category: service.category,
-        images: service.images,
-        isActive: service.is_active,
-        partnerId: service.partner_id,
-        createdAt: new Date(service.created_at)
-      })) || [];
-      
-      setServices(servicesData);
-      setFilteredServices(servicesData);
-    } catch (error) {
-      console.error('Error fetching partner services:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchAdoptionPets = async () => {
-    try {
-      console.log('Fetching adoption pets for partner:', id);
-      
-      // Fetch from adoption_pets table (the correct table)
-      const { data, error } = await supabaseClient
-        .from('adoption_pets')
-        .select('*')
-        .eq('partner_id', id)
-        .eq('is_available', true)
-        .order('created_at', { ascending: false });
+        .eq('conversation_id', id)
+        .order('created_at', { ascending: true });
       
       if (error) {
-        console.error('Error fetching from adoption_pets:', error);
-        setAdoptionPets([]);
-        return;
+        if (error.code === 'PGRST301' || error.message?.includes('JWT expired')) {
+          Alert.alert('Sesión expirada', 'Tu sesión ha expirado. Inicia sesión nuevamente.');
+          router.replace('/auth/login');
+          return;
+        }
+        throw error;
       }
       
-      console.log('Found adoption pets:', data?.length || 0);
-      console.log('Adoption pets data:', data);
-      
-      // Process adoption pets data
-      const adoptionData = data?.map(pet => {
-        return {
-          id: pet.id,
-          name: pet.name,
-          species: pet.species,
-          breed: pet.breed,
-          gender: pet.gender,
-          age: pet.age,
-          ageUnit: pet.age_unit,
-          size: pet.size,
-          weight: pet.weight,
-          color: pet.color,
-          description: pet.description,
-          
-          // Health info
-          isVaccinated: pet.is_vaccinated,
-          vaccines: pet.vaccines || [],
-          isDewormed: pet.is_dewormed,
-          isNeutered: pet.is_neutered,
-          healthCondition: pet.health_condition,
-          lastVetVisit: pet.last_vet_visit,
-          
-          // Behavior
-          temperament: pet.temperament || [],
-          goodWithDogs: pet.good_with_dogs,
-          goodWithCats: pet.good_with_cats,
-          goodWithKids: pet.good_with_kids,
-          energyLevel: pet.energy_level,
-          specialNeeds: pet.special_needs,
-          
-          // Adoption
-          adoptionRequirements: pet.adoption_requirements || [],
-          adoptionFee: pet.adoption_fee || 0,
-          adoptionZones: pet.adoption_zones,
-          contactInfo: pet.contact_info,
-          adoptionProcess: pet.adoption_process,
-          
-          images: pet.images || [],
-          isAvailable: pet.is_available,
-          createdAt: new Date(pet.created_at)
-        };
-      }) || [];
-      
-      console.log('Processed adoption data:', adoptionData.length, 'pets');
-      setAdoptionPets(adoptionData);
+      setMessages(data || []);
+      setTimeout(scrollToBottom, 100);
     } catch (error) {
-      console.error('Error fetching adoption pets:', error);
-      setAdoptionPets([]);
+      console.error('Error fetching messages:', error);
     } finally {
       setLoading(false);
     }
   };
-  
-  // Fallback method for backward compatibility
-  const fetchAdoptionPetsFromServices = async () => {
+
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !currentUser) return;
+
+    const tempId = `temp-${Date.now()}`;
+    const tempMessage = {
+      id: tempId,
+      conversation_id: id,
+      sender_id: currentUser.id,
+      message: newMessage.trim(),
+      message_type: 'text',
+      is_read: false,
+      created_at: new Date().toISOString()
+    };
+
+    // Add message optimistically to UI
+    setMessages(prev => [...prev, tempMessage]);
+    const messageToSend = newMessage.trim();
+    setNewMessage('');
+    scrollToBottom();
     try {
-      console.log('Fetching adoption pets from partner_services (fallback)');
-      
-      const { data, error } = await supabaseClient
-        .from('partner_services')
+      const messageData = {
+  const sendNotificationToOtherParticipants = async (messageText: string) => {
+    try {
+      if (!conversation || !currentUser) return;
+
+      // Get conversation participants
+      const { data: conversationData, error } = await supabaseClient
+        .from('chat_conversations')
         .select('*')
-        .eq('partner_id', id)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      
-      // Parse adoption pets from services (legacy format)
-      const adoptionData = data?.map(service => {
-        // Extract adoption info from description
-        const description = service.description || '';
-        
-        // Parse basic info
-        const lines = description.split('\n');
-        const basicInfo = lines[0] || '';
-        const healthInfo = lines.find(line => line.includes('🩺')) || '';
-        const temperamentInfo = lines.find(line => line.includes('🧠')) || '';
-        const adoptionInfo = lines.find(line => line.includes('🏡')) || '';
-        const contactInfo = lines.find(line => line.includes('📞')) || '';
-        
-        return {
-          id: service.id,
-          name: service.name,
-          category: service.category,
-          price: service.price,
-          images: service.images || [],
-          basicInfo,
-          healthInfo,
-          temperamentInfo,
-          adoptionInfo,
-          contactInfo,
-          fullDescription: description,
-          createdAt: new Date(service.created_at),
-          isLegacyFormat: true // Flag to identify legacy data
-        };
-      }) || [];
-      
-      setAdoptionPets(adoptionData);
-    } catch (error) {
-      console.error('Error fetching adoption pets from services:', error);
-    }
-  };
+        .eq('id', id)
+        .single();
 
-  const fetchPartnerReviews = async () => {
-    try {
-      const { data: reviewsData, error } = await supabaseClient
-        .from('service_reviews')
-        .select(`
-          *,
-          profiles:customer_id(display_name, photo_url),
-          pets:pet_id(name),
-          partner_services:service_id(name)
-        `)
-        .eq('partner_id', id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      setPartnerReviews(reviewsData || []);
-      
-      // Calculate average rating
-      if (reviewsData && reviewsData.length > 0) {
-        const avgRating = reviewsData.reduce((sum, review) => sum + review.rating, 0) / reviewsData.length;
-        setAverageRating(avgRating);
-        setTotalReviews(reviewsData.length);
+      if (error || !conversationData) {
+        console.error('Error fetching conversation for notification:', error);
+        return;
       }
-    } catch (error) {
-      console.error('Error fetching partner reviews:', error);
-    }
-  };
 
-  const handleServicePress = (serviceId: string) => {
-    router.push(`/services/${serviceId}`);
-  };
+      // Determine who to notify (the other participant)
+      let recipientId = null;
+      if (conversationData.user_id && conversationData.user_id !== currentUser.id) {
+        recipientId = conversationData.user_id;
+      } else if (conversationData.partner_id) {
+        // Get partner user_id
+        const { data: partnerData } = await supabaseClient
+          .from('partners')
+          .select('user_id')
+          .eq('id', conversationData.partner_id)
+          .single();
+        
+        if (partnerData?.user_id && partnerData.user_id !== currentUser.id) {
+          recipientId = partnerData.user_id;
+        }
+      }
 
-  const handleShowReviews = () => {
-    setShowReviewsModal(true);
-    fetchDetailedReviews();
-  };
+      if (!recipientId) {
+        console.log('No recipient found for notification');
+        return;
+      }
 
-  const fetchDetailedReviews = async () => {
-    if (detailedReviews.length > 0) return; // Already loaded
-    
-    setLoadingDetailedReviews(true);
+      // Get recipient's push token
+      const { data: recipientProfile } = await supabaseClient
+        .from('profiles')
+        .select('push_token, display_name')
+        .eq('id', recipientId)
+        .single();
+
+      if (!recipientProfile?.push_token) {
+        console.log('Recipient does not have push token');
+        return;
+      }
+
+      // Send push notification
+      const notificationData = {
+        to: recipientProfile.push_token,
+  const sendNotificationToOtherParticipants = async (messageText: string) => {
     try {
-      console.log('Fetching detailed reviews for partner:', partner?.id);
-      const { data: reviewsData, error } = await supabaseClient
-        .from('service_reviews')
+      if (!conversation || !currentUser) return;
+
+      // Get conversation participants
+      const { data: conversationData, error } = await supabaseClient
+        .from('chat_conversations')
         .select('*')
-        .eq('partner_id', partner?.id)
-        .order('created_at', { ascending: false })
-        .limit(50);
+        .eq('id', id)
+        .single();
 
-      if (error) throw error;
+      if (error || !conversationData) {
+        console.error('Error fetching conversation for notification:', error);
+        return;
+      }
 
-      console.log('Reviews data received:', reviewsData?.length || 0);
-      
-      // Fetch user profiles and service names for each review
-      const enrichedReviews = await Promise.all(
-        (reviewsData || []).map(async (review) => {
-          try {
-            // Fetch user profile
-            const { data: userProfile } = await supabaseClient
-              .from('profiles')
-              .select('display_name, photo_url')
-              .eq('id', review.customer_id)
-              .single();
-            
-            // Fetch service name
-            const { data: serviceData } = await supabaseClient
-              .from('partner_services')
-              .select('name')
-              .eq('id', review.service_id)
-              .single();
-            
-            return {
-              ...review,
-              user_profile: userProfile,
-              service_name: serviceData?.name
-            };
-          } catch (error) {
-            console.error('Error enriching review:', error);
-            return {
-              ...review,
-              user_profile: null,
-              service_name: null
-            };
+      // Determine who to notify (the other participant)
+      let recipientId = null;
+      if (conversationData.user_id && conversationData.user_id !== currentUser.id) {
+        recipientId = conversationData.user_id;
+      } else if (conversationData.partner_id) {
+        // Get partner user_id
+        const { data: partnerData } = await supabaseClient
+          .from('partners')
+          .select('user_id')
+          .eq('id', conversationData.partner_id)
+          .single();
+        
+        if (partnerData?.user_id && partnerData.user_id !== currentUser.id) {
+          recipientId = partnerData.user_id;
+        }
+      }
+
+      if (!recipientId) {
+        console.log('No recipient found for notification');
+        return;
+      }
+
+      // Get recipient's push token
+      const { data: recipientProfile } = await supabaseClient
+        .from('profiles')
+        .select('push_token, display_name')
+        .eq('id', recipientId)
+        .single();
+
+      if (!recipientProfile?.push_token) {
+        console.log('Recipient does not have push token');
+        return;
+      }
+
+      // Send push notification
+      const notificationData = {
+        to: recipientProfile.push_token,
+  const sendNotificationToOtherParticipants = async (messageText: string) => {
+    try {
+      if (!conversation || !currentUser) return;
+
+      // Get conversation participants
+      const { data: conversationData, error } = await supabaseClient
+        .from('chat_conversations')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error || !conversationData) {
+        console.error('Error fetching conversation for notification:', error);
+        return;
+      }
+
+      // Determine who to notify (the other participant)
+      let recipientId = null;
+      if (conversationData.user_id && conversationData.user_id !== currentUser.id) {
+        recipientId = conversationData.user_id;
+      } else if (conversationData.partner_id) {
+        // Get partner user_id
+        const { data: partnerData } = await supabaseClient
+          .from('partners')
+          .select('user_id')
+          .eq('id', conversationData.partner_id)
+          .single();
+        
+        if (partnerData?.user_id && partnerData.user_id !== currentUser.id) {
+          recipientId = partnerData.user_id;
+        }
+      }
+
+      if (!recipientId) {
+        console.log('No recipient found for notification');
+        return;
+      }
+
+      // Get recipient's push token
+      const { data: recipientProfile } = await supabaseClient
+        .from('profiles')
+        .select('push_token, display_name')
+        .eq('id', recipientId)
+        .single();
+
+      if (!recipientProfile?.push_token) {
+        console.log('Recipient does not have push token');
+        return;
+      }
+
+      // Send push notification
+      const notificationData = {
+        to: recipientProfile.push_token,
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'chat_conversations',
+          filter: `id=eq.${id}`
+        },
+        (payload) => {
+          console.log('Conversation updated:', payload);
+          if (payload.new) {
+            setConversation(payload.new);
           }
-        })
-      );
-      
-      console.log('Enriched reviews:', enrichedReviews);
-      setDetailedReviews(enrichedReviews);
+        }
+      )
+      .subscribe((status) => {
+        console.log('Chat subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Real-time chat subscription active');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Real-time chat subscription error');
+        }
+      });
+
+    return () => {
+      if (subscription) {
+        console.log('Unsubscribing from chat channel');
+        subscription.unsubscribe();
+      }
+    };
+  }, [currentUser, id]);
+
+  const markMessageAsRead = async (messageId: string) => {
+    try {
+      await supabaseClient
+        .from('chat_messages')
+        .update({ is_read: true })
+        .eq('id', messageId)
+        .neq('sender_id', currentUser?.id);
     } catch (error) {
-      console.error('Error fetching detailed reviews:', error);
-    } finally {
-      setLoadingDetailedReviews(false);
+      console.error('Error marking message as read:', error);
+    }
+  };
+  const sendNotificationToOtherParticipants = async (messageText: string) => {
+    try {
+      if (!conversation || !currentUser) return;
+
+      // Get conversation participants
+      const { data: conversationData, error } = await supabaseClient
+        .from('chat_conversations')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error || !conversationData) {
+        console.error('Error fetching conversation for notification:', error);
+        return;
+      }
+
+      // Determine who to notify (the other participant)
+      let recipientId = null;
+      if (conversationData.user_id && conversationData.user_id !== currentUser.id) {
+        recipientId = conversationData.user_id;
+      } else if (conversationData.partner_id) {
+        // Get partner user_id
+        const { data: partnerData } = await supabaseClient
+          .from('partners')
+          .select('user_id')
+          .eq('id', conversationData.partner_id)
+          .single();
+        
+        if (partnerData?.user_id && partnerData.user_id !== currentUser.id) {
+          recipientId = partnerData.user_id;
+        }
+      }
+
+      if (!recipientId) {
+        console.log('No recipient found for notification');
+        return;
+      }
+
+      // Get recipient's push token
+      const { data: recipientProfile } = await supabaseClient
+        .from('profiles')
+        .select('push_token, display_name')
+        .eq('id', recipientId)
+        .single();
+
+      if (!recipientProfile?.push_token) {
+        console.log('Recipient does not have push token');
+        return;
+      }
+
+      // Send push notification
+      const notificationData = {
+        to: recipientProfile.push_token,
+        const { data: petData } = await supabaseClient
+          .from('adoption_pets')
+          .select('name')
+          .eq('id', conversation.adoption_pet_id)
+          .single();
+        
+        if (petData?.name) {
+          petName = petData.name;
+        }
+      }
+
+      // Send push notification
+      const notificationPayload = {
+        to: recipientProfile.push_token,
+        title: `Nuevo mensaje sobre adopción de ${petName}`,
+        body: `${currentUser.displayName || 'Usuario'}: ${messageText.substring(0, 100)}${messageText.length > 100 ? '...' : ''}`,
+        data: {
+          type: 'adoption_chat',
+          conversationId: id,
+          petName: petName,
+          senderId: currentUser.id,
+          senderName: currentUser.displayName || 'Usuario'
+        },
+        sound: 'default',
+        priority: 'high',
+      };
+
+      console.log('Sending push notification:', notificationPayload);
+
+      const response = await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Accept-encoding': 'gzip, deflate',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(notificationPayload),
+      });
+
+      const result = await response.json();
+      console.log('Push notification result:', result);
+
+    } catch (error) {
+      console.error('Error sending notification:', error);
     }
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('es-AR', {
-      style: 'currency',
-      currency: 'ARS',
-    }).format(price);
-  };
+        conversation_id: id,
+        sender_id: currentUser.id,
+        message: messageToSend,
+        message_type: 'text',
+        is_read: false,
+        created_at: new Date().toISOString()
+        conversationId = newConversation.id;
+        setMessages(prev => prev.filter(msg => msg.id !== tempId));
+        setNewMessage(messageToSend); // Restore message
+        throw error;
+      }
 
-  const getBusinessTypeIcon = (type: string) => {
-    switch (type) {
-      case 'veterinary': return '🏥';
-      case 'grooming': return '✂️';
-      case 'walking': return '🚶';
-      case 'boarding': return '🏠';
-      case 'shop': return '🛍️';
-      case 'shelter': return '🐾';
-      default: return '🏢';
+      // Replace temp message with real message
+      if (data) {
+        setMessages(prev => prev.map(msg => 
+          msg.id === tempId ? {
+            ...data,
+            id: data.id,
+            conversation_id: data.conversation_id,
+        const { data: newMessage, error: messageError } = await supabaseClient
+            message: data.message,
+          .insert([messageData])
+          .select()
+          .single();
+            is_read: data.is_read || false,
+            created_at: data.created_at
+          } : msg
+        ));
+      }
+
+          
+          // Send push notification to partner about new adoption inquiry
+          try {
+            const { data: partnerData } = await supabaseClient
+              .from('partners')
+              .select('user_id')
+              .eq('id', id)
+              .single();
+            
+            if (partnerData?.user_id) {
+              const { data: partnerProfile } = await supabaseClient
+                .from('profiles')
+                .select('push_token')
+                .eq('id', partnerData.user_id)
+                .single();
+              
+              if (partnerProfile?.push_token) {
+                const notificationPayload = {
+                  to: partnerProfile.push_token,
+                  title: `Nueva consulta de adopción - ${petName}`,
+                  body: `${currentUser.displayName || 'Usuario'} está interesado en adoptar a ${petName}`,
+                  data: {
+                    type: 'adoption_inquiry',
+                    conversationId: conversationId,
+                    petName: petName,
+                    senderId: currentUser.id,
+                    senderName: currentUser.displayName || 'Usuario'
+                  },
+                  sound: 'default',
+                  priority: 'high',
+                };
+
+                await fetch('https://exp.host/--/api/v2/push/send', {
+                  method: 'POST',
+                  headers: {
+                    Accept: 'application/json',
+                    'Accept-encoding': 'gzip, deflate',
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify(notificationPayload),
+                });
+                
+                console.log('Push notification sent to partner');
+              }
+            }
+          } catch (notificationError) {
+            console.error('Error sending initial notification:', notificationError);
+          }
+      // Send push notification to other participants
+      try {
+        await sendNotificationToOtherParticipants(messageToSend);
+      } catch (notificationError) {
+        console.error('Error sending notification:', notificationError);
+        // Don't fail the message sending if notification fails
+      }
+
+      scrollToBottom();
+    } catch (error) {
+      console.error('Error sending message:', error);
+      Alert.alert('Error', 'No se pudo enviar el mensaje');
     }
   };
 
-  const renderStarRating = (rating: number, size: number = 16) => {
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  };
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const renderMessage = (message: any) => {
+    const isOwnMessage = message.sender_id === currentUser?.id;
+    
     return (
-      <View style={styles.starRating}>
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Star
-            key={star}
-            size={size}
-            color={star <= rating ? '#F59E0B' : '#E5E7EB'}
-            fill={star <= rating ? '#F59E0B' : 'none'}
-          />
-        ))}
+      <View
+        key={message.id}
+        style={[
+          styles.messageContainer,
+          isOwnMessage ? styles.ownMessage : styles.otherMessage
+        ]}
+      >
+        <Text style={[
+          styles.messageText,
+          isOwnMessage ? styles.ownMessageText : styles.otherMessageText
+        ]}>
+          {message.message}
+        </Text>
+        <Text style={[
+          styles.messageTime,
+          isOwnMessage ? styles.ownMessageTime : styles.otherMessageTime
+        ]}>
+          {formatTime(message.created_at)}
+        </Text>
       </View>
     );
   };
 
-  const calculateReviewPercentages = () => {
-    if (detailedReviews.length === 0) return [];
-    
-    const counts = [0, 0, 0, 0, 0]; // For 1-5 stars
-    detailedReviews.forEach(review => {
-      if (review.rating >= 1 && review.rating <= 5) {
-        counts[review.rating - 1]++;
-      }
-    });
-    
-    return counts.map((count, index) => ({
-      stars: index + 1,
-      count,
-      percentage: detailedReviews.length > 0 ? (count / detailedReviews.length) * 100 : 0
-    })).reverse(); // Show 5 stars first
-  };
-
-  const handleContactShelter = async (contactInfo: string) => {
-    try {
-      // Extract phone number from contact info
-      const phoneMatch = contactInfo.match(/(\+?\d{1,4}[\s-]?\d{1,4}[\s-]?\d{1,4}[\s-]?\d{1,4})/);
-      const emailMatch = contactInfo.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
-      
-      if (phoneMatch) {
-        const phoneNumber = phoneMatch[1].replace(/[\s-]/g, '');
-        const phoneUrl = `tel:${phoneNumber}`;
-        
-        if (await Linking.canOpenURL(phoneUrl)) {
-          await Linking.openURL(phoneUrl);
-        } else {
-          Alert.alert('Error', 'No se puede realizar la llamada');
-        }
-      } else if (emailMatch) {
-        const email = emailMatch[1];
-        const emailUrl = `mailto:${email}`;
-        
-        if (await Linking.canOpenURL(emailUrl)) {
-          await Linking.openURL(emailUrl);
-        } else {
-          Alert.alert('Error', 'No se puede abrir el email');
-        }
-      } else {
-        Alert.alert('Contacto', contactInfo);
-      }
-    } catch (error) {
-      console.error('Error contacting shelter:', error);
-      Alert.alert('Error', 'No se pudo contactar al refugio');
-    }
-  };
-
-  const handleStartAdoptionChat = (petId: string, petName: string) => {
-    if (!currentUser) {
-      Alert.alert('Iniciar sesión', 'Debes iniciar sesión para contactar sobre adopciones');
-      return;
-    }
-
-    console.log('Starting adoption chat with:', { petId, petName, partnerId: id, userId: currentUser.id });
-    
-    if (!petId || !petName || !id) {
-      console.error('Missing required parameters for adoption chat:', { petId, petName, partnerId: id });
-      Alert.alert('Error', 'Información incompleta para iniciar la conversación');
-      return;
-    }
-
-    // Crear o encontrar conversación existente
-    createOrFindAdoptionConversation(petId, petName);
-  };
-
-  const createOrFindAdoptionConversation = async (petId: string, petName: string) => {
-    try {
-      console.log('Creating/finding conversation for:', { petId, petName, partnerId: id, userId: currentUser?.id });
-      
-      if (!currentUser?.id || !id) {
-        throw new Error('Usuario o partner ID no disponible');
-      }
-      
-      // Verificar si ya existe una conversación
-      const { data: existingConversation, error: checkError } = await supabaseClient
-        .from('chat_conversations')
-        .select('id')
-        .eq('adoption_pet_id', petId)
-        .eq('user_id', currentUser!.id)
-        .single();
-
-      console.log('Existing conversation check:', { existingConversation, checkError });
-
-      let conversationId;
-
-      if (!existingConversation) {
-        // No existe conversación, crear una nueva
-        console.log('Creating new conversation...');
-        
-        // Crear conversación usando insert directo
-        const conversationData = {
-          adoption_pet_id: petId,
-          partner_id: id,
-          user_id: currentUser!.id,
-          status: 'active',
-          created_at: new Date().toISOString()
-        };
-        
-        const { error: createError } = await supabaseClient
-          .from('chat_conversations')
-          .insert([conversationData]);
-
-        if (createError) {
-          console.error('Error creating conversation:', createError);
-          throw createError;
-        }
-        
-        console.log('New conversation created successfully');
-        
-        // Buscar la conversación recién creada para obtener el ID
-        const { data: createdConversation, error: fetchError } = await supabaseClient
-          .from('chat_conversations')
-          .select('id')
-          .eq('adoption_pet_id', petId)
-          .eq('user_id', currentUser!.id)
-          .eq('partner_id', id)
-          .single();
-        
-        if (fetchError || !createdConversation) {
-          console.error('Error fetching created conversation:', fetchError);
-          throw new Error('No se pudo obtener el ID de la conversación creada');
-        }
-        
-        conversationId = createdConversation.id;
-        console.log('Conversation ID obtained:', conversationId);
-
-        // Enviar mensaje inicial
-        const messageData = {
-          conversation_id: conversationId,
-          sender_id: currentUser!.id,
-          message: `Hola! Estoy interesado/a en adoptar a ${petName}. ¿Podrían darme más información?`,
-          message_type: 'text',
-          is_read: false,
-          created_at: new Date().toISOString()
-        };
-        
-        const { error: messageError } = await supabaseClient
-          .from('chat_messages')
-          .insert([messageData]);
-        
-        if (messageError) {
-          console.error('Error sending initial message:', messageError);
-          // No lanzar error aquí, la conversación ya se creó
-        } else {
-          console.log('Initial message sent successfully');
-        }
-      } else {
-        console.log('Using existing conversation:', existingConversation.id);
-        conversationId = existingConversation.id;
-      }
-
-      console.log('Navigating to chat with conversation ID:', conversationId);
-      // Navegar al chat
-      router.push(`/chat/${conversationId}?petName=${petName}`);
-    } catch (error) {
-      console.error('Error starting adoption chat:', error);
-      Alert.alert('Error', `No se pudo iniciar la conversación: ${error?.message || error || 'Error desconocido'}`);
-    }
-  };
-
-  const renderAdoptionPet = (pet: any) => (
-    <Card key={pet.id} style={styles.adoptionPetCard}>
-      {/* Pet Images */}
-      {pet.images && pet.images.length > 0 && (
-        <ScrollView 
-          horizontal 
-          pagingEnabled 
-          showsHorizontalScrollIndicator={false}
-          style={styles.petImagesContainer}
-        >
-          {pet.images.map((image: string, index: number) => (
-            <Image 
-              key={index} 
-              source={{ uri: image }} 
-              style={styles.petImage} 
-              resizeMode="cover"
-            />
-          ))}
-        </ScrollView>
-      )}
-      
-      {/* Pet Info */}
-      <View style={styles.petInfo}>
-        <View style={styles.petHeader}>
-          <Text style={styles.petName}>
-            {pet.species === 'dog' ? '🐶' : pet.species === 'cat' ? '🐱' : '🐾'} {pet.name}
-          </Text>
-          {(pet.adoptionFee || pet.price) > 0 && (
-            <Text style={styles.adoptionFee}>
-              ${(pet.adoptionFee || pet.price).toLocaleString()}
-            </Text>
-          )}
-        </View>
-        
-        {/* Handle both new format and legacy format */}
-        {pet.isLegacyFormat ? (
-          <>
-            <Text style={styles.petBasicInfo}>{pet.basicInfo}</Text>
-            {pet.healthInfo && (
-              <Text style={styles.petHealthInfo}>{pet.healthInfo}</Text>
-            )}
-            {pet.temperamentInfo && (
-              <Text style={styles.petTemperament}>{pet.temperamentInfo}</Text>
-            )}
-            {pet.adoptionInfo && (
-              <Text style={styles.petAdoptionInfo}>{pet.adoptionInfo}</Text>
-            )}
-            {pet.contactInfo && (
-              <Text style={styles.petContactInfo}>{pet.contactInfo}</Text>
-            )}
-          </>
-        ) : (
-          <>
-            <Text style={styles.petBasicInfo}>
-              {pet.breed} • {pet.age} {pet.ageUnit === 'years' ? 'años' : 'meses'} • {pet.size} • {pet.gender === 'male' ? 'Macho' : 'Hembra'}
-            </Text>
-            
-            <Text style={styles.petDescription}>{pet.description}</Text>
-            
-            {/* Health Status */}
-            <View style={styles.healthStatus}>
-              {pet.isVaccinated && (
-                <View style={styles.healthBadge}>
-                  <Text style={styles.healthBadgeText}>Vacunado</Text>
-                </View>
-              )}
-              {pet.isNeutered && (
-                <View style={styles.healthBadge}>
-                  <Text style={styles.healthBadgeText}>Castrado</Text>
-                </View>
-              )}
-              {pet.isDewormed && (
-                <View style={styles.healthBadge}>
-                  <Text style={styles.healthBadgeText}>Desparasitado</Text>
-                </View>
-              )}
-            </View>
-            
-            {/* Temperament */}
-            {pet.temperament && pet.temperament.length > 0 && (
-              <Text style={styles.petTemperament}>
-                🧠 Temperamento: {pet.temperament.slice(0, 3).join(', ')}
-                {pet.temperament.length > 3 && '...'}
-              </Text>
-            )}
-            
-            {/* Adoption Requirements */}
-            {pet.adoptionRequirements && pet.adoptionRequirements.length > 0 && (
-              <Text style={styles.petAdoptionInfo}>
-                🏡 Requisitos: {pet.adoptionRequirements.slice(0, 2).join(', ')}
-                {pet.adoptionRequirements.length > 2 && ` +${pet.adoptionRequirements.length - 2} más`}
-              </Text>
-            )}
-            
-            {/* Contact Info */}
-            {pet.contactInfo && (
-              <Text style={styles.petContactInfo}>
-                📞 Contacto: {pet.contactInfo}
-              </Text>
-            )}
-          </>
-        )}
-        
-        {/* Action Buttons */}
-        <View style={styles.petActions}>
-          <TouchableOpacity 
-            style={styles.contactButton}
-            onPress={() => handleContactShelter(pet.contactInfo || pet.contact_info || partner?.phone || '')}
-          >
-            <Phone size={16} color="#FFFFFF" />
-            <Text style={styles.contactButtonText}>Contactar</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.adoptionButton}
-            onPress={() => {
-              console.log('Adoption button pressed for pet:', { id: pet.id, name: pet.name });
-              if (pet.id && pet.name) {
-                handleStartAdoptionChat(pet.id, pet.name);
-              } else {
-                console.error('Pet ID or name is missing:', { id: pet.id, name: pet.name });
-                Alert.alert('Error', 'Información de la mascota incompleta');
-              }
-            }}
-          >
-            <MessageCircle size={16} color="#FFFFFF" />
-            <Text style={styles.adoptionButtonText}>Adopción</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Card>
-  );
-  
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Cargando servicios...</Text>
+          <Text style={styles.loadingText}>Cargando conversación...</Text>
         </View>
       </SafeAreaView>
     );
@@ -698,257 +585,72 @@ const PartnerServices = () => {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <ArrowLeft size={24} color="#111827" />
         </TouchableOpacity>
-        <View style={styles.titleContainer}>
-          <Text style={styles.title}>Servicios Disponibles</Text>
-        </View>
+        <Text style={styles.title}>
+          {petName ? `Adopción de ${petName}` : 'Chat'}
+        </Text>
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Partner Profile Card */}
-        <Card style={styles.partnerCard}>
-          <View style={styles.partnerHeader}>
-            {(partner?.logo || partner?.business_logo) ? (
-              <Image source={{ uri: partner.logo || partner.business_logo }} style={styles.partnerLogo} />
-            ) : (
-              <View style={styles.logoPlaceholder}>
-                <Text style={styles.logoPlaceholderText}>
-                  {getBusinessTypeIcon(partner?.business_type || partner?.businessType)}
-                </Text>
-              </View>
-            )}
-            
-            <View style={styles.partnerInfo}>
-              <Text style={styles.partnerName}>{partner?.business_name || partner?.businessName || 'Negocio'}</Text>
-              
-              <View style={styles.partnerDetails}>
-                <View style={styles.partnerDetail}>
-                  <MapPin size={14} color="#6B7280" />
-                  <Text style={styles.partnerDetailText} numberOfLines={1}>
-                    {partner?.address || 'Ubicación no disponible'}
-                  </Text>
-                </View>
-                
-                <View style={styles.partnerDetail}>
-                  <Phone size={14} color="#6B7280" />
-                  <Text style={styles.partnerDetailText}>
-                    {partner?.phone || 'Teléfono no disponible'}
-                  </Text>
-                </View>
-              </View>
-              
-              {averageRating > 0 && (
-                <TouchableOpacity style={styles.ratingContainer} onPress={handleShowReviews}>
-                  {renderStarRating(averageRating)}
-                  <Text style={styles.ratingText}>{averageRating.toFixed(1)}</Text>
-                  <Text style={styles.reviewsText}>
-                    ({totalReviews} reseñas)
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-        </Card>
-
-        {/* Search Bar */}
-        {partner?.business_type !== 'shelter' && (
-          <View style={styles.searchContainer}>
-            <View style={styles.searchBar}>
-              <Search size={20} color="#9CA3AF" />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Buscar servicios..."
-                placeholderTextColor="#9CA3AF"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-            </View>
-          </View>
-        )}
-
-        {/* Services or Adoption Pets List */}
-        <Text style={styles.sectionTitle}>
-          {partner?.business_type === 'shelter' ? 'Mascotas en Adopción' : 'Servicios Disponibles'}
-        </Text>
-        
-        {partner?.business_type === 'shelter' ? (
-          adoptionPets.length === 0 ? (
-            <Card style={styles.emptyCard}>
-              <Heart size={48} color="#EF4444" />
-              <Text style={styles.emptyTitle}>No hay mascotas en adopción</Text>
-              <Text style={styles.emptySubtitle}>
-                Este refugio aún no tiene mascotas disponibles para adopción
-              </Text>
-            </Card>
-          ) : (
-            <View>
-              {adoptionPets.map(renderAdoptionPet)}
-            </View>
-          )
-        ) : (
-          filteredServices.length === 0 ? (
-            <Card style={styles.emptyCard}>
-              <Text style={styles.emptyTitle}>No hay servicios disponibles</Text>
-              <Text style={styles.emptySubtitle}>
-                {searchQuery ? 'No se encontraron servicios que coincidan con tu búsqueda' : 'Este negocio aún no tiene servicios registrados'}
-              </Text>
-            </Card>
-          ) : (
-            filteredServices.map((service) => (
-              <Card key={service.id} style={styles.serviceCard}>
-                <TouchableOpacity 
-                  style={styles.serviceContent}
-                  onPress={() => handleServicePress(service.id)}
-                >
-                  <View style={styles.serviceHeader}>
-                    <Text style={styles.serviceName}>{service.name}</Text>
-                    <Text style={styles.servicePrice}>{formatPrice(service.price)}</Text>
-                  </View>
-                  
-                  {service.description && (
-                    <Text style={styles.serviceDescription} numberOfLines={2}>
-                      {service.description}
-                    </Text>
-                  )}
-                  
-                  <View style={styles.serviceDetails}>
-                    <View style={styles.serviceDetail}>
-                      <Clock size={14} color="#6B7280" />
-                      <Text style={styles.serviceDetailText}>
-                        {service.duration || 60} min
-                      </Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              </Card>
-            ))
-          )
-        )}
-      </ScrollView>
-
-      {/* Reviews Modal */}
-      <Modal
-        visible={showReviewsModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowReviewsModal(false)}
+      <KeyboardAvoidingView 
+        style={styles.chatContainer}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                Reseñas de {partner?.businessName || partner?.business_name}
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.messagesContainer}
+          contentContainerStyle={styles.messagesContent}
+          showsVerticalScrollIndicator={false}
+          onContentSizeChange={scrollToBottom}
+        >
+          {messages.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>
+                Inicia la conversación sobre la adopción de {petName}
               </Text>
-              <TouchableOpacity onPress={() => setShowReviewsModal(false)}>
-                <Text style={styles.modalCloseText}>✕</Text>
-              </TouchableOpacity>
             </View>
-            
-            {averageRating > 0 && (
-              <View style={styles.overallRating}>
-                <View style={styles.ratingDisplay}>
-                  <Text style={styles.averageRatingNumber}>
-                    {averageRating.toFixed(1)}
-                  </Text>
-                  {renderStarRating(Math.round(averageRating), 24)}
-                </View>
-                <Text style={styles.totalReviewsText}>
-                  Basado en {totalReviews} reseñas
-                </Text>
-              </View>
-            )}
+          ) : (
+            messages.map(renderMessage)
+          )}
+        </ScrollView>
 
-            {/* Rating Breakdown */}
-            {detailedReviews.length > 0 && (
-              <View style={styles.ratingBreakdown}>
-                <Text style={styles.breakdownTitle}>Distribución de calificaciones</Text>
-                {calculateReviewPercentages().map((item) => (
-                  <View key={item.stars} style={styles.breakdownRow}>
-                    <Text style={styles.breakdownStars}>{item.stars} ⭐</Text>
-                    <View style={styles.breakdownBar}>
-                      <View 
-                        style={[
-                          styles.breakdownBarFill, 
-                          { width: `${item.percentage}%` }
-                        ]} 
-                      />
-                    </View>
-                    <Text style={styles.breakdownPercentage}>
-                      {item.percentage.toFixed(0)}%
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            )}
-            
-            <ScrollView style={styles.reviewsList} showsVerticalScrollIndicator={false}>
-              {loadingDetailedReviews ? (
-                <View style={styles.loadingContainer}>
-                  <Text style={styles.loadingText}>Cargando reseñas...</Text>
-                </View>
-              ) : detailedReviews.length === 0 ? (
-                <View style={styles.noReviewsContainer}>
-                  <Text style={styles.noReviewsText}>
-                    Aún no hay reseñas para este negocio
-                  </Text>
-                </View>
-              ) : (
-                detailedReviews.map((review) => (
-                  <View key={review.id} style={styles.reviewItem}>
-                    <View style={styles.reviewItemHeader}>
-                      <View style={styles.reviewerInfo}>
-                        <View style={styles.reviewerAvatar}>
-                          {review.user_profile?.photo_url ? (
-                            <Image 
-                              source={{ uri: review.user_profile.photo_url }} 
-                              style={styles.reviewerAvatarImage} 
-                            />
-                          ) : (
-                            <User size={16} color="#9CA3AF" />
-                          )}
-                        </View>
-                        <View style={styles.reviewerDetails}>
-                          <Text style={styles.reviewerName}>
-                            {review.user_profile?.display_name || 'Usuario'}
-                          </Text>
-                          <Text style={styles.reviewServiceInfo}>
-                            {review.service_name || 'Servicio'} • {new Date(review.created_at).toLocaleDateString()}
-                          </Text>
-                        </View>
-                      </View>
-                      <View style={styles.reviewRatingContainer}>
-                        {renderStarRating(review.rating, 16)}
-                      </View>
-                    </View>
-                    
-                    {review.comment && (
-                      <Text style={styles.reviewComment}>
-                        {review.comment}
-                      </Text>
-                    )}
-                  </View>
-                ))
-              )}
-            </ScrollView>
-          </View>
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.messageInput}
+            placeholder="Escribe un mensaje..."
+            value={newMessage}
+            onChangeText={setNewMessage}
+            multiline
+            maxLength={500}
+          />
+          <TouchableOpacity
+            style={[
+              styles.sendButton,
+              !newMessage.trim() && styles.sendButtonDisabled
+            ]}
+            onPress={sendMessage}
+            disabled={!newMessage.trim()}
+          >
+            <Send size={20} color={newMessage.trim() ? "#FFFFFF" : "#9CA3AF"} />
+          </TouchableOpacity>
         </View>
-      </Modal>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
+    paddingTop: 50,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 50,
-    paddingBottom: 12,
+    paddingVertical: 12,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
@@ -956,21 +658,107 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 8,
   },
-  titleContainer: {
-    flex: 1,
-    alignItems: 'center',
-  },
   title: {
     fontSize: 18,
     fontFamily: 'Inter-SemiBold',
     color: '#111827',
   },
   placeholder: {
-    width: 40,
+    width: 32,
   },
-  content: {
+  chatContainer: {
     flex: 1,
-    padding: 16,
+  },
+  messagesContainer: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+  messagesContent: {
+    paddingVertical: 16,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  messageContainer: {
+    marginBottom: 12,
+    maxWidth: '80%',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+  },
+  ownMessage: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#EF4444',
+  },
+  otherMessage: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  messageText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    lineHeight: 20,
+  },
+  ownMessageText: {
+    color: '#FFFFFF',
+  },
+  otherMessageText: {
+    color: '#111827',
+  },
+  messageTime: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    marginTop: 4,
+  },
+  ownMessageTime: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'right',
+  },
+  otherMessageTime: {
+    color: '#9CA3AF',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  messageInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    maxHeight: 100,
+    marginRight: 8,
+  },
+  sendButton: {
+    backgroundColor: '#EF4444',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sendButtonDisabled: {
+    backgroundColor: '#F3F4F6',
   },
   loadingContainer: {
     flex: 1,
@@ -982,452 +770,4 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
   },
-  starRating: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    flex: 1,
-    maxHeight: '80%',
-    marginTop: 60,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: '#111827',
-    flex: 1,
-  },
-  modalCloseText: {
-    fontSize: 18,
-    color: '#6B7280',
-    padding: 4,
-  },
-  overallRating: {
-    backgroundColor: '#F8FAFC',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  ratingDisplay: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 8,
-  },
-  averageRatingNumber: {
-    fontSize: 32,
-    fontFamily: 'Inter-Bold',
-    color: '#F59E0B',
-  },
-  totalReviewsText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-  },
-  reviewsList: {
-    flex: 1,
-  },
-  ratingBreakdown: {
-    marginBottom: 20,
-  },
-  breakdownTitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
-    marginBottom: 12,
-  },
-  breakdownRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  breakdownStars: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: '#374151',
-    width: 40,
-  },
-  breakdownBar: {
-    flex: 1,
-    height: 8,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 4,
-    marginHorizontal: 12,
-  },
-  breakdownBarFill: {
-    height: '100%',
-    backgroundColor: '#F59E0B',
-    borderRadius: 4,
-  },
-  breakdownPercentage: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-    color: '#6B7280',
-    width: 35,
-    textAlign: 'right',
-  },
-  reviewItem: {
-    backgroundColor: '#FAFAFA',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
-  },
-  reviewItemHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  reviewerInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  reviewerAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-    overflow: 'hidden',
-  },
-  reviewerAvatarImage: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-  },
-  reviewerDetails: {
-    flex: 1,
-  },
-  reviewerName: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
-    marginBottom: 2,
-  },
-  reviewServiceInfo: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-  },
-  reviewRatingContainer: {
-    alignItems: 'flex-end',
-  },
-  reviewComment: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#374151',
-    lineHeight: 20,
-  },
-  noReviewsContainer: {
-    padding: 40,
-    alignItems: 'center',
-  },
-  noReviewsText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    textAlign: 'center',
-  },
-  partnerCard: {
-    marginBottom: 16,
-  },
-  partnerHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  partnerLogo: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginRight: 16,
-  },
-  logoPlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#3B82F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  logoPlaceholderText: {
-    fontSize: 32,
-  },
-  partnerInfo: {
-    flex: 1,
-  },
-  partnerName: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  partnerDetails: {
-    marginBottom: 8,
-  },
-  partnerDetail: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  partnerDetailText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    marginLeft: 4,
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  ratingText: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
-    marginLeft: 4,
-  },
-  reviewsText: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    marginLeft: 4,
-  },
-  searchContainer: {
-    marginBottom: 16,
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  searchInput: {
-    flex: 1,
-    marginLeft: 8,
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#111827',
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
-    marginBottom: 12,
-  },
-  emptyCard: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    textAlign: 'center',
-  },
-  serviceCard: {
-    marginBottom: 12,
-  },
-  serviceContent: {
-    padding: 12,
-  },
-  serviceHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  serviceName: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
-    flex: 1,
-    marginRight: 8,
-  },
-  servicePrice: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: '#10B981',
-  },
-  serviceDescription: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    marginBottom: 8,
-    lineHeight: 20,
-  },
-  serviceDetails: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  serviceDetail: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  serviceDetailText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    marginLeft: 4,
-  },
-  // Adoption pets styles
-  adoptionPetsList: {
-    gap: 16,
-  },
-  adoptionPetCard: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    overflow: 'hidden',
-  },
-  petImagesContainer: {
-    height: 200,
-  },
-  petImage: {
-    width: width - 64, // Account for card margins
-    height: 200,
-  },
-  petInfo: {
-    padding: 16,
-  },
-  petHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  petName: {
-    fontSize: 20,
-    fontFamily: 'Inter-Bold',
-    color: '#111827',
-  },
-  adoptionFee: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#10B981',
-  },
-  petDescription: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#374151',
-    marginBottom: 12,
-    lineHeight: 20,
-  },
-  healthStatus: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 12,
-  },
-  healthBadge: {
-    backgroundColor: '#D1FAE5',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  healthBadgeText: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-    color: '#065F46',
-  },
-  petBasicInfo: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#374151',
-    marginBottom: 8,
-    lineHeight: 20,
-  },
-  petHealthInfo: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#059669',
-    marginBottom: 6,
-    lineHeight: 18,
-  },
-  petTemperament: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#7C3AED',
-    marginBottom: 6,
-    lineHeight: 18,
-  },
-  petAdoptionInfo: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#DC2626',
-    marginBottom: 6,
-    lineHeight: 18,
-  },
-  petContactInfo: {
-    fontSize: 13,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    marginBottom: 16,
-    lineHeight: 18,
-  },
-  petActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  contactButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#3B82F6',
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 6,
-  },
-  contactButtonText: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    color: '#FFFFFF',
-  },
-  adoptionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#EF4444',
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 6,
-  },
-  adoptionButtonText: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    color: '#FFFFFF',
-  },
 });
-
-export default PartnerServices;
