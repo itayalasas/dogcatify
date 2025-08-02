@@ -164,25 +164,6 @@ export default function ChatContacts() {
     try {
       const { data, error } = await supabaseClient
         .from('chat_conversations')
-        .select('*')
-        .eq('id', id)
-        .single();
-      
-      if (error) {
-        if (error.code === 'PGRST301' || error.message?.includes('JWT expired')) {
-          Alert.alert('Sesión expirada', 'Tu sesión ha expirado. Inicia sesión nuevamente.');
-          router.replace('/auth/login');
-          return;
-        }
-        throw error;
-      }
-      
-      setConversation(data);
-    } catch (error) {
-      console.error('Error fetching conversation:', error);
-    }
-  };
-
   const fetchMessages = async () => {
     try {
       const { data, error } = await supabaseClient
