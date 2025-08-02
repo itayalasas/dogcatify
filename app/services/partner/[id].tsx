@@ -56,32 +56,12 @@ export default function ChatScreen() {
           }
         }
       )
-      .on('postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'chat_conversations',
-          filter: `id=eq.${id}`
-        },
-        (payload) => {
-          console.log('Conversation updated:', payload);
-          if (payload.new) {
-            setConversation(payload.new);
-          }
-        }
-      )
       .subscribe((status) => {
         console.log('Chat subscription status:', status);
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ Real-time chat subscription active');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ Real-time chat subscription error');
-        }
       });
 
     return () => {
       if (subscription) {
-        console.log('Unsubscribing from chat channel');
         subscription.unsubscribe();
       }
     };
@@ -137,6 +117,322 @@ export default function ChatScreen() {
     }
   };
 
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !currentUser) return;
+
+    const tempId = `temp-${Date.now()}`;
+    const tempMessage = {
+      id: tempId,
+      conversation_id: id,
+      sender_id: currentUser.id,
+      message: newMessage.trim(),
+      message_type: 'text',
+      is_read: false,
+      created_at: new Date().toISOString()
+    };
+
+    // Add message optimistically to UI
+    setMessages(prev => [...prev, tempMessage]);
+    const messageToSend = newMessage.trim();
+    setNewMessage('');
+    scrollToBottom();
+    try {
+      const messageData = {
+  const sendNotificationToOtherParticipants = async (messageText: string) => {
+    try {
+      if (!conversation || !currentUser) return;
+
+      // Get conversation participants
+      const { data: conversationData, error } = await supabaseClient
+        .from('chat_conversations')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error || !conversationData) {
+        console.error('Error fetching conversation for notification:', error);
+        return;
+      }
+
+      // Determine who to notify (the other participant)
+      let recipientId = null;
+      if (conversationData.user_id && conversationData.user_id !== currentUser.id) {
+        recipientId = conversationData.user_id;
+      } else if (conversationData.partner_id) {
+        // Get partner user_id
+        const { data: partnerData } = await supabaseClient
+          .from('partners')
+          .select('user_id')
+          .eq('id', conversationData.partner_id)
+          .single();
+        
+        if (partnerData?.user_id && partnerData.user_id !== currentUser.id) {
+          recipientId = partnerData.user_id;
+        }
+      }
+
+      if (!recipientId) {
+        console.log('No recipient found for notification');
+        return;
+      }
+
+      // Get recipient's push token
+      const { data: recipientProfile } = await supabaseClient
+        .from('profiles')
+        .select('push_token, display_name')
+        .eq('id', recipientId)
+        .single();
+
+      if (!recipientProfile?.push_token) {
+        console.log('Recipient does not have push token');
+        return;
+      }
+
+      // Send push notification
+      const notificationData = {
+        to: recipientProfile.push_token,
+  const sendNotificationToOtherParticipants = async (messageText: string) => {
+    try {
+      if (!conversation || !currentUser) return;
+
+      // Get conversation participants
+      const { data: conversationData, error } = await supabaseClient
+        .from('chat_conversations')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error || !conversationData) {
+        console.error('Error fetching conversation for notification:', error);
+        return;
+      }
+
+      // Determine who to notify (the other participant)
+      let recipientId = null;
+      if (conversationData.user_id && conversationData.user_id !== currentUser.id) {
+        recipientId = conversationData.user_id;
+      } else if (conversationData.partner_id) {
+        // Get partner user_id
+        const { data: partnerData } = await supabaseClient
+          .from('partners')
+          .select('user_id')
+          .eq('id', conversationData.partner_id)
+          .single();
+        
+        if (partnerData?.user_id && partnerData.user_id !== currentUser.id) {
+          recipientId = partnerData.user_id;
+        }
+      }
+
+      if (!recipientId) {
+        console.log('No recipient found for notification');
+        return;
+      }
+
+      // Get recipient's push token
+      const { data: recipientProfile } = await supabaseClient
+        .from('profiles')
+        .select('push_token, display_name')
+        .eq('id', recipientId)
+        .single();
+
+      if (!recipientProfile?.push_token) {
+        console.log('Recipient does not have push token');
+        return;
+      }
+
+      // Send push notification
+      const notificationData = {
+        to: recipientProfile.push_token,
+  const sendNotificationToOtherParticipants = async (messageText: string) => {
+    try {
+      if (!conversation || !currentUser) return;
+
+      // Get conversation participants
+      const { data: conversationData, error } = await supabaseClient
+        .from('chat_conversations')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error || !conversationData) {
+        console.error('Error fetching conversation for notification:', error);
+        return;
+      }
+
+      // Determine who to notify (the other participant)
+      let recipientId = null;
+      if (conversationData.user_id && conversationData.user_id !== currentUser.id) {
+        recipientId = conversationData.user_id;
+      } else if (conversationData.partner_id) {
+        // Get partner user_id
+        const { data: partnerData } = await supabaseClient
+          .from('partners')
+          .select('user_id')
+          .eq('id', conversationData.partner_id)
+          .single();
+        
+        if (partnerData?.user_id && partnerData.user_id !== currentUser.id) {
+          recipientId = partnerData.user_id;
+        }
+      }
+
+      if (!recipientId) {
+        console.log('No recipient found for notification');
+        return;
+      }
+
+      // Get recipient's push token
+      const { data: recipientProfile } = await supabaseClient
+        .from('profiles')
+        .select('push_token, display_name')
+        .eq('id', recipientId)
+        .single();
+
+      if (!recipientProfile?.push_token) {
+        console.log('Recipient does not have push token');
+        return;
+      }
+
+      // Send push notification
+      const notificationData = {
+        to: recipientProfile.push_token,
+  const sendNotificationToOtherParticipants = async (messageText: string) => {
+    try {
+      if (!conversation || !currentUser) return;
+
+      // Get conversation participants
+      const { data: conversationData, error } = await supabaseClient
+        .from('chat_conversations')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error || !conversationData) {
+        console.error('Error fetching conversation for notification:', error);
+        return;
+      }
+
+      // Determine who to notify (the other participant)
+      let recipientId = null;
+      if (conversationData.user_id && conversationData.user_id !== currentUser.id) {
+        recipientId = conversationData.user_id;
+      } else if (conversationData.partner_id) {
+        // Get partner user_id
+        const { data: partnerData } = await supabaseClient
+          .from('partners')
+          .select('user_id')
+          .eq('id', conversationData.partner_id)
+          .single();
+        
+        if (partnerData?.user_id && partnerData.user_id !== currentUser.id) {
+          recipientId = partnerData.user_id;
+        }
+      }
+
+      if (!recipientId) {
+        console.log('No recipient found for notification');
+        return;
+      }
+
+      // Get recipient's push token
+      const { data: recipientProfile } = await supabaseClient
+        .from('profiles')
+        .select('push_token, display_name')
+        .eq('id', recipientId)
+        .single();
+
+      if (!recipientProfile?.push_token) {
+        console.log('Recipient does not have push token');
+        return;
+      }
+
+      // Send push notification
+      const notificationData = {
+        to: recipientProfile.push_token,
+  const sendNotificationToOtherParticipants = async (messageText: string) => {
+    try {
+      if (!conversation || !currentUser) return;
+
+      // Get conversation participants
+      const { data: conversationData, error } = await supabaseClient
+        .from('chat_conversations')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error || !conversationData) {
+        console.error('Error fetching conversation for notification:', error);
+        return;
+      }
+
+      // Determine who to notify (the other participant)
+      let recipientId = null;
+      if (conversationData.user_id && conversationData.user_id !== currentUser.id) {
+        recipientId = conversationData.user_id;
+      } else if (conversationData.partner_id) {
+        // Get partner user_id
+        const { data: partnerData } = await supabaseClient
+          .from('partners')
+          .select('user_id')
+          .eq('id', conversationData.partner_id)
+          .single();
+        
+        if (partnerData?.user_id && partnerData.user_id !== currentUser.id) {
+          recipientId = partnerData.user_id;
+        }
+      }
+
+      if (!recipientId) {
+        console.log('No recipient found for notification');
+        return;
+      }
+
+      // Get recipient's push token
+      const { data: recipientProfile } = await supabaseClient
+        .from('profiles')
+        .select('push_token, display_name')
+        .eq('id', recipientId)
+        .single();
+
+      if (!recipientProfile?.push_token) {
+        console.log('Recipient does not have push token');
+        return;
+      }
+
+      // Send push notification
+      const notificationData = {
+        to: recipientProfile.push_token,
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'chat_conversations',
+          filter: `id=eq.${id}`
+        },
+        (payload) => {
+          console.log('Conversation updated:', payload);
+          if (payload.new) {
+            setConversation(payload.new);
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('Chat subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Real-time chat subscription active');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Real-time chat subscription error');
+        }
+      });
+
+    return () => {
+      if (subscription) {
+        console.log('Unsubscribing from chat channel');
+        subscription.unsubscribe();
+      }
+    };
+  }, [currentUser, id]);
+
   const markMessageAsRead = async (messageId: string) => {
     try {
       await supabaseClient
@@ -146,6 +442,97 @@ export default function ChatScreen() {
         .neq('sender_id', currentUser?.id);
     } catch (error) {
       console.error('Error marking message as read:', error);
+    }
+  };
+  const sendNotificationToOtherParticipants = async (messageText: string) => {
+    try {
+      if (!conversation || !currentUser) return;
+
+      // Get conversation participants
+      const { data: conversationData, error } = await supabaseClient
+        .from('chat_conversations')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error || !conversationData) {
+        console.error('Error fetching conversation for notification:', error);
+        return;
+      }
+
+      // Determine who to notify (the other participant)
+      let recipientId = null;
+      if (conversationData.user_id && conversationData.user_id !== currentUser.id) {
+        recipientId = conversationData.user_id;
+      } else if (conversationData.partner_id) {
+        // Get partner user_id
+        const { data: partnerData } = await supabaseClient
+          .from('partners')
+          .select('user_id')
+          .eq('id', conversationData.partner_id)
+          .single();
+        
+        if (partnerData?.user_id && partnerData.user_id !== currentUser.id) {
+          recipientId = partnerData.user_id;
+        }
+      }
+
+      if (!recipientId) {
+         conversation_id: id,
+        sender_id: currentUser.id,
+        message: messageToSend,
+        message_type: 'text',
+        is_read: false,
+        created_at: new Date().toISOString()
+      };
+
+      const { data, error } = await supabaseClient
+        .from('chat_messages')
+        .insert([messageData])
+        .select()
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST301' || error.message?.includes('JWT expired')) {
+          Alert.alert('Sesión expirada', 'Tu sesión ha expirado. Inicia sesión nuevamente.');
+          router.replace('/auth/login');
+          return;
+        }
+        
+        // Remove temp message on error
+        setMessages(prev => prev.filter(msg => msg.id !== tempId));
+        setNewMessage(messageToSend); // Restore message
+        throw error;
+      }
+
+      // Replace temp message with real message
+      if (data) {
+        setMessages(prev => prev.map(msg => 
+          msg.id === tempId ? {
+            ...data,
+            id: data.id,
+            conversation_id: data.conversation_id,
+            sender_id: data.sender_id,
+            message: data.message,
+            message_type: data.message_type || 'text',
+            is_read: data.is_read || false,
+            created_at: data.created_at
+          } : msg
+        ));
+      }
+
+      // Send push notification to other participants
+      try {
+        await sendNotificationToOtherParticipants(messageToSend);
+      } catch (notificationError) {
+        console.error('Error sending notification:', notificationError);
+        // Don't fail the message sending if notification fails
+      }
+
+      scrollToBottom();
+    } catch (error) {
+      console.error('Error sending message:', error);
+      Alert.alert('Error', 'No se pudo enviar el mensaje');
     }
   };
 
@@ -246,81 +633,6 @@ export default function ChatScreen() {
 
     } catch (error) {
       console.error('Error sending notification:', error);
-    }
-  };
-
-  const sendMessage = async () => {
-    if (!newMessage.trim() || !currentUser) return;
-
-    const tempId = `temp-${Date.now()}`;
-    const tempMessage = {
-      id: tempId,
-      conversation_id: id,
-      sender_id: currentUser.id,
-      message: newMessage.trim(),
-      message_type: 'text',
-      is_read: false,
-      created_at: new Date().toISOString()
-    };
-
-    // Add message optimistically to UI
-    setMessages(prev => [...prev, tempMessage]);
-    const messageToSend = newMessage.trim();
-    setNewMessage('');
-    scrollToBottom();
-
-    try {
-      const messageData = {
-        conversation_id: id,
-        sender_id: currentUser.id,
-        message: messageToSend,
-        message_type: 'text',
-        is_read: false,
-        created_at: new Date().toISOString()
-      };
-
-      const { data, error } = await supabaseClient
-        .from('chat_messages')
-        .insert([messageData])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error sending message:', error);
-        // Remove temp message and restore input
-        setMessages(prev => prev.filter(msg => msg.id !== tempId));
-        setNewMessage(messageToSend); // Restore message
-        throw error;
-      }
-
-      // Replace temp message with real message
-      if (data) {
-        setMessages(prev => prev.map(msg => 
-          msg.id === tempId ? {
-            ...data,
-            id: data.id,
-            conversation_id: data.conversation_id,
-            sender_id: data.sender_id,
-            message: data.message,
-            message_type: data.message_type || 'text',
-            is_read: data.is_read || false,
-            created_at: data.created_at
-          } : msg
-        ));
-      }
-
-      // Send push notification to other participants
-      try {
-        await sendNotificationToOtherParticipants(messageToSend);
-      } catch (notificationError) {
-        console.error('Error sending notification:', notificationError);
-        // Don't fail the message sending if notification fails
-      }
-
-      scrollToBottom();
-    } catch (error) {
-      console.error('Error sending message:', error);
-      Alert.alert('Error', 'No se pudo enviar el mensaje');
     }
   };
 
