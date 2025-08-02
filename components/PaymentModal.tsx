@@ -594,11 +594,14 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingBottom: 20,
   },
+  
+  // Summary Step
   summaryContent: {
     paddingHorizontal: 20,
   },
-  
-  // Summary Step
+  paymentContent: {
+    paddingHorizontal: 20,
+  },
   summaryHeader: {
     alignItems: 'center',
     paddingTop: 20,
@@ -701,9 +704,6 @@ const styles = StyleSheet.create({
   },
 
   // Payment Step
-  paymentContent: {
-    paddingHorizontal: 20,
-  },
   paymentHeader: {
     alignItems: 'center',
     marginBottom: 24,
@@ -814,10 +814,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 16,
+    paddingBottom: 20,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
+    marginTop: 'auto',
   },
 
   // Document Type Modal
