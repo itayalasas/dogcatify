@@ -247,50 +247,52 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   };
 
   const renderSummaryStep = () => (
-    <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
-      <View style={styles.summaryHeader}>
-        <CreditCard size={32} color="#2D6A6F" />
-        <Text style={styles.summaryTitle}>Resumen del Pago</Text>
-      </View>
-
-      <Card style={styles.serviceCard}>
-        <Text style={styles.serviceTitle}>Servicio a Contratar</Text>
-        <View style={styles.serviceDetails}>
-          <Text style={styles.serviceName}>{paymentData.serviceName}</Text>
-          <Text style={styles.providerName}>{paymentData.providerName}</Text>
-          {paymentData.petName && (
-            <Text style={styles.petName}>Para: {paymentData.petName}</Text>
-          )}
-          {paymentData.date && paymentData.time && (
-            <Text style={styles.appointmentTime}>
-              📅 {paymentData.date} a las {paymentData.time}
-            </Text>
-          )}
+    <View style={styles.stepContent}>
+      <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.summaryHeader}>
+          <CreditCard size={32} color="#2D6A6F" />
+          <Text style={styles.summaryTitle}>Resumen del Pago</Text>
         </View>
-      </Card>
 
-      <Card style={styles.priceCard}>
-        <Text style={styles.priceTitle}>Detalle de Precios</Text>
-        
-        <View style={styles.priceRow}>
-          <Text style={styles.priceLabel}>Servicio</Text>
-          <Text style={styles.priceValue}>{formatCurrency(calculateSubtotal())}</Text>
-        </View>
-        
-        {paymentData.hasShipping && (
-          <View style={styles.priceRow}>
-            <Text style={styles.priceLabel}>Envío</Text>
-            <Text style={styles.priceValue}>{formatCurrency(calculateShipping())}</Text>
+        <Card style={styles.serviceCard}>
+          <Text style={styles.serviceTitle}>Servicio a Contratar</Text>
+          <View style={styles.serviceDetails}>
+            <Text style={styles.serviceName}>{paymentData.serviceName}</Text>
+            <Text style={styles.providerName}>{paymentData.providerName}</Text>
+            {paymentData.petName && (
+              <Text style={styles.petName}>Para: {paymentData.petName}</Text>
+            )}
+            {paymentData.date && paymentData.time && (
+              <Text style={styles.appointmentTime}>
+                📅 {paymentData.date} a las {paymentData.time}
+              </Text>
+            )}
           </View>
-        )}
-        
-        <View style={styles.divider} />
-        
-        <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>Total a Pagar</Text>
-          <Text style={styles.totalValue}>{formatCurrency(calculateTotal())}</Text>
-        </View>
-      </Card>
+        </Card>
+
+        <Card style={styles.priceCard}>
+          <Text style={styles.priceTitle}>Detalle de Precios</Text>
+          
+          <View style={styles.priceRow}>
+            <Text style={styles.priceLabel}>Servicio</Text>
+            <Text style={styles.priceValue}>{formatCurrency(calculateSubtotal())}</Text>
+          </View>
+          
+          {paymentData.hasShipping && (
+            <View style={styles.priceRow}>
+              <Text style={styles.priceLabel}>Envío</Text>
+              <Text style={styles.priceValue}>{formatCurrency(calculateShipping())}</Text>
+            </View>
+          )}
+          
+          <View style={styles.divider} />
+          
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Total a Pagar</Text>
+            <Text style={styles.totalValue}>{formatCurrency(calculateTotal())}</Text>
+          </View>
+        </Card>
+      </ScrollView>
 
       <View style={styles.summaryActions}>
         <Button
@@ -305,7 +307,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           size="large"
         />
       </View>
-    </ScrollView>
+    </View>
   );
 
   const renderPaymentStep = () => (
@@ -558,8 +560,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '90%',
-    minHeight: '60%',
+    maxHeight: '85%',
+    minHeight: '70%',
+    flex: 1,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -580,8 +583,6 @@ const styles = StyleSheet.create({
   },
   stepContent: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
   },
   
   // Summary Step
@@ -676,7 +677,11 @@ const styles = StyleSheet.create({
   summaryActions: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
   },
 
   // Payment Step
@@ -789,7 +794,11 @@ const styles = StyleSheet.create({
   paymentActions: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
   },
 
   // Document Type Modal
