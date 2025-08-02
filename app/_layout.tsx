@@ -8,8 +8,9 @@ import { CartProvider } from '../contexts/CartContext';
 import { NotificationProvider } from '../contexts/NotificationContext';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { Platform } from 'react-native';
-    }
-  }, []);
+
+export default function RootLayout() {
+  useFrameworkReady();
 
   useEffect(() => {
     if (Platform.OS === 'web') {
