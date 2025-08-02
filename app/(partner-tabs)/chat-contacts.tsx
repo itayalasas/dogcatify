@@ -22,18 +22,8 @@ export default function ChatContacts() {
       return;
     }
     
-    const initializeData = async () => {
-      try {
-        await fetchPartnerProfile();
-        await fetchAdoptionChats();
-      } catch (error) {
-        console.error('Error initializing data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    initializeData();
+    fetchPartnerProfile();
+    fetchAdoptionChats();
   }, [currentUser, businessId]);
 
   useEffect(() => {
@@ -177,6 +167,10 @@ export default function ChatContacts() {
         throw error;
       }
       
+      setConversation(data);
+    } catch (error) {
+      console.error('Error fetching conversation:', error);
+    }
   };
 
   const fetchMessages = async () => {
