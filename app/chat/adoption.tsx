@@ -155,7 +155,6 @@ export default function AdoptionChat() {
     setLoading(true);
     const messageToSend = messageText || newMessage.trim();
     setNewMessage(''); // Clear input immediately for better UX
-    
     try {
       const { error } = await supabaseClient
         .from('adoption_messages')
