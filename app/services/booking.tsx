@@ -319,6 +319,15 @@ const ServiceBooking = () => {
         return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
       };
       
+      console.log('Creating booking with data:', {
+        partner_id: partnerId,
+        service_id: serviceId,
+        customer_id: currentUser.id,
+        pet_id: petId,
+        date: bookingDate.toISOString(),
+        time: formatTime(bookingDate)
+      });
+      
       const bookingData = {
         partner_id: partnerId,
         service_id: serviceId,
@@ -327,26 +336,39 @@ const ServiceBooking = () => {
         partner_name: partnerInfo?.businessName || 'Proveedor',
         customer_id: currentUser.id,
         customer_name: currentUser.displayName,
-        customer_phone: currentUser.phone || '',
+        customer_phone: currentUser.phone || null,
+        customer_email: currentUser.email,
         pet_id: petId,
         pet_name: pet.name,
-        date: bookingDate,
+        date: bookingDate.toISOString(),
         time: formatTime(bookingDate),
         end_time: formatTime(endDate),
         status: 'confirmed', // Auto-confirm when payment is successful
         total_amount: service.price,
         payment_status: 'paid',
+        payment_method: 'credit_card',
+        payment_transaction_id: paymentResult.transactionId,
         payment_confirmed_at: new Date().toISOString(),
-        notes: notes,
+        notes: notes.trim() || null,
         created_at: new Date().toISOString(),
       };
       
-      // Insert booking using Supabase
-      const { error } = await supabaseClient
-        .from('bookings')
-        .insert([bookingData]);
+      console.log('Final booking data:', bookingData);
       
-      if (error) throw error;
+      // Insert booking using Supabase
+      const { data: insertedBooking, error } = await supabaseClient
+        .from('bookings')
+        .insert([bookingData])
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Supabase booking insert error:', error);
+        console.error('Error details:', JSON.stringify(error, null, 2));
+        throw new Error(`Error al crear la reserva: ${error.message || error.details || 'Error desconocido'}`);
+      }
+      
+      console.log('Booking created successfully:', insertedBooking);
       
       // Block the time slots in the bookedSlots state
       const dateString = selectedDate.toDateString();
@@ -367,7 +389,17 @@ const ServiceBooking = () => {
       
       // Send booking confirmation email
       try {
-        console.log('Booking confirmation email would be sent here');
+        console.log('Sending booking confirmation email...');
+        await NotificationService.sendBookingConfirmationEmail(
+          currentUser.email,
+          currentUser.displayName || 'Usuario',
+          service.name,
+          partnerInfo?.businessName || 'Proveedor',
+          selectedDate.toLocaleDateString(),
+          selectedTime,
+          pet.name
+        );
+        console.log('Booking confirmation email sent successfully');
       } catch (emailError) {
         console.error('Error sending booking confirmation email:', emailError);
         // Continue with booking process even if email fails
@@ -375,12 +407,27 @@ const ServiceBooking = () => {
       
       Alert.alert(
         'Reserva Exitosa',
-        `Tu reserva ha sido confirmada automáticamente y el pago de ${formatPrice(service?.price || 0)} procesado correctamente. El proveedor ha sido notificado.`,
+        `¡Perfecto! Tu reserva ha sido confirmada automáticamente.\n\n📅 ${selectedDate.toLocaleDateString()} a las ${selectedTime}\n💰 Pago: ${formatPrice(service?.price || 0)}\n\nEl proveedor ha sido notificado y recibirás un correo de confirmación.`,
         [{ text: 'OK', onPress: () => router.push('/(tabs)') }]
       );
     } catch (error) {
       console.error('Error creating booking:', error);
-      Alert.alert('Error', 'No se pudo crear la reserva');
+      
+      let errorMessage = 'No se pudo crear la reserva';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
+      Alert.alert(
+        'Error al crear reserva', 
+        `${errorMessage}\n\nPor favor intenta nuevamente o contacta con soporte si el problema persiste.`,
+        [
+          { text: 'Reintentar', onPress: () => setShowPaymentModal(true) },
+          { text: 'Cancelar', style: 'cancel' }
+        ]
+      );
     } finally {
       setBookingLoading(false);
       setShowPaymentModal(false);
