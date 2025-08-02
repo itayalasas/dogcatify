@@ -49,48 +49,6 @@ const WebInfo = () => (
   </View>
 );
 
-// Componente para mostrar en web
-const WebInfo = () => (
-  <View style={webStyles.container}>
-    <View style={webStyles.content}>
-      <View style={webStyles.infoCard}>
-        <View style={webStyles.header}>
-          <Text style={webStyles.logo}>🐾</Text>
-          <Text style={webStyles.title}>DogCatiFy</Text>
-        </View>
-        
-        <Text style={webStyles.subtitle}>
-          Aplicación Móvil para Amantes de las Mascotas
-        </Text>
-        
-        <View style={webStyles.infoSection}>
-          <Text style={webStyles.infoTitle}>📱 Aplicación Móvil</Text>
-          <Text style={webStyles.infoText}>
-            DogCatiFy está diseñada como una aplicación móvil nativa. 
-            Para la mejor experiencia, descarga la app en tu dispositivo móvil.
-          </Text>
-        </View>
-        
-        <View style={webStyles.infoSection}>
-          <Text style={webStyles.infoTitle}>✉️ Confirmación de Email</Text>
-          <Text style={webStyles.infoText}>
-            Si llegaste aquí desde un enlace de confirmación de email, 
-            el proceso se completará automáticamente. Luego podrás usar 
-            la aplicación móvil con tu cuenta confirmada.
-          </Text>
-        </View>
-        
-        <View style={webStyles.downloadSection}>
-          <Text style={webStyles.downloadTitle}>Descargar la App</Text>
-          <Text style={webStyles.downloadText}>
-            Próximamente disponible en App Store y Google Play
-          </Text>
-        </View>
-      </View>
-    </View>
-  </View>
-);
-
 export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -394,5 +352,86 @@ const styles = StyleSheet.create({
   link: {
     color: '#3B82F6',
     fontFamily: 'Inter-SemiBold',
+  },
+});
+
+const webStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  content: {
+    width: '100%',
+    maxWidth: 600,
+  },
+  infoCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 32,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  logo: {
+    fontSize: 48,
+    marginBottom: 8,
+  },
+  title: {
+    fontSize: 32,
+    fontFamily: 'Inter-Bold',
+    color: '#2D6A6F',
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 18,
+    color: '#6B7280',
+    textAlign: 'center',
+    fontFamily: 'Inter-Regular',
+    marginBottom: 32,
+  },
+  infoSection: {
+    marginBottom: 24,
+  },
+  infoTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  infoText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    lineHeight: 24,
+  },
+  downloadSection: {
+    backgroundColor: '#F0F9FF',
+    padding: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  downloadTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#2D6A6F',
+    marginBottom: 8,
+  },
+  downloadText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
   },
 });
