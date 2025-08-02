@@ -23,7 +23,7 @@ export default function ChatScreen() {
     fetchConversation();
     fetchMessages();
     
-    // Set up real-time subscription for new messages with better error handling
+    // Set up real-time subscription for new messages
     const subscription = supabaseClient
       .channel(`chat-${id}`)
       .on('postgres_changes', 
@@ -34,56 +34,15 @@ export default function ChatScreen() {
           filter: `conversation_id=eq.${id}`
         }, 
         (payload) => {
-          console.log('New message received via realtime:', payload);
-          if (payload.new) {
-            const newMessage = {
-              id: payload.new.id,
-              conversation_id: payload.new.conversation_id,
-              sender_id: payload.new.sender_id,
-              message: payload.new.message,
-              message_type: payload.new.message_type || 'text',
-              is_read: payload.new.is_read || false,
-              created_at: payload.new.created_at
-            };
-            
-            setMessages(prev => {
-              // Avoid duplicates
-              const exists = prev.some(msg => msg.id === newMessage.id);
-              if (exists) return prev;
-              return [...prev, newMessage];
-            });
-            scrollToBottom();
-          }
+          console.log('New message received:', payload);
+          setMessages(prev => [...prev, payload.new]);
+          scrollToBottom();
         }
       )
-      .on('postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'chat_conversations',
-          filter: `id=eq.${id}`
-        },
-        (payload) => {
-          console.log('Conversation updated:', payload);
-          if (payload.new) {
-            setConversation(payload.new);
-          }
-        }
-      )
-      .subscribe((status) => {
-        console.log('Chat subscription status:', status);
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ Real-time chat subscription active');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ Real-time chat subscription error');
-        }
-      });
+      .subscribe();
 
     return () => {
-      if (subscription) {
-        console.log('Unsubscribing from chat channel');
-        subscription.unsubscribe();
-      }
+      subscription.unsubscribe();
     };
   }, [currentUser, id]);
 
@@ -137,153 +96,22 @@ export default function ChatScreen() {
     }
   };
 
-  const markMessageAsRead = async (messageId: string) => {
-    try {
-      await supabaseClient
-        .from('chat_messages')
-        .update({ is_read: true })
-        .eq('id', messageId)
-        .neq('sender_id', currentUser?.id);
-    } catch (error) {
-      console.error('Error marking message as read:', error);
-    }
-  };
-
-  const sendNotificationToOtherParticipants = async (messageText: string) => {
-    try {
-      if (!conversation || !currentUser) return;
-
-      // Get conversation participants
-      const { data: conversationData, error } = await supabaseClient
-        .from('chat_conversations')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error || !conversationData) {
-        console.error('Error fetching conversation for notification:', error);
-        return;
-      }
-
-      // Determine who to notify (the other participant)
-      let recipientId = null;
-      if (conversationData.user_id && conversationData.user_id !== currentUser.id) {
-        recipientId = conversationData.user_id;
-      } else if (conversationData.partner_id) {
-        // Get partner user_id
-        const { data: partnerData } = await supabaseClient
-          .from('partners')
-          .select('user_id')
-          .eq('id', conversationData.partner_id)
-          .single();
-        
-        if (partnerData?.user_id && partnerData.user_id !== currentUser.id) {
-          recipientId = partnerData.user_id;
-        }
-      }
-
-      if (!recipientId) {
-        console.log('No recipient found for notification');
-        return;
-      }
-
-      // Get recipient's push token
-      const { data: recipientProfile } = await supabaseClient
-        .from('profiles')
-        .select('push_token, display_name')
-        .eq('id', recipientId)
-        .single();
-
-      if (!recipientProfile?.push_token) {
-        console.log('Recipient does not have push token');
-        return;
-      }
-
-      // Get pet name for notification
-      let petNameForNotification = petName;
-      if (!petNameForNotification && conversation.adoption_pet_id) {
-        const { data: petData } = await supabaseClient
-          .from('adoption_pets')
-          .select('name')
-          .eq('id', conversation.adoption_pet_id)
-          .single();
-        
-        if (petData?.name) {
-          petNameForNotification = petData.name;
-        }
-      }
-
-      // Send push notification
-      const notificationPayload = {
-        to: recipientProfile.push_token,
-        title: `Nuevo mensaje sobre adopción de ${petNameForNotification}`,
-        body: `${currentUser.displayName || 'Usuario'}: ${messageText.substring(0, 100)}${messageText.length > 100 ? '...' : ''}`,
-        data: {
-          type: 'adoption_chat',
-          conversationId: id,
-          petName: petNameForNotification,
-          senderId: currentUser.id,
-          senderName: currentUser.displayName || 'Usuario'
-        },
-        sound: 'default',
-        priority: 'high',
-      };
-
-      console.log('Sending push notification:', notificationPayload);
-
-      const response = await fetch('https://exp.host/--/api/v2/push/send', {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Accept-encoding': 'gzip, deflate',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(notificationPayload),
-      });
-
-      const result = await response.json();
-      console.log('Push notification result:', result);
-
-    } catch (error) {
-      console.error('Error sending notification:', error);
-    }
-  };
-
   const sendMessage = async () => {
     if (!newMessage.trim() || !currentUser) return;
 
-    const tempId = `temp-${Date.now()}`;
-    const tempMessage = {
-      id: tempId,
-      conversation_id: id,
-      sender_id: currentUser.id,
-      message: newMessage.trim(),
-      message_type: 'text',
-      is_read: false,
-      created_at: new Date().toISOString()
-    };
-
-    // Add message optimistically to UI
-    setMessages(prev => [...prev, tempMessage]);
-    const messageToSend = newMessage.trim();
-    setNewMessage('');
-    scrollToBottom();
-    
     try {
       const messageData = {
         conversation_id: id,
         sender_id: currentUser.id,
-        message: messageToSend,
+        message: newMessage.trim(),
         message_type: 'text',
         is_read: false,
         created_at: new Date().toISOString()
       };
 
-      const { data, error } = await supabaseClient
+      const { error } = await supabaseClient
         .from('chat_messages')
-        .insert([messageData])
-        .select()
-        .single();
+        .insert([messageData]);
 
       if (error) {
         if (error.code === 'PGRST301' || error.message?.includes('JWT expired')) {
@@ -291,37 +119,10 @@ export default function ChatScreen() {
           router.replace('/auth/login');
           return;
         }
-        
-        // Remove temp message on error
-        setMessages(prev => prev.filter(msg => msg.id !== tempId));
-        setNewMessage(messageToSend); // Restore message
         throw error;
       }
 
-      // Replace temp message with real message
-      if (data) {
-        setMessages(prev => prev.map(msg => 
-          msg.id === tempId ? {
-            ...data,
-            id: data.id,
-            conversation_id: data.conversation_id,
-            sender_id: data.sender_id,
-            message: data.message,
-            message_type: data.message_type || 'text',
-            is_read: data.is_read || false,
-            created_at: data.created_at
-          } : msg
-        ));
-      }
-
-      // Send push notification to other participants
-      try {
-        await sendNotificationToOtherParticipants(messageToSend);
-      } catch (notificationError) {
-        console.error('Error sending notification:', notificationError);
-        // Don't fail the message sending if notification fails
-      }
-
+      setNewMessage('');
       scrollToBottom();
     } catch (error) {
       console.error('Error sending message:', error);
