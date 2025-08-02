@@ -809,15 +809,17 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   paymentActions: {
-    flexDirection: 'row',
-    gap: 12,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'column',
+    gap: 8,
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 20,
+    paddingVertical: 16,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
-    marginTop: 'auto',
   },
 
   // Document Type Modal
