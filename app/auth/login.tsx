@@ -226,6 +226,14 @@ export default function Login() {
               { 
                 text: 'Reenviar correo', 
                 onPress: async () => {
+                  // Mostrar loading en el botón
+                  Alert.alert(
+                    'Reenviando correo...',
+                    'Por favor espera mientras enviamos un nuevo correo de confirmación.',
+                    [],
+                    { cancelable: false }
+                  );
+                  
                   try {
                     const { resendConfirmationEmail } = await import('../../utils/emailConfirmation');
                     const result = await resendConfirmationEmail(email);
@@ -234,13 +242,19 @@ export default function Login() {
                       throw new Error(result.error || 'Error al reenviar confirmación');
                     }
                     
+                    // Cerrar el loading y mostrar éxito
                     Alert.alert(
-                      'Correo reenviado', 
-                      `Se ha enviado un nuevo correo de confirmación a ${email}. Por favor revisa tu bandeja de entrada.`
+                      '✅ Correo Reenviado', 
+                      `Se ha enviado un nuevo correo de confirmación a ${email}.\n\nPor favor revisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace de confirmación.\n\nEl enlace expira en 24 horas.`,
+                      [{ text: 'Entendido', style: 'default' }]
                     );
                   } catch (resendError) {
                     console.error('Error resending confirmation email:', resendError);
-                    Alert.alert('Error', resendError.message || 'No se pudo reenviar el correo de confirmación. Intenta más tarde.');
+                    Alert.alert(
+                      '❌ Error al Reenviar', 
+                      resendError.message || 'No se pudo reenviar el correo de confirmación. Por favor verifica tu conexión e intenta más tarde.',
+                      [{ text: 'Entendido', style: 'default' }]
+                    );
                   }
                 }
               },
@@ -255,6 +269,14 @@ export default function Login() {
               { 
                 text: 'Reenviar correo', 
                 onPress: async () => {
+                  // Mostrar loading en el botón
+                  Alert.alert(
+                    'Reenviando correo...',
+                    'Por favor espera mientras enviamos un nuevo correo de confirmación.',
+                    [],
+                    { cancelable: false }
+                  );
+                  
                   try {
                     const { resendConfirmationEmail } = await import('../../utils/emailConfirmation');
                     const result = await resendConfirmationEmail(email);
@@ -263,13 +285,19 @@ export default function Login() {
                       throw new Error(result.error || 'Error al reenviar confirmación');
                     }
                     
+                    // Cerrar el loading y mostrar éxito
                     Alert.alert(
-                      'Correo reenviado', 
-                      `Se ha enviado un nuevo correo de confirmación a ${email}. Por favor revisa tu bandeja de entrada y haz clic en el enlace.`
+                      '✅ Correo Reenviado', 
+                      `Se ha enviado un nuevo correo de confirmación a ${email}.\n\nPor favor revisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace de confirmación.\n\nEl enlace expira en 24 horas.`,
+                      [{ text: 'Entendido', style: 'default' }]
                     );
                   } catch (resendError) {
                     console.error('Error resending confirmation email:', resendError);
-                    Alert.alert('Error', resendError.message || 'No se pudo reenviar el correo de confirmación. Intenta más tarde.');
+                    Alert.alert(
+                      '❌ Error al Reenviar', 
+                      resendError.message || 'No se pudo reenviar el correo de confirmación. Por favor verifica tu conexión e intenta más tarde.',
+                      [{ text: 'Entendido', style: 'default' }]
+                    );
                   }
                 }
               },
@@ -306,6 +334,14 @@ export default function Login() {
               { 
                 text: 'Reenviar correo', 
                 onPress: async () => {
+                  // Mostrar loading en el botón
+                  Alert.alert(
+                    'Reenviando correo...',
+                    'Por favor espera mientras enviamos un nuevo correo de confirmación.',
+                    [],
+                    { cancelable: false }
+                  );
+                  
                   try {
                     const { resendConfirmationEmail } = await import('../../utils/emailConfirmation');
                     const result = await resendConfirmationEmail(email);
@@ -314,13 +350,19 @@ export default function Login() {
                       throw new Error(result.error || 'Error al reenviar confirmación');
                     }
                     
+                    // Cerrar el loading y mostrar éxito
                     Alert.alert(
-                      'Correo reenviado', 
-                      `Se ha enviado un nuevo correo de confirmación a ${email}. Por favor revisa tu bandeja de entrada y haz clic en el enlace.`
+                      '✅ Correo Reenviado', 
+                      `Se ha enviado un nuevo correo de confirmación a ${email}.\n\nPor favor revisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace de confirmación.\n\nEl enlace expira en 24 horas.`,
+                      [{ text: 'Entendido', style: 'default' }]
                     );
                   } catch (resendError) {
                     console.error('Error resending confirmation email:', resendError);
-                    Alert.alert('Error', resendError.message || 'No se pudo reenviar el correo de confirmación. Intenta más tarde.');
+                    Alert.alert(
+                      '❌ Error al Reenviar', 
+                      resendError.message || 'No se pudo reenviar el correo de confirmación. Por favor verifica tu conexión e intenta más tarde.',
+                      [{ text: 'Entendido', style: 'default' }]
+                    );
                   }
                 }
               },
