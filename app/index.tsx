@@ -38,19 +38,6 @@ const PromotionWrapper = ({ promotion, onPress, onLike }: { promotion: any; onPr
       onLike={onLike}
     />
   );
-};
-
-export default function Home() {
-  const [posts, setPosts] = useState<any[]>([]);
-  const [promotions, setPromotions] = useState<any[]>([]);
-
-  // En web, redirigir a página informativa
-  useEffect(() => {
-    if (Platform.OS === 'web') {
-      router.replace('/web-info');
-      return;
-    }
-  }, []);
   const [feedItems, setFeedItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -573,48 +560,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontFamily: 'Inter-Bold',
-    color: '#2D6A6F',
-  },
-  content: {
-    flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  loadingText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 24,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontFamily: 'Inter-Bold',
-    color: '#111827',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-  authPrompt: {
     fontSize: 32,
     fontFamily: 'Inter-Bold',
     color: '#2D6A6F',

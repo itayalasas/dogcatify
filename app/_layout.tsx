@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from '../contexts/AuthContext';
 import { LanguageProvider } from '../contexts/LanguageContext';
@@ -8,6 +8,15 @@ import { CartProvider } from '../contexts/CartContext';
 import { NotificationProvider } from '../contexts/NotificationContext';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { Platform } from 'react-native';
+    }
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      const currentPath = window.location.pathname;
+      if (currentPath !== '/web-info' && !currentPath.includes('/auth/confirm')) {
+        router.replace('/web-info');
+      }
     }
   }, []);
 
