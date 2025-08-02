@@ -335,6 +335,8 @@ const ServiceBooking = () => {
         service_duration: service.duration || 60,
         partner_name: partnerInfo?.businessName || 'Proveedor',
         customer_id: currentUser.id,
+        customer_email: currentUser.email,
+        customer_phone: currentUser.phone || null,
         pet_id: petId,
         pet_name: pet.name,
         date: bookingDate.toISOString(),
