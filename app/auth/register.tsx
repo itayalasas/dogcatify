@@ -7,6 +7,48 @@ import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 
+// Componente para mostrar en web
+const WebInfo = () => (
+  <View style={webStyles.container}>
+    <View style={webStyles.content}>
+      <View style={webStyles.infoCard}>
+        <View style={webStyles.header}>
+          <Text style={webStyles.logo}>🐾</Text>
+          <Text style={webStyles.title}>DogCatiFy</Text>
+        </View>
+        
+        <Text style={webStyles.subtitle}>
+          Aplicación Móvil para Amantes de las Mascotas
+        </Text>
+        
+        <View style={webStyles.infoSection}>
+          <Text style={webStyles.infoTitle}>📱 Aplicación Móvil</Text>
+          <Text style={webStyles.infoText}>
+            DogCatiFy está diseñada como una aplicación móvil nativa. 
+            Para la mejor experiencia, descarga la app en tu dispositivo móvil.
+          </Text>
+        </View>
+        
+        <View style={webStyles.infoSection}>
+          <Text style={webStyles.infoTitle}>✉️ Confirmación de Email</Text>
+          <Text style={webStyles.infoText}>
+            Si llegaste aquí desde un enlace de confirmación de email, 
+            el proceso se completará automáticamente. Luego podrás usar 
+            la aplicación móvil con tu cuenta confirmada.
+          </Text>
+        </View>
+        
+        <View style={webStyles.downloadSection}>
+          <Text style={webStyles.downloadTitle}>Descargar la App</Text>
+          <Text style={webStyles.downloadText}>
+            Próximamente disponible en App Store y Google Play
+          </Text>
+        </View>
+      </View>
+    </View>
+  </View>
+);
+
 export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

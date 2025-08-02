@@ -4,10 +4,53 @@ import { router } from 'expo-router';
 import { Linking } from 'react-native';
 import PostCard from '../components/PostCard';
 import PromotionCard from '../components/PromotionCard';
+import { Card } from '../components/ui/Card';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { NotificationPermissionPrompt } from '../components/NotificationPermissionPrompt';
 import { supabaseClient } from '../lib/supabase';
+
+// Componente para mostrar en web cuando no es confirmación de email
+const WebInfo = () => (
+  <View style={webStyles.container}>
+    <View style={webStyles.content}>
+      <Card style={webStyles.infoCard}>
+        <View style={webStyles.header}>
+          <Text style={webStyles.logo}>🐾</Text>
+          <Text style={webStyles.title}>DogCatiFy</Text>
+        </View>
+        
+        <Text style={webStyles.subtitle}>
+          Aplicación Móvil para Amantes de las Mascotas
+        </Text>
+        
+        <View style={webStyles.infoSection}>
+          <Text style={webStyles.infoTitle}>📱 Aplicación Móvil</Text>
+          <Text style={webStyles.infoText}>
+            DogCatiFy está diseñada como una aplicación móvil nativa. 
+            Para la mejor experiencia, descarga la app en tu dispositivo móvil.
+          </Text>
+        </View>
+        
+        <View style={webStyles.infoSection}>
+          <Text style={webStyles.infoTitle}>✉️ Confirmación de Email</Text>
+          <Text style={webStyles.infoText}>
+            Si llegaste aquí desde un enlace de confirmación de email, 
+            el proceso se completará automáticamente. Luego podrás usar 
+            la aplicación móvil con tu cuenta confirmada.
+          </Text>
+        </View>
+        
+        <View style={webStyles.downloadSection}>
+          <Text style={webStyles.downloadTitle}>Descargar la App</Text>
+          <Text style={webStyles.downloadText}>
+            Próximamente disponible en App Store y Google Play
+          </Text>
+        </View>
+      </Card>
+    </View>
+  </View>
+);
 
 // Componente wrapper para manejar las vistas de promociones
 const PromotionWrapper = ({ promotion, onPress, onLike }: { promotion: any; onPress: () => void; onLike: (promotionId: string) => void }) => {
@@ -45,6 +88,18 @@ const PromotionWrapper = ({ promotion, onPress, onLike }: { promotion: any; onPr
   const { currentUser } = useAuth();
 
   useEffect(() => {
+    // En web, solo permitir acceso a confirmación de email
+    if (Platform.OS === 'web') {
+      const currentPath = window.location.pathname;
+      const searchParams = window.location.search;
+      
+      // Solo permitir /auth/confirm con token_hash
+      if (!currentPath.includes('/auth/confirm') || !searchParams.includes('token_hash=')) {
+        // No es una confirmación de email válida, mostrar página informativa
+        return;
+      }
+    }
+    
     // Handle web-specific redirect first
     if (Platform.OS === 'web') {
       const currentPath = window.location.pathname;
@@ -488,6 +543,17 @@ const PromotionWrapper = ({ promotion, onPress, onLike }: { promotion: any; onPr
     setRefreshing(false);
   };
 
+  // En web, verificar si debe mostrar página informativa
+  if (Platform.OS === 'web') {
+    const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+    const searchParams = typeof window !== 'undefined' ? window.location.search : '';
+    
+    // Solo permitir /auth/confirm con token_hash
+    if (!currentPath.includes('/auth/confirm') || !searchParams.includes('token_hash=')) {
+      return <WebInfo />;
+    }
+  }
+
   if (!currentUser) {
     // Si no hay usuario, redirigir al login con delay para evitar errores de navegación
     React.useEffect(() => {
@@ -600,5 +666,83 @@ const styles = StyleSheet.create({
     color: '#4B5563',
     lineHeight: 24,
     marginBottom: 8,
+  },
+});
+
+const webStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+    paddingTop: 50,
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  infoCard: {
+    width: '100%',
+    maxWidth: 500,
+    padding: 40,
+    alignItems: 'center',
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  logo: {
+    fontSize: 64,
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 32,
+    fontFamily: 'Inter-Bold',
+    color: '#2D6A6F',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 40,
+  },
+  infoSection: {
+    width: '100%',
+    marginBottom: 24,
+  },
+  infoTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  infoText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+    lineHeight: 24,
+    textAlign: 'left',
+  },
+  downloadSection: {
+    width: '100%',
+    backgroundColor: '#F0F9FF',
+    padding: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  downloadTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#0369A1',
+    marginBottom: 8,
+  },
+  downloadText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#0369A1',
+    textAlign: 'center',
   },
 });

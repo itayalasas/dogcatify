@@ -1,299 +1,398 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, Platform } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { CircleCheck as CheckCircle, Circle as XCircle, Mail } from 'lucide-react-native';
-import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Alert, Image, TouchableOpacity } from 'react-native';
+import { Link, router } from 'expo-router';
+import { Mail, Lock, User, Check, ExternalLink } from 'lucide-react-native';
 import { Input } from '../../components/ui/Input';
-import { verifyEmailConfirmationToken, resendConfirmationEmail } from '../../utils/emailConfirmation';
+import { Button } from '../../components/ui/Button'; 
+import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
-export default function ConfirmScreen() {
-  const [loading, setLoading] = useState(true);
-  const [confirmed, setConfirmed] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [showResendForm, setShowResendForm] = useState(false);
-  const [email, setEmail] = useState('');
-  const [resending, setResending] = useState(false);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-  
-  const params = useLocalSearchParams();
-
-  // En web, mostrar mensaje informativo si no hay parámetros de confirmación
-  useEffect(() => {
-    if (Platform.OS === 'web' && !params.token_hash) {
-      // Mostrar página informativa para acceso web sin token
-      setError('Esta aplicación está diseñada para dispositivos móviles. Para confirmar tu email, usa el enlace que recibiste en tu correo.');
-      setLoading(false);
-      return;
-    }
-  }, [params]);
-
-  useEffect(() => {
-    if (Platform.OS === 'web' && !params.token_hash) {
-      return; // No procesar si es web sin token
-    }
-    handleEmailConfirmation();
-  }, []);
-
-  const handleEmailConfirmation = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Extract parameters from URL
-      const token_hash = params.token_hash as string;
-      const type = (params.type as string) || 'signup';
-
-      console.log('Custom confirmation parameters:', { token_hash, type });
-
-      if (!token_hash) {
-        setError('Enlace de confirmación inválido o incompleto');
-        setLoading(false);
-        setShowResendForm(true);
-        return;
-      }
-
-      // Verify token using our custom system
-      const result = await verifyEmailConfirmationToken(token_hash, type as 'signup' | 'password_reset');
-
-      if (!result.success) {
-        console.error('Custom confirmation failed:', result.error);
-        setError(result.error || 'Error al confirmar email');
-        setShowResendForm(true);
-        setLoading(false);
-        return;
-      }
-
-      if (result.userId && result.email) {
-        console.log('Custom email confirmation successful for:', result.email);
-        setUserEmail(result.email);
-        setConfirmed(true);
-      }
-
-    } catch (error) {
-      console.error('Custom confirmation error:', error);
-      setError('Error al procesar la confirmación');
-      setLoading(false);
-      setShowResendForm(true);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResendConfirmation = async () => {
-    if (!email.trim()) {
-      Alert.alert('Error', 'Por favor ingresa tu email');
-      return;
-    }
-
-    try {
-      setResending(true);
-      const result = await resendConfirmationEmail(email.trim());
-
-      if (!result.success) {
-        Alert.alert('Error', result.error || 'No se pudo reenviar el email de confirmación');
-      } else {
-        Alert.alert('Éxito', 'Email de confirmación reenviado. Revisa tu bandeja de entrada.');
-        setShowResendForm(false);
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Ocurrió un error al reenviar el email');
-    } finally {
-      setResending(false);
-    }
-  };
-
-  const handleGoToLogin = () => {
-    router.replace('/auth/login');
-  };
-
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        <Card style={styles.loadingCard}>
-          <ActivityIndicator size="large" color="#2D6A6F" />
-          <Text style={styles.loadingText}>Confirmando tu email...</Text>
-        </Card>
-      </View>
-    );
-  }
-
-  if (confirmed) {
-    return (
-      <View style={styles.container}>
-        <Card style={styles.successCard}>
-          <CheckCircle size={64} color="#10B981" />
-          <Text style={styles.successTitle}>¡Email Confirmado!</Text>
-          <Text style={styles.successText}>
-            Tu cuenta ha sido activada exitosamente. Ya puedes iniciar sesión y disfrutar de todas las funciones de DogCatiFy.
-          </Text>
-          {userEmail && (
-            <Text style={styles.emailText}>
-              Email confirmado: {userEmail}
-            </Text>
-          )}
-          <Button
-            title="Ir a Iniciar Sesión"
-            onPress={handleGoToLogin}
-            size="large"
-          />
-        </Card>
-      </View>
-    );
-  }
-
-  if (error && showResendForm) {
-    return (
-      <View style={styles.container}>
-        <Card style={styles.errorCard}>
-          <XCircle size={64} color="#EF4444" />
-          <Text style={styles.errorTitle}>Error de Confirmación</Text>
-          <Text style={styles.errorText}>{error}</Text>
-          
-          <View style={styles.resendContainer}>
-            <Text style={styles.resendTitle}>Reenviar Email de Confirmación</Text>
-            <Text style={styles.resendDescription}>
-              Ingresa tu email para recibir un nuevo enlace de confirmación
-            </Text>
-            
-            <Input
-              label="Email"
-              placeholder="tu@email.com"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              leftIcon={<Mail size={20} color="#6B7280" />}
-            />
-            
-            <Button
-              title={resending ? 'Enviando...' : 'Reenviar Confirmación'}
-              onPress={handleResendConfirmation}
-              loading={resending}
-              size="large"
-            />
-          </View>
-
-          <TouchableOpacity style={styles.linkButton} onPress={handleGoToLogin}>
-            <Text style={styles.linkText}>Volver al Login</Text>
-          </TouchableOpacity>
-        </Card>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.container}>
-      <Card style={styles.errorCard}>
-        <XCircle size={64} color="#EF4444" />
-        <Text style={styles.errorTitle}>Error</Text>
-        <Text style={styles.errorText}>
-          {error || 'Ocurrió un error inesperado'}
+// Componente para mostrar en web
+const WebInfo = () => (
+  <View style={webStyles.container}>
+    <View style={webStyles.content}>
+      <View style={webStyles.infoCard}>
+        <View style={webStyles.header}>
+          <Text style={webStyles.logo}>🐾</Text>
+          <Text style={webStyles.title}>DogCatiFy</Text>
+        </View>
+        
+        <Text style={webStyles.subtitle}>
+          Aplicación Móvil para Amantes de las Mascotas
         </Text>
+        
+        <View style={webStyles.infoSection}>
+          <Text style={webStyles.infoTitle}>📱 Aplicación Móvil</Text>
+          <Text style={webStyles.infoText}>
+            DogCatiFy está diseñada como una aplicación móvil nativa. 
+            Para la mejor experiencia, descarga la app en tu dispositivo móvil.
+          </Text>
+        </View>
+        
+        <View style={webStyles.infoSection}>
+          <Text style={webStyles.infoTitle}>✉️ Confirmación de Email</Text>
+          <Text style={webStyles.infoText}>
+            Si llegaste aquí desde un enlace de confirmación de email, 
+            el proceso se completará automáticamente. Luego podrás usar 
+            la aplicación móvil con tu cuenta confirmada.
+          </Text>
+        </View>
+        
+        <View style={webStyles.downloadSection}>
+          <Text style={webStyles.downloadTitle}>Descargar la App</Text>
+          <Text style={webStyles.downloadText}>
+            Próximamente disponible en App Store y Google Play
+          </Text>
+        </View>
+      </View>
+    </View>
+  </View>
+);
+
+// Componente para mostrar en web
+const WebInfo = () => (
+  <View style={webStyles.container}>
+    <View style={webStyles.content}>
+      <View style={webStyles.infoCard}>
+        <View style={webStyles.header}>
+          <Text style={webStyles.logo}>🐾</Text>
+          <Text style={webStyles.title}>DogCatiFy</Text>
+        </View>
+        
+        <Text style={webStyles.subtitle}>
+          Aplicación Móvil para Amantes de las Mascotas
+        </Text>
+        
+        <View style={webStyles.infoSection}>
+          <Text style={webStyles.infoTitle}>📱 Aplicación Móvil</Text>
+          <Text style={webStyles.infoText}>
+            DogCatiFy está diseñada como una aplicación móvil nativa. 
+            Para la mejor experiencia, descarga la app en tu dispositivo móvil.
+          </Text>
+        </View>
+        
+        <View style={webStyles.infoSection}>
+          <Text style={webStyles.infoTitle}>✉️ Confirmación de Email</Text>
+          <Text style={webStyles.infoText}>
+            Si llegaste aquí desde un enlace de confirmación de email, 
+            el proceso se completará automáticamente. Luego podrás usar 
+            la aplicación móvil con tu cuenta confirmada.
+          </Text>
+        </View>
+        
+        <View style={webStyles.downloadSection}>
+          <Text style={webStyles.downloadTitle}>Descargar la App</Text>
+          <Text style={webStyles.downloadText}>
+            Próximamente disponible en App Store y Google Play
+          </Text>
+        </View>
+      </View>
+    </View>
+  </View>
+);
+
+export default function Register() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [acceptedPolicies, setAcceptedPolicies] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { register } = useAuth();
+  const { t } = useLanguage();
+
+  const handleRegister = async () => {
+    if (!email || !password || !displayName || !confirmPassword) {
+      Alert.alert(t('error'), t('fillAllFields'));
+      return;
+    }
+
+    if (!acceptedPolicies) {
+      Alert.alert('Error', 'Debes aceptar las políticas de privacidad y términos de servicio para continuar');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert(t('error'), t('passwordsDontMatch'));
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert(t('error'), t('passwordTooShort'));
+      return;
+    }
+
+    setLoading(true);
+    try {
+      console.log('Registering user:', email, displayName);
+      await register(email, password, displayName);
+      console.log('User registered successfully');
+      Alert.alert(
+        '¡Registro exitoso!',
+        `Tu cuenta ha sido creada. Hemos enviado un correo de confirmación a ${email}.\n\nPor favor revisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace de confirmación antes de iniciar sesión.\n\nEl enlace expira en 24 horas.`,
+        [
+          {
+            text: 'OK',
+            onPress: () => router.replace('/auth/login')
+          }
+        ]
+      );
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      Alert.alert(t('error'), error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenPrivacyPolicy = async () => {
+    try {
+      const url = process.env.EXPO_PUBLIC_PRIVACY_POLICY_URL || 'https://dogcatify.com/privacy-policy';
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'No se pudo abrir el enlace de políticas de privacidad');
+      }
+    } catch (error) {
+      console.error('Error opening privacy policy:', error);
+      Alert.alert('Error', 'No se pudo abrir el enlace de políticas de privacidad');
+    }
+  };
+
+  const handleOpenTermsOfService = async () => {
+    try {
+      const url = process.env.EXPO_PUBLIC_TERMS_OF_SERVICE_URL || 'https://dogcatify.com/terms-of-service';
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'No se pudo abrir el enlace de términos de servicio');
+      }
+    } catch (error) {
+      console.error('Error opening terms of service:', error);
+      Alert.alert('Error', 'No se pudo abrir el enlace de términos de servicio');
+    }
+  };
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.header}>
+        <Image 
+          source={require('../../assets/images/logo.jpg')} 
+          style={styles.logo} 
+        />
+        <Text style={styles.title}>Únete a nosotros</Text>
+        <Text style={styles.subtitle}>{t('createAccountSubtitle')}</Text>
+      </View>
+
+      <View style={styles.form}>
+        <Input
+          label={t('fullName')}
+          placeholder={t('fullName')}
+          value={displayName}
+          onChangeText={setDisplayName}
+          leftIcon={<User size={20} color="#6B7280" />}
+        />
+
+        <Input
+          label={t('email')}
+          placeholder={t('email')}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          leftIcon={<Mail size={20} color="#6B7280" />}
+        />
+
+        <Input
+          label={t('password')}
+          placeholder={t('password')}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          leftIcon={<Lock size={20} color="#6B7280" />}
+        />
+
+        <Input
+          label={t('confirmPassword')}
+          placeholder={t('confirmPassword')}
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          secureTextEntry
+          leftIcon={<Lock size={20} color="#6B7280" />}
+        />
+
+        <View style={styles.policiesContainer}>
+          <TouchableOpacity 
+            style={styles.policiesRow} 
+            onPress={() => setAcceptedPolicies(!acceptedPolicies)}
+          >
+            <View style={[styles.checkbox, acceptedPolicies && styles.checkedCheckbox]}>
+              {acceptedPolicies && <Check size={16} color="#FFFFFF" />}
+            </View>
+            <View style={styles.policiesTextContainer}>
+              <Text style={styles.policiesText}>
+                Acepto las{' '}
+                <TouchableOpacity onPress={handleOpenPrivacyPolicy}>
+                  <Text style={styles.linkText}>políticas de privacidad</Text>
+                </TouchableOpacity>
+                {' '}y los{' '}
+                <TouchableOpacity onPress={handleOpenTermsOfService}>
+                  <Text style={styles.linkText}>términos de servicio</Text>
+                </TouchableOpacity>
+              </Text>
+            </View>
+          </TouchableOpacity>
+          
+          <View style={styles.policiesLinks}>
+            <TouchableOpacity 
+              style={styles.policyLinkButton}
+              onPress={handleOpenPrivacyPolicy}
+            >
+              <ExternalLink size={14} color="#3B82F6" />
+              <Text style={styles.policyLinkText}>Políticas de Privacidad</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.policyLinkButton}
+              onPress={handleOpenTermsOfService}
+            >
+              <ExternalLink size={14} color="#3B82F6" />
+              <Text style={styles.policyLinkText}>Términos de Servicio</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
         <Button
-          title="Volver al Login"
-          onPress={handleGoToLogin}
+          title={t('createAccount')}
+          onPress={handleRegister}
+          loading={loading}
+          disabled={loading || !acceptedPolicies}
           size="large"
         />
-      </Card>
-    </View>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            {t('alreadyHaveAccount')}{' '}
+            <Link href="/auth/login" style={styles.link}>
+              {t('signIn')}
+            </Link>
+          </Text>
+        </View>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingTop: 30, // Add padding at the top to show status bar
+  },
+  content: {
+    flexGrow: 1,
     padding: 20,
-    backgroundColor: '#F9FAFB',
-    paddingTop: 50,
+    paddingTop: 20,
   },
-  loadingCard: {
+  header: {
     alignItems: 'center',
-    paddingVertical: 40,
-  },
-  loadingText: {
-    marginTop: 20,
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-  },
-  successCard: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  successTitle: {
-    fontSize: 24,
-    fontFamily: 'Inter-Bold',
-    color: '#10B981',
-    marginTop: 16,
     marginBottom: 8,
-    textAlign: 'center',
   },
-  successText: {
+  logo: {
+    width: 140,
+    height: 140,
+    resizeMode: 'contain',
+    marginBottom: 4,
+  },
+  title: {
+    fontSize: 28,
+    fontFamily: 'Inter-Bold',
+    color: '#2D6A6F',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  subtitle: {
     fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#374151',
-    textAlign: 'center',
-    marginBottom: 16,
-    lineHeight: 24,
-  },
-  emailText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
     color: '#6B7280',
     textAlign: 'center',
-    marginBottom: 24,
+    fontFamily: 'Inter-Regular',
   },
-  errorCard: {
-    alignItems: 'center',
-    paddingVertical: 40,
+  form: {
     width: '100%',
     maxWidth: 400,
+    alignSelf: 'center',
   },
-  errorTitle: {
-    fontSize: 24,
-    fontFamily: 'Inter-Bold',
-    color: '#EF4444',
-    marginTop: 16,
-    marginBottom: 8,
-    textAlign: 'center',
+  policiesContainer: {
+    marginBottom: 20,
   },
-  errorText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 24,
-    lineHeight: 24,
+  policiesRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
   },
-  resendContainer: {
-    width: '100%',
-    marginBottom: 24,
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    borderRadius: 4,
+    marginRight: 12,
+    marginTop: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  resendTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
-    marginBottom: 8,
-    textAlign: 'center',
+  checkedCheckbox: {
+    backgroundColor: '#2D6A6F',
+    borderColor: '#2D6A6F',
   },
-  resendDescription: {
+  policiesTextContainer: {
+    flex: 1,
+  },
+  policiesText: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 16,
+    color: '#374151',
     lineHeight: 20,
   },
-  linkButton: {
-    marginTop: 16,
-  },
   linkText: {
-    fontSize: 16,
+    color: '#3B82F6',
+    fontFamily: 'Inter-SemiBold',
+    textDecorationLine: 'underline',
+  },
+  policiesLinks: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  policyLinkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    flex: 1,
+    justifyContent: 'center',
+  },
+  policyLinkText: {
+    fontSize: 12,
     fontFamily: 'Inter-Medium',
     color: '#3B82F6',
-    textAlign: 'center',
+    marginLeft: 4,
+  },
+  footer: {
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  footerText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+  },
+  link: {
+    color: '#3B82F6',
+    fontFamily: 'Inter-SemiBold',
   },
 });
