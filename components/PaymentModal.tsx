@@ -313,7 +313,9 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   );
 
   const renderPaymentStep = () => (
-    <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
+    <>
+      <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.paymentContent}>
       <View style={styles.paymentHeader}>
         <Lock size={24} color="#10B981" />
         <Text style={styles.paymentTitle}>Pago Seguro</Text>
@@ -433,6 +435,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           Tu información está protegida con encriptación SSL de 256 bits
         </Text>
       </View>
+        </View>
+      </ScrollView>
 
       <View style={styles.paymentActions}>
         <Button
@@ -482,7 +486,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           </View>
         </View>
       </Modal>
-    </ScrollView>
+    </>
   );
 
   const renderProcessingStep = () => (
@@ -591,7 +595,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   summaryContent: {
-    paddingTop: 20,
+    paddingHorizontal: 20,
   },
   
   // Summary Step
@@ -697,6 +701,9 @@ const styles = StyleSheet.create({
   },
 
   // Payment Step
+  paymentContent: {
+    paddingHorizontal: 20,
+  },
   paymentHeader: {
     alignItems: 'center',
     marginBottom: 24,
