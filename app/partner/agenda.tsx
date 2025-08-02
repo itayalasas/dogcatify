@@ -284,7 +284,7 @@ export default function PartnerAgenda() {
           </View>
         )}
         
-        {booking.status === 'confirmed' && (
+        {(booking.status === 'confirmed' || booking.payment_status === 'paid') && (
           <View style={styles.confirmedActions}>
             <Button
               title="Cancelar"

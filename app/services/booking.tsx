@@ -333,8 +333,10 @@ const ServiceBooking = () => {
         date: bookingDate,
         time: formatTime(bookingDate),
         end_time: formatTime(endDate),
-        status: 'pending',
+        status: 'confirmed', // Auto-confirm when payment is successful
         total_amount: service.price,
+        payment_status: 'paid',
+        payment_confirmed_at: new Date().toISOString(),
         notes: notes,
         created_at: new Date().toISOString(),
       };
@@ -373,7 +375,7 @@ const ServiceBooking = () => {
       
       Alert.alert(
         'Reserva Exitosa',
-        `Tu reserva ha sido confirmada y el pago de ${formatPrice(service?.price || 0)} procesado correctamente.`,
+        `Tu reserva ha sido confirmada automáticamente y el pago de ${formatPrice(service?.price || 0)} procesado correctamente. El proveedor ha sido notificado.`,
         [{ text: 'OK', onPress: () => router.push('/(tabs)') }]
       );
     } catch (error) {
