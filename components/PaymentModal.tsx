@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, TextInput, Alert, Image, ScrollView } from 'react-native';
-import { X, CreditCard, User, FileText, Calendar, Lock, CheckCircle } from 'lucide-react-native';
+import { X, CreditCard, User, FileText, Calendar, Lock, CircleCheck as CheckCircle } from 'lucide-react-native';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 
