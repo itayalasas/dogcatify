@@ -560,22 +560,25 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
   modalContent: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '85%',
-    minHeight: '60%',
-    flex: 1,
-  },
-  modalHeader: {
-    flexDirection: 'row',
+    borderRadius: 16,
+    width: '100%',
+    maxWidth: 400,
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 16,
+    paddingBottom: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
@@ -588,17 +591,15 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   scrollContent: {
-    flex: 1,
+    maxHeight: 400,
   },
   
   // Summary Step
   summaryContent: {
     padding: 20,
-    paddingBottom: 100, // Extra space for buttons
   },
   paymentContent: {
     padding: 20,
-    paddingBottom: 100, // Extra space for buttons
   },
   summaryHeader: {
     alignItems: 'center',
@@ -698,7 +699,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
-    marginTop: 'auto',
   },
 
   // Payment Step
@@ -809,14 +809,11 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   paymentActions: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     flexDirection: 'column',
     gap: 8,
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 16,
+    paddingBottom: 20,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
