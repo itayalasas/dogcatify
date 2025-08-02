@@ -45,6 +45,18 @@ const PromotionWrapper = ({ promotion, onPress, onLike }: { promotion: any; onPr
   const { currentUser } = useAuth();
 
   useEffect(() => {
+    // Handle web-specific redirect first
+    if (Platform.OS === 'web') {
+      const currentPath = window.location.pathname;
+      if (currentPath !== '/web-info' && !currentPath.includes('/auth/confirm')) {
+        // Add small delay to ensure router is ready
+        setTimeout(() => {
+          router.replace('/web-info');
+        }, 100);
+        return;
+      }
+    }
+
     if (currentUser) {
       fetchFeedData();
     }
