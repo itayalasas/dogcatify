@@ -157,7 +157,6 @@ export default function AdoptionChat() {
     setNewMessage(''); // Clear input immediately for better UX
     
     try {
-    try {
       const { error } = await supabaseClient
         .from('adoption_messages')
         .insert({
