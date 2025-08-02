@@ -293,6 +293,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             <Text style={styles.totalValue}>{formatCurrency(calculateTotal())}</Text>
           </View>
         </Card>
+        </View>
       </ScrollView>
 
       <View style={styles.summaryActions}>
@@ -312,9 +313,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   );
 
   const renderPaymentStep = () => (
-    <>
-      <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.paymentContent}>
+    <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
       <View style={styles.paymentHeader}>
         <Lock size={24} color="#10B981" />
         <Text style={styles.paymentTitle}>Pago Seguro</Text>
@@ -434,8 +433,6 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           Tu información está protegida con encriptación SSL de 256 bits
         </Text>
       </View>
-        </View>
-      </ScrollView>
 
       <View style={styles.paymentActions}>
         <Button
@@ -485,7 +482,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           </View>
         </View>
       </Modal>
-    </>
+    </ScrollView>
   );
 
   const renderProcessingStep = () => (
@@ -593,14 +590,11 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingBottom: 20,
   },
+  summaryContent: {
+    paddingTop: 20,
+  },
   
   // Summary Step
-  summaryContent: {
-    paddingHorizontal: 0,
-  },
-  paymentContent: {
-    paddingHorizontal: 0,
-  },
   summaryHeader: {
     alignItems: 'center',
     paddingTop: 20,
@@ -813,12 +807,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 20,
+    paddingVertical: 16,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
-    marginTop: 'auto',
   },
 
   // Document Type Modal
@@ -928,4 +920,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export { PaymentModal }
+export { PaymentModal };
