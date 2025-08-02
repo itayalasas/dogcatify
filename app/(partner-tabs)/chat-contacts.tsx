@@ -56,12 +56,32 @@ export default function ChatScreen() {
           }
         }
       )
+      .on('postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'chat_conversations',
+          filter: `id=eq.${id}`
+        },
+        (payload) => {
+          console.log('Conversation updated:', payload);
+          if (payload.new) {
+            setConversation(payload.new);
+          }
+        }
+      )
       .subscribe((status) => {
         console.log('Chat subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Real-time chat subscription active');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Real-time chat subscription error');
+        }
       });
 
     return () => {
       if (subscription) {
+        console.log('Unsubscribing from chat channel');
         subscription.unsubscribe();
       }
     };
@@ -117,269 +137,6 @@ export default function ChatScreen() {
     }
   };
 
-  const sendMessage = async () => {
-    if (!newMessage.trim() || !currentUser) return;
-
-    const tempId = `temp-${Date.now()}`;
-    const tempMessage = {
-      id: tempId,
-      conversation_id: id,
-      sender_id: currentUser.id,
-      message: newMessage.trim(),
-      message_type: 'text',
-      is_read: false,
-      created_at: new Date().toISOString()
-    };
-
-    // Add message optimistically to UI
-    setMessages(prev => [...prev, tempMessage]);
-    const messageToSend = newMessage.trim();
-    setNewMessage('');
-    scrollToBottom();
-    try {
-      const messageData = {
-  const sendNotificationToOtherParticipants = async (messageText: string) => {
-    try {
-      if (!conversation || !currentUser) return;
-
-      // Get conversation participants
-      const { data: conversationData, error } = await supabaseClient
-        .from('chat_conversations')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error || !conversationData) {
-        console.error('Error fetching conversation for notification:', error);
-        return;
-      }
-
-      // Determine who to notify (the other participant)
-      let recipientId = null;
-      if (conversationData.user_id && conversationData.user_id !== currentUser.id) {
-        recipientId = conversationData.user_id;
-      } else if (conversationData.partner_id) {
-        // Get partner user_id
-        const { data: partnerData } = await supabaseClient
-          .from('partners')
-          .select('user_id')
-          .eq('id', conversationData.partner_id)
-          .single();
-        
-        if (partnerData?.user_id && partnerData.user_id !== currentUser.id) {
-          recipientId = partnerData.user_id;
-        }
-      }
-
-      if (!recipientId) {
-        console.log('No recipient found for notification');
-        return;
-      }
-
-      // Get recipient's push token
-      const { data: recipientProfile } = await supabaseClient
-        .from('profiles')
-        .select('push_token, display_name')
-        .eq('id', recipientId)
-        .single();
-
-      if (!recipientProfile?.push_token) {
-        console.log('Recipient does not have push token');
-        return;
-      }
-
-      // Send push notification
-      const notificationData = {
-        to: recipientProfile.push_token,
-  const sendNotificationToOtherParticipants = async (messageText: string) => {
-    try {
-      if (!conversation || !currentUser) return;
-
-      // Get conversation participants
-      const { data: conversationData, error } = await supabaseClient
-        .from('chat_conversations')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error || !conversationData) {
-        console.error('Error fetching conversation for notification:', error);
-        return;
-      }
-
-      // Determine who to notify (the other participant)
-      let recipientId = null;
-      if (conversationData.user_id && conversationData.user_id !== currentUser.id) {
-        recipientId = conversationData.user_id;
-      } else if (conversationData.partner_id) {
-        // Get partner user_id
-        const { data: partnerData } = await supabaseClient
-          .from('partners')
-          .select('user_id')
-          .eq('id', conversationData.partner_id)
-          .single();
-        
-        if (partnerData?.user_id && partnerData.user_id !== currentUser.id) {
-          recipientId = partnerData.user_id;
-        }
-      }
-
-      if (!recipientId) {
-        console.log('No recipient found for notification');
-        return;
-      }
-
-      // Get recipient's push token
-      const { data: recipientProfile } = await supabaseClient
-        .from('profiles')
-        .select('push_token, display_name')
-        .eq('id', recipientId)
-        .single();
-
-      if (!recipientProfile?.push_token) {
-        console.log('Recipient does not have push token');
-        return;
-      }
-
-      // Send push notification
-      const notificationData = {
-        to: recipientProfile.push_token,
-  const sendNotificationToOtherParticipants = async (messageText: string) => {
-    try {
-      if (!conversation || !currentUser) return;
-
-      // Get conversation participants
-      const { data: conversationData, error } = await supabaseClient
-        .from('chat_conversations')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error || !conversationData) {
-        console.error('Error fetching conversation for notification:', error);
-        return;
-      }
-
-      // Determine who to notify (the other participant)
-      let recipientId = null;
-      if (conversationData.user_id && conversationData.user_id !== currentUser.id) {
-        recipientId = conversationData.user_id;
-      } else if (conversationData.partner_id) {
-        // Get partner user_id
-        const { data: partnerData } = await supabaseClient
-          .from('partners')
-          .select('user_id')
-          .eq('id', conversationData.partner_id)
-          .single();
-        
-        if (partnerData?.user_id && partnerData.user_id !== currentUser.id) {
-          recipientId = partnerData.user_id;
-        }
-      }
-
-      if (!recipientId) {
-        console.log('No recipient found for notification');
-        return;
-      }
-
-      // Get recipient's push token
-      const { data: recipientProfile } = await supabaseClient
-        .from('profiles')
-        .select('push_token, display_name')
-        .eq('id', recipientId)
-        .single();
-
-      if (!recipientProfile?.push_token) {
-        console.log('Recipient does not have push token');
-        return;
-      }
-
-      // Send push notification
-      const notificationData = {
-        to: recipientProfile.push_token,
-  const sendNotificationToOtherParticipants = async (messageText: string) => {
-    try {
-      if (!conversation || !currentUser) return;
-
-      // Get conversation participants
-      const { data: conversationData, error } = await supabaseClient
-        .from('chat_conversations')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error || !conversationData) {
-        console.error('Error fetching conversation for notification:', error);
-        return;
-      }
-
-      // Determine who to notify (the other participant)
-      let recipientId = null;
-      if (conversationData.user_id && conversationData.user_id !== currentUser.id) {
-        recipientId = conversationData.user_id;
-      } else if (conversationData.partner_id) {
-        // Get partner user_id
-        const { data: partnerData } = await supabaseClient
-          .from('partners')
-          .select('user_id')
-          .eq('id', conversationData.partner_id)
-          .single();
-        
-        if (partnerData?.user_id && partnerData.user_id !== currentUser.id) {
-          recipientId = partnerData.user_id;
-        }
-      }
-
-      if (!recipientId) {
-        console.log('No recipient found for notification');
-        return;
-      }
-
-      // Get recipient's push token
-      const { data: recipientProfile } = await supabaseClient
-        .from('profiles')
-        .select('push_token, display_name')
-        .eq('id', recipientId)
-        .single();
-
-      if (!recipientProfile?.push_token) {
-        console.log('Recipient does not have push token');
-        return;
-      }
-
-      // Send push notification
-      const notificationData = {
-        to: recipientProfile.push_token,
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'chat_conversations',
-          filter: `id=eq.${id}`
-        },
-        (payload) => {
-          console.log('Conversation updated:', payload);
-          if (payload.new) {
-            setConversation(payload.new);
-          }
-        }
-      )
-      .subscribe((status) => {
-        console.log('Chat subscription status:', status);
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ Real-time chat subscription active');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ Real-time chat subscription error');
-        }
-      });
-
-    return () => {
-      if (subscription) {
-        console.log('Unsubscribing from chat channel');
-        subscription.unsubscribe();
-      }
-    };
-  }, [currentUser, id]);
-
   const markMessageAsRead = async (messageId: string) => {
     try {
       await supabaseClient
@@ -391,6 +148,7 @@ export default function ChatScreen() {
       console.error('Error marking message as read:', error);
     }
   };
+
   const sendNotificationToOtherParticipants = async (messageText: string) => {
     try {
       if (!conversation || !currentUser) return;
@@ -441,9 +199,9 @@ export default function ChatScreen() {
         return;
       }
 
-      // Send push notification
-      const notificationData = {
-        to: recipientProfile.push_token,
+      // Get pet name for notification
+      let petNameForNotification = petName;
+      if (!petNameForNotification && conversation.adoption_pet_id) {
         const { data: petData } = await supabaseClient
           .from('adoption_pets')
           .select('name')
@@ -451,19 +209,19 @@ export default function ChatScreen() {
           .single();
         
         if (petData?.name) {
-          petName = petData.name;
+          petNameForNotification = petData.name;
         }
       }
 
       // Send push notification
       const notificationPayload = {
         to: recipientProfile.push_token,
-        title: `Nuevo mensaje sobre adopción de ${petName}`,
+        title: `Nuevo mensaje sobre adopción de ${petNameForNotification}`,
         body: `${currentUser.displayName || 'Usuario'}: ${messageText.substring(0, 100)}${messageText.length > 100 ? '...' : ''}`,
         data: {
           type: 'adoption_chat',
           conversationId: id,
-          petName: petName,
+          petName: petNameForNotification,
           senderId: currentUser.id,
           senderName: currentUser.displayName || 'Usuario'
         },
@@ -491,6 +249,28 @@ export default function ChatScreen() {
     }
   };
 
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !currentUser) return;
+
+    const tempId = `temp-${Date.now()}`;
+    const tempMessage = {
+      id: tempId,
+      conversation_id: id,
+      sender_id: currentUser.id,
+      message: newMessage.trim(),
+      message_type: 'text',
+      is_read: false,
+      created_at: new Date().toISOString()
+    };
+
+    // Add message optimistically to UI
+    setMessages(prev => [...prev, tempMessage]);
+    const messageToSend = newMessage.trim();
+    setNewMessage('');
+    scrollToBottom();
+    
+    try {
+      const messageData = {
         conversation_id: id,
         sender_id: currentUser.id,
         message: messageToSend,
