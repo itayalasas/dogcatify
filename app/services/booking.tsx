@@ -354,11 +354,9 @@ const ServiceBooking = () => {
       console.log('Final booking data:', bookingData);
       
       // Insert booking using Supabase
-      const { data: insertedBooking, error } = await supabaseClient
+      const { error } = await supabaseClient
         .from('bookings')
-        .insert([bookingData])
-        .select()
-        .single();
+        .insert([bookingData]);
       
       if (error) {
         console.error('Supabase booking insert error:', error);
@@ -366,7 +364,7 @@ const ServiceBooking = () => {
         throw new Error(`Error al crear la reserva: ${error.message || error.details || 'Error desconocido'}`);
       }
       
-      console.log('Booking created successfully:', insertedBooking);
+      console.log('Booking created successfully');
       
       // Block the time slots in the bookedSlots state
       const dateString = selectedDate.toDateString();
