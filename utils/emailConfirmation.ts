@@ -1,211 +1,398 @@
-import { supabaseClient } from '../lib/supabase';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Alert, Image, TouchableOpacity } from 'react-native';
+import { Link, router } from 'expo-router';
+import { Mail, Lock, User, Check, ExternalLink } from 'lucide-react-native';
+import { Input } from '../../components/ui/Input';
+import { Button } from '../../components/ui/Button'; 
+import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
-export interface EmailConfirmationToken {
-  id: string;
-  user_id: string;
-  email: string;
-  token_hash: string;
-  type: 'signup' | 'password_reset';
-  is_confirmed: boolean;
-  expires_at: string;
-  created_at: string;
+// Componente para mostrar en web
+const WebInfo = () => (
+  <View style={webStyles.container}>
+    <View style={webStyles.content}>
+      <View style={webStyles.infoCard}>
+        <View style={webStyles.header}>
+          <Text style={webStyles.logo}>🐾</Text>
+          <Text style={webStyles.title}>DogCatiFy</Text>
+        </View>
+        
+        <Text style={webStyles.subtitle}>
+          Aplicación Móvil para Amantes de las Mascotas
+        </Text>
+        
+        <View style={webStyles.infoSection}>
+          <Text style={webStyles.infoTitle}>📱 Aplicación Móvil</Text>
+          <Text style={webStyles.infoText}>
+            DogCatiFy está diseñada como una aplicación móvil nativa. 
+            Para la mejor experiencia, descarga la app en tu dispositivo móvil.
+          </Text>
+        </View>
+        
+        <View style={webStyles.infoSection}>
+          <Text style={webStyles.infoTitle}>✉️ Confirmación de Email</Text>
+          <Text style={webStyles.infoText}>
+            Si llegaste aquí desde un enlace de confirmación de email, 
+            el proceso se completará automáticamente. Luego podrás usar 
+            la aplicación móvil con tu cuenta confirmada.
+          </Text>
+        </View>
+        
+        <View style={webStyles.downloadSection}>
+          <Text style={webStyles.downloadTitle}>Descargar la App</Text>
+          <Text style={webStyles.downloadText}>
+            Próximamente disponible en App Store y Google Play
+          </Text>
+        </View>
+      </View>
+    </View>
+  </View>
+);
+
+// Componente para mostrar en web
+const WebInfo = () => (
+  <View style={webStyles.container}>
+    <View style={webStyles.content}>
+      <View style={webStyles.infoCard}>
+        <View style={webStyles.header}>
+          <Text style={webStyles.logo}>🐾</Text>
+          <Text style={webStyles.title}>DogCatiFy</Text>
+        </View>
+        
+        <Text style={webStyles.subtitle}>
+          Aplicación Móvil para Amantes de las Mascotas
+        </Text>
+        
+        <View style={webStyles.infoSection}>
+          <Text style={webStyles.infoTitle}>📱 Aplicación Móvil</Text>
+          <Text style={webStyles.infoText}>
+            DogCatiFy está diseñada como una aplicación móvil nativa. 
+            Para la mejor experiencia, descarga la app en tu dispositivo móvil.
+          </Text>
+        </View>
+        
+        <View style={webStyles.infoSection}>
+          <Text style={webStyles.infoTitle}>✉️ Confirmación de Email</Text>
+          <Text style={webStyles.infoText}>
+            Si llegaste aquí desde un enlace de confirmación de email, 
+            el proceso se completará automáticamente. Luego podrás usar 
+            la aplicación móvil con tu cuenta confirmada.
+          </Text>
+        </View>
+        
+        <View style={webStyles.downloadSection}>
+          <Text style={webStyles.downloadTitle}>Descargar la App</Text>
+          <Text style={webStyles.downloadText}>
+            Próximamente disponible en App Store y Google Play
+          </Text>
+        </View>
+      </View>
+    </View>
+  </View>
+);
+
+export default function Register() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [acceptedPolicies, setAcceptedPolicies] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { register } = useAuth();
+  const { t } = useLanguage();
+
+  const handleRegister = async () => {
+    if (!email || !password || !displayName || !confirmPassword) {
+      Alert.alert(t('error'), t('fillAllFields'));
+      return;
+    }
+
+    if (!acceptedPolicies) {
+      Alert.alert('Error', 'Debes aceptar las políticas de privacidad y términos de servicio para continuar');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert(t('error'), t('passwordsDontMatch'));
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert(t('error'), t('passwordTooShort'));
+      return;
+    }
+
+    setLoading(true);
+    try {
+      console.log('Registering user:', email, displayName);
+      await register(email, password, displayName);
+      console.log('User registered successfully');
+      Alert.alert(
+        '¡Registro exitoso!',
+        `Tu cuenta ha sido creada. Hemos enviado un correo de confirmación a ${email}.\n\nPor favor revisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace de confirmación antes de iniciar sesión.\n\nEl enlace expira en 24 horas.`,
+        [
+          {
+            text: 'OK',
+            onPress: () => router.replace('/auth/login')
+          }
+        ]
+      );
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      Alert.alert(t('error'), error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenPrivacyPolicy = async () => {
+    try {
+      const url = process.env.EXPO_PUBLIC_PRIVACY_POLICY_URL || 'https://dogcatify.com/privacy-policy';
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'No se pudo abrir el enlace de políticas de privacidad');
+      }
+    } catch (error) {
+      console.error('Error opening privacy policy:', error);
+      Alert.alert('Error', 'No se pudo abrir el enlace de políticas de privacidad');
+    }
+  };
+
+  const handleOpenTermsOfService = async () => {
+    try {
+      const url = process.env.EXPO_PUBLIC_TERMS_OF_SERVICE_URL || 'https://dogcatify.com/terms-of-service';
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'No se pudo abrir el enlace de términos de servicio');
+      }
+    } catch (error) {
+      console.error('Error opening terms of service:', error);
+      Alert.alert('Error', 'No se pudo abrir el enlace de términos de servicio');
+    }
+  };
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.header}>
+        <Image 
+          source={require('../../assets/images/logo.jpg')} 
+          style={styles.logo} 
+        />
+        <Text style={styles.title}>Únete a nosotros</Text>
+        <Text style={styles.subtitle}>{t('createAccountSubtitle')}</Text>
+      </View>
+
+      <View style={styles.form}>
+        <Input
+          label={t('fullName')}
+          placeholder={t('fullName')}
+          value={displayName}
+          onChangeText={setDisplayName}
+          leftIcon={<User size={20} color="#6B7280" />}
+        />
+
+        <Input
+          label={t('email')}
+          placeholder={t('email')}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          leftIcon={<Mail size={20} color="#6B7280" />}
+        />
+
+        <Input
+          label={t('password')}
+          placeholder={t('password')}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          leftIcon={<Lock size={20} color="#6B7280" />}
+        />
+
+        <Input
+          label={t('confirmPassword')}
+          placeholder={t('confirmPassword')}
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          secureTextEntry
+          leftIcon={<Lock size={20} color="#6B7280" />}
+        />
+
+        <View style={styles.policiesContainer}>
+          <TouchableOpacity 
+            style={styles.policiesRow} 
+            onPress={() => setAcceptedPolicies(!acceptedPolicies)}
+          >
+            <View style={[styles.checkbox, acceptedPolicies && styles.checkedCheckbox]}>
+              {acceptedPolicies && <Check size={16} color="#FFFFFF" />}
+            </View>
+            <View style={styles.policiesTextContainer}>
+              <Text style={styles.policiesText}>
+                Acepto las{' '}
+                <TouchableOpacity onPress={handleOpenPrivacyPolicy}>
+                  <Text style={styles.linkText}>políticas de privacidad</Text>
+                </TouchableOpacity>
+                {' '}y los{' '}
+                <TouchableOpacity onPress={handleOpenTermsOfService}>
+                  <Text style={styles.linkText}>términos de servicio</Text>
+                </TouchableOpacity>
+              </Text>
+            </View>
+          </TouchableOpacity>
+          
+          <View style={styles.policiesLinks}>
+            <TouchableOpacity 
+              style={styles.policyLinkButton}
+              onPress={handleOpenPrivacyPolicy}
+            >
+              <ExternalLink size={14} color="#3B82F6" />
+              <Text style={styles.policyLinkText}>Políticas de Privacidad</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.policyLinkButton}
+              onPress={handleOpenTermsOfService}
+            >
+              <ExternalLink size={14} color="#3B82F6" />
+              <Text style={styles.policyLinkText}>Términos de Servicio</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        <Button
+          title={t('createAccount')}
+          onPress={handleRegister}
+          loading={loading}
+          disabled={loading || !acceptedPolicies}
+          size="large"
+        />
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            {t('alreadyHaveAccount')}{' '}
+            <Link href="/auth/login" style={styles.link}>
+              {t('signIn')}
+            </Link>
+          </Text>
+        </View>
+      </View>
+    </ScrollView>
+  );
 }
 
-/**
- * Generate a secure token for email confirmation
- */
-export const generateConfirmationToken = async (): Promise<string> => {
-  // Generate a random token using Math.random for compatibility
-  const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
-  return token;
-};
-
-/**
- * Create email confirmation token in database
- */
-export const createEmailConfirmationToken = async (
-  userId: string,
-  email: string,
-  type: 'signup' | 'password_reset' = 'signup'
-): Promise<string> => {
-  try {
-    const token = await generateConfirmationToken();
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 24); // Token expires in 24 hours
-
-    const { error } = await supabaseClient
-      .from('email_confirmations')
-      .insert({
-        user_id: userId,
-        email: email,
-        token_hash: token,
-        type: type,
-        is_confirmed: false,
-        expires_at: expiresAt.toISOString(),
-        created_at: new Date().toISOString()
-      });
-
-    if (error) throw error;
-
-    return token;
-  } catch (error) {
-    console.error('Error creating email confirmation token:', error);
-    throw error;
-  }
-};
-
-/**
- * Verify email confirmation token
- */
-export const verifyEmailConfirmationToken = async (
-  token: string,
-  type: 'signup' | 'password_reset' = 'signup'
-): Promise<{ success: boolean; userId?: string; email?: string; error?: string }> => {
-  try {
-    console.log('Verifying token:', token, 'type:', type);
-
-    // Find the token in database
-    const { data: tokenData, error } = await supabaseClient
-      .from('email_confirmations')
-      .select('*')
-      .eq('token_hash', token)
-      .eq('type', type)
-      .eq('is_confirmed', false)
-      .single();
-
-    if (error) {
-      console.error('Error finding token:', error);
-      return { success: false, error: 'Token no encontrado o ya utilizado' };
-    }
-
-    if (!tokenData) {
-      return { success: false, error: 'Token no válido' };
-    }
-
-    // Check if token has expired
-    const now = new Date();
-    const expiresAt = new Date(tokenData.expires_at);
-    
-    if (now > expiresAt) {
-      return { success: false, error: 'Token expirado' };
-    }
-
-    // Mark token as confirmed
-    const { error: updateError } = await supabaseClient
-      .from('email_confirmations')
-      .update({
-        is_confirmed: true,
-        confirmed_at: new Date().toISOString()
-      })
-      .eq('id', tokenData.id);
-
-    if (updateError) {
-      console.error('Error updating token:', updateError);
-      return { success: false, error: 'Error al confirmar token' };
-    }
-
-    // Update user profile to mark email as confirmed
-    const { error: profileError } = await supabaseClient
-      .from('profiles')
-      .update({
-        email_confirmed: true,
-        email_confirmed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', tokenData.user_id);
-
-    if (profileError) {
-      console.error('Error updating profile:', profileError);
-      // Don't fail the confirmation if profile update fails
-    }
-
-    console.log('Email confirmation successful for user:', tokenData.user_id);
-
-    return {
-      success: true,
-      userId: tokenData.user_id,
-      email: tokenData.email
-    };
-  } catch (error) {
-    console.error('Error verifying email confirmation token:', error);
-    return { success: false, error: 'Error interno del servidor' };
-  }
-};
-
-/**
- * Check if user's email is confirmed
- */
-export const isEmailConfirmed = async (userId: string): Promise<boolean> => {
-  try {
-    const { data, error } = await supabaseClient
-      .from('profiles')
-      .select('email_confirmed')
-      .eq('id', userId)
-      .single();
-
-    if (error) {
-      console.error('Error checking email confirmation:', error);
-      return false;
-    }
-
-    return data?.email_confirmed || false;
-  } catch (error) {
-    console.error('Error checking email confirmation:', error);
-    return false;
-  }
-};
-
-/**
- * Generate confirmation URL
- */
-export const generateConfirmationUrl = (token: string, type: 'signup' | 'password_reset' = 'signup'): string => {
-  const baseUrl = process.env.EXPO_PUBLIC_APP_URL || 'http://localhost:8081';
-  return `${baseUrl}/auth/confirm?token_hash=${token}&type=${type}`;
-};
-
-/**
- * Resend confirmation email
- */
-export const resendConfirmationEmail = async (email: string): Promise<{ success: boolean; error?: string }> => {
-  try {
-    // Find user by email
-    const { data: userData, error: userError } = await supabaseClient
-      .from('profiles')
-      .select('id, display_name, email_confirmed')
-      .eq('email', email)
-      .single();
-
-    if (userError) {
-      return { success: false, error: 'Usuario no encontrado' };
-    }
-
-    if (userData.email_confirmed) {
-      return { success: false, error: 'El email ya está confirmado' };
-    }
-
-    // Invalidate any existing tokens for this user
-    await supabaseClient
-      .from('email_confirmations')
-      .update({ is_confirmed: true })
-      .eq('user_id', userData.id)
-      .eq('type', 'signup')
-      .eq('is_confirmed', false);
-
-    // Create new confirmation token
-    const token = await createEmailConfirmationToken(userData.id, email, 'signup');
-    const confirmationUrl = generateConfirmationUrl(token, 'signup');
-
-    // Send confirmation email
-    const { NotificationService } = await import('./notifications');
-    await NotificationService.sendCustomConfirmationEmail(
-      email,
-      userData.display_name || 'Usuario',
-      confirmationUrl
-    );
-
-    return { success: true };
-  } catch (error) {
-    console.error('Error resending confirmation email:', error);
-    return { success: false, error: 'Error al reenviar email de confirmación' };
-  }
-};
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    paddingTop: 30, // Add padding at the top to show status bar
+  },
+  content: {
+    flexGrow: 1,
+    padding: 20,
+    paddingTop: 20,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  logo: {
+    width: 140,
+    height: 140,
+    resizeMode: 'contain',
+    marginBottom: 4,
+  },
+  title: {
+    fontSize: 28,
+    fontFamily: 'Inter-Bold',
+    color: '#2D6A6F',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    fontFamily: 'Inter-Regular',
+  },
+  form: {
+    width: '100%',
+    maxWidth: 400,
+    alignSelf: 'center',
+  },
+  policiesContainer: {
+    marginBottom: 20,
+  },
+  policiesRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    borderRadius: 4,
+    marginRight: 12,
+    marginTop: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkedCheckbox: {
+    backgroundColor: '#2D6A6F',
+    borderColor: '#2D6A6F',
+  },
+  policiesTextContainer: {
+    flex: 1,
+  },
+  policiesText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+    lineHeight: 20,
+  },
+  linkText: {
+    color: '#3B82F6',
+    fontFamily: 'Inter-SemiBold',
+    textDecorationLine: 'underline',
+  },
+  policiesLinks: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  policyLinkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    flex: 1,
+    justifyContent: 'center',
+  },
+  policyLinkText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#3B82F6',
+    marginLeft: 4,
+  },
+  footer: {
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  footerText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+  },
+  link: {
+    color: '#3B82F6',
+    fontFamily: 'Inter-SemiBold',
+  },
+});
