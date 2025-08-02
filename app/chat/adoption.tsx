@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, TextInput, KeyboardAvoidingView, Platform, Alert, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, TextInput, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Send, Phone, Heart } from 'lucide-react-native';
 import { useAuth } from '../../contexts/AuthContext';
@@ -153,8 +153,6 @@ export default function AdoptionChat() {
     if (!textToSend || !chatToUse) return;
 
     setLoading(true);
-    const messageToSend = messageText || newMessage.trim();
-    setNewMessage(''); // Clear input immediately for better UX
     try {
       const { error } = await supabaseClient
         .from('adoption_messages')
@@ -162,12 +160,16 @@ export default function AdoptionChat() {
           chat_id: chatToUse,
           sender_id: currentUser!.id,
           sender_name: currentUser!.displayName || 'Usuario',
-          message: messageToSend,
+          message: textToSend,
           created_at: new Date().toISOString()
         });
 
       if (error) throw error;
 
+      if (!messageText) {
+        setNewMessage('');
+      }
+      
       // Send push notification to partner
       try {
         const { data: partnerData } = await supabaseClient
@@ -180,7 +182,7 @@ export default function AdoptionChat() {
           await sendNotificationToUser(
             partnerData.user_id,
             `Nuevo mensaje de adopción - ${petName}`,
-            `${currentUser!.displayName}: ${messageToSend}`,
+            `${currentUser!.displayName}: ${textToSend}`,
             {
               type: 'adoption_message',
               chatId: chatToUse,
@@ -196,7 +198,6 @@ export default function AdoptionChat() {
 
     } catch (error) {
       console.error('Error sending message:', error);
-      setNewMessage(messageToSend); // Restore message on error
       Alert.alert('Error', 'No se pudo enviar el mensaje');
     } finally {
       setLoading(false);
