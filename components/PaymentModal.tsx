@@ -247,8 +247,9 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   };
 
   const renderSummaryStep = () => (
-    <View style={styles.stepContent}>
+    <>
       <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.summaryContent}>
         <View style={styles.summaryHeader}>
           <CreditCard size={32} color="#2D6A6F" />
           <Text style={styles.summaryTitle}>Resumen del Pago</Text>
@@ -307,11 +308,13 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           size="large"
         />
       </View>
-    </View>
+    </>
   );
 
   const renderPaymentStep = () => (
-    <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
+    <>
+      <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.paymentContent}>
       <View style={styles.paymentHeader}>
         <Lock size={24} color="#10B981" />
         <Text style={styles.paymentTitle}>Pago Seguro</Text>
@@ -431,6 +434,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           Tu información está protegida con encriptación SSL de 256 bits
         </Text>
       </View>
+        </View>
+      </ScrollView>
 
       <View style={styles.paymentActions}>
         <Button
@@ -480,7 +485,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           </View>
         </View>
       </Modal>
-    </ScrollView>
+    </>
   );
 
   const renderProcessingStep = () => (
@@ -560,9 +565,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '85%',
-    minHeight: '70%',
-    flex: 1,
+    maxHeight: '90%',
+    height: '90%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -583,11 +587,23 @@ const styles = StyleSheet.create({
   },
   stepContent: {
     flex: 1,
+    paddingHorizontal: 20,
+  },
+  scrollContent: {
+    flex: 1,
+    paddingBottom: 20,
   },
   
   // Summary Step
+  summaryContent: {
+    paddingHorizontal: 0,
+  },
+  paymentContent: {
+    paddingHorizontal: 0,
+  },
   summaryHeader: {
     alignItems: 'center',
+    paddingTop: 20,
     marginBottom: 24,
   },
   summaryTitle: {
@@ -678,10 +694,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 16,
+    paddingBottom: 20,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
+    marginTop: 'auto',
   },
 
   // Payment Step
@@ -795,10 +813,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 16,
+    paddingBottom: 20,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
+    marginTop: 'auto',
   },
 
   // Document Type Modal
