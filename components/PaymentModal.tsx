@@ -589,7 +589,7 @@ const styles = StyleSheet.create({
   // Summary Step
   summaryContent: {
     flex: 1,
-    paddingHorizontal: 20,
+   paddingHorizontal: 16,
   },
   scrollContent: {
     flex: 1,
@@ -597,7 +597,7 @@ const styles = StyleSheet.create({
   },
   paymentContent: {
     flex: 1,
-    paddingHorizontal: 20,
+   paddingHorizontal: 16,
   },
   summaryHeader: {
     alignItems: 'center',
@@ -613,6 +613,9 @@ const styles = StyleSheet.create({
   serviceCard: {
     marginBottom: 16,
     backgroundColor: '#F8FAFC',
+   marginHorizontal: -4,
+   paddingHorizontal: 20,
+   paddingVertical: 16,
   },
   serviceTitle: {
     fontSize: 16,
@@ -645,6 +648,9 @@ const styles = StyleSheet.create({
   },
   priceCard: {
     marginBottom: 24,
+   marginHorizontal: -4,
+   paddingHorizontal: 20,
+   paddingVertical: 16,
   },
   priceTitle: {
     fontSize: 16,
