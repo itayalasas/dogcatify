@@ -1,29 +1,186 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, TextInput, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Image, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Send } from 'lucide-react-native';
+import { ArrowLeft, MessageCircle, User, Calendar } from 'lucide-react-native';
+import { Card } from '../../components/ui/Card';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabaseClient } from '../../lib/supabase';
 
-export default function ChatScreen() {
-  const { id, petName } = useLocalSearchParams<{ id: string; petName?: string }>();
+export default function ChatContacts() {
+  const { businessId } = useLocalSearchParams<{ businessId: string }>();
   const { currentUser } = useAuth();
-  const [messages, setMessages] = useState<any[]>([]);
-  const [newMessage, setNewMessage] = useState('');
+  const [adoptionChats, setAdoptionChats] = useState<any[]>([]);
+  const [partnerProfile, setPartnerProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [conversation, setConversation] = useState<any>(null);
-  const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
-    if (!currentUser || !id) {
-      router.replace('/auth/login');
+    if (!currentUser || !businessId) {
       return;
     }
     
-    fetchConversation();
-    fetchMessages();
+    fetchPartnerProfile();
+    fetchAdoptionChats();
+  }, [currentUser, businessId]);
+
+  const fetchPartnerProfile = async () => {
+    try {
+      const { data, error } = await supabaseClient
+        .from('partners')
+        .select('*')
+        .eq('id', businessId)
+        .single();
+      
+      if (error) throw error;
+      setPartnerProfile(data);
+    } catch (error) {
+      console.error('Error fetching partner profile:', error);
+    }
+  };
+
+  const fetchAdoptionChats = async () => {
+    try {
+      const { data, error } = await supabaseClient
+        .from('adoption_chats')
+        .select('*')
+        .eq('partner_id', businessId)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      setAdoptionChats(data || []);
+      
+      // Set up real-time subscription for chat updates
+      const subscription = supabaseClient
+        .channel(`partner-chats-${businessId}`)
+        .on('postgres_changes', 
+          { 
+            event: '*', 
+            schema: 'public', 
+            table: 'adoption_chats',
+            filter: `partner_id=eq.${businessId}`
+          }, 
+          () => {
+            fetchAdoptionChats();
+          }
+        )
+        .subscribe();
+      
+      return () => {
+        subscription.unsubscribe();
+      };
+    } catch (error) {
+      console.error('Error fetching adoption chats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChatPress = (chat: any) => {
+    router.push({
+      pathname: '/chat/adoption',
+      params: {
+        petId: chat.pet_id,
+        petName: chat.pet_name,
+        partnerId: chat.partner_id,
+        partnerName: chat.partner_name
+      }
+    });
+  };
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
     
-    // Set up real-time subscription for new messages with better error handling
+    if (diffInHours < 1) return 'Hace un momento';
+    if (diffInHours < 24) return `Hace ${diffInHours}h`;
+    
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) return `Hace ${diffInDays}d`;
+    
+    return date.toLocaleDateString();
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <ArrowLeft size={24} color="#111827" />
+          </TouchableOpacity>
+          <Text style={styles.title}>Contactos de Adopción</Text>
+          <View style={styles.placeholder} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Cargando conversaciones...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <ArrowLeft size={24} color="#111827" />
+        </TouchableOpacity>
+        <Text style={styles.title}>Contactos de Adopción</Text>
+        <View style={styles.placeholder} />
+      </View>
+
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {adoptionChats.length === 0 ? (
+          <Card style={styles.emptyCard}>
+            <MessageCircle size={48} color="#9CA3AF" />
+            <Text style={styles.emptyTitle}>No hay conversaciones</Text>
+            <Text style={styles.emptySubtitle}>
+              Las conversaciones sobre adopción aparecerán aquí cuando los usuarios se interesen en tus mascotas
+            </Text>
+          </Card>
+        ) : (
+          adoptionChats.map((chat) => (
+            <Card key={chat.id} style={styles.chatCard}>
+              <TouchableOpacity 
+                style={styles.chatContent}
+                onPress={() => handleChatPress(chat)}
+              >
+                <View style={styles.chatHeader}>
+                  <View style={styles.petInfo}>
+                    <Text style={styles.petName}>🐾 {chat.pet_name}</Text>
+                    <Text style={styles.customerName}>con {chat.customer_name}</Text>
+                  </View>
+                  <View style={styles.chatMeta}>
+                    <Text style={styles.chatTime}>
+                      {formatTime(chat.created_at)}
+                    </Text>
+                    <View style={[
+                      styles.statusBadge,
+                      { backgroundColor: chat.status === 'active' ? '#D1FAE5' : '#FEE2E2' }
+                    ]}>
+                      <Text style={[
+                        styles.statusText,
+                        { color: chat.status === 'active' ? '#065F46' : '#991B1B' }
+                      ]}>
+                        {chat.status === 'active' ? 'Activo' : 'Cerrado'}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+                
+                <View style={styles.chatPreview}>
+                  <User size={16} color="#6B7280" />
+                  <Text style={styles.previewText}>
+                    Interesado en adoptar a {chat.pet_name}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </Card>
+          ))
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
     const subscription = supabaseClient
       .channel(`chat-${id}`)
       .on('postgres_changes', 
@@ -441,7 +598,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
-    paddingTop: 50,
   },
   header: {
     flexDirection: 'row',
@@ -464,57 +620,93 @@ const styles = StyleSheet.create({
   placeholder: {
     width: 32,
   },
-  chatContainer: {
+  content: {
     flex: 1,
+    padding: 16,
   },
-  messagesContainer: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
-  messagesContent: {
-    paddingVertical: 16,
-  },
-  emptyContainer: {
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 40,
   },
-  emptyText: {
+  loadingText: {
     fontSize: 16,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
-    textAlign: 'center',
   },
-  messageContainer: {
-    marginBottom: 12,
-    maxWidth: '80%',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
+  emptyCard: {
+    alignItems: 'center',
+    paddingVertical: 40,
   },
-  ownMessage: {
-    alignSelf: 'flex-end',
-    backgroundColor: '#EF4444',
+  emptyTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#111827',
+    marginTop: 16,
+    marginBottom: 8,
   },
-  otherMessage: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  messageText: {
-    fontSize: 16,
+  emptySubtitle: {
+    fontSize: 14,
     fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
     lineHeight: 20,
   },
-  ownMessageText: {
-    color: '#FFFFFF',
+  chatCard: {
+    marginBottom: 12,
   },
-  otherMessageText: {
+  chatContent: {
+    padding: 16,
+  },
+  chatHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  petInfo: {
+    flex: 1,
+  },
+  petName: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
     color: '#111827',
+    marginBottom: 4,
   },
-  messageTime: {
+  customerName: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+  },
+  chatMeta: {
+    alignItems: 'flex-end',
+  },
+  chatTime: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
+    marginBottom: 4,
+  },
+  statusBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  statusText: {
+    fontSize: 10,
+    fontFamily: 'Inter-Medium',
+  },
+  chatPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  previewText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginLeft: 6,
+  },
+});
     fontSize: 12,
     fontFamily: 'Inter-Regular',
     marginTop: 4,
