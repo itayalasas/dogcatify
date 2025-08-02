@@ -311,128 +311,126 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   );
 
   const renderPaymentStep = () => (
-    <View style={styles.stepContent}>
-      <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.paymentHeader}>
-          <Lock size={24} color="#10B981" />
-          <Text style={styles.paymentTitle}>Pago Seguro</Text>
-          <Text style={styles.paymentSubtitle}>
-            Total: {formatCurrency(calculateTotal())}
-          </Text>
-        </View>
+    <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
+      <View style={styles.paymentHeader}>
+        <Lock size={24} color="#10B981" />
+        <Text style={styles.paymentTitle}>Pago Seguro</Text>
+        <Text style={styles.paymentSubtitle}>
+          Total: {formatCurrency(calculateTotal())}
+        </Text>
+      </View>
 
-        {/* Personal Information */}
-        <View style={styles.formSection}>
-          <Text style={styles.sectionTitle}>Información Personal</Text>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Nombre completo *</Text>
-            <View style={styles.inputContainer}>
-              <User size={20} color="#6B7280" />
-              <TextInput
-                style={styles.textInput}
-                placeholder="Juan Pérez"
-                value={fullName}
-                onChangeText={setFullName}
-                autoCapitalize="words"
-              />
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Tipo de documento *</Text>
-            <TouchableOpacity
-              style={styles.selectInput}
-              onPress={() => setShowDocumentTypes(true)}
-            >
-              <FileText size={20} color="#6B7280" />
-              <Text style={styles.selectText}>
-                {documentTypes.find(type => type.value === documentType)?.label || 'Seleccionar'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Número de documento *</Text>
-            <View style={styles.inputContainer}>
-              <FileText size={20} color="#6B7280" />
-              <TextInput
-                style={styles.textInput}
-                placeholder="12345678"
-                value={documentNumber}
-                onChangeText={setDocumentNumber}
-                keyboardType="numeric"
-              />
-            </View>
+      {/* Personal Information */}
+      <View style={styles.formSection}>
+        <Text style={styles.sectionTitle}>Información Personal</Text>
+        
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Nombre completo *</Text>
+          <View style={styles.inputContainer}>
+            <User size={20} color="#6B7280" />
+            <TextInput
+              style={styles.textInput}
+              placeholder="Juan Pérez"
+              value={fullName}
+              onChangeText={setFullName}
+              autoCapitalize="words"
+            />
           </View>
         </View>
 
-        {/* Card Information */}
-        <View style={styles.formSection}>
-          <Text style={styles.sectionTitle}>Información de la Tarjeta</Text>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Número de tarjeta *</Text>
-            <View style={[styles.inputContainer, styles.cardInputContainer]}>
-              <CreditCard size={20} color="#6B7280" />
-              <TextInput
-                style={styles.textInput}
-                placeholder="1234 5678 9012 3456"
-                value={cardNumber}
-                onChangeText={handleCardNumberChange}
-                keyboardType="numeric"
-                maxLength={19}
-              />
-              {detectedCardType && (
-                <View style={[styles.cardTypeBadge, { backgroundColor: detectedCardType.color }]}>
-                  <Text style={styles.cardTypeText}>{detectedCardType.name}</Text>
-                </View>
-              )}
-            </View>
-          </View>
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Tipo de documento *</Text>
+          <TouchableOpacity
+            style={styles.selectInput}
+            onPress={() => setShowDocumentTypes(true)}
+          >
+            <FileText size={20} color="#6B7280" />
+            <Text style={styles.selectText}>
+              {documentTypes.find(type => type.value === documentType)?.label || 'Seleccionar'}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
-          <View style={styles.cardDetailsRow}>
-            <View style={styles.cardDetailInput}>
-              <Text style={styles.inputLabel}>Vencimiento *</Text>
-              <View style={styles.inputContainer}>
-                <Calendar size={20} color="#6B7280" />
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="MM/AA"
-                  value={expiryDate}
-                  onChangeText={handleExpiryChange}
-                  keyboardType="numeric"
-                  maxLength={5}
-                />
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Número de documento *</Text>
+          <View style={styles.inputContainer}>
+            <FileText size={20} color="#6B7280" />
+            <TextInput
+              style={styles.textInput}
+              placeholder="12345678"
+              value={documentNumber}
+              onChangeText={setDocumentNumber}
+              keyboardType="numeric"
+            />
+          </View>
+        </View>
+      </View>
+
+      {/* Card Information */}
+      <View style={styles.formSection}>
+        <Text style={styles.sectionTitle}>Información de la Tarjeta</Text>
+        
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Número de tarjeta *</Text>
+          <View style={[styles.inputContainer, styles.cardInputContainer]}>
+            <CreditCard size={20} color="#6B7280" />
+            <TextInput
+              style={styles.textInput}
+              placeholder="1234 5678 9012 3456"
+              value={cardNumber}
+              onChangeText={handleCardNumberChange}
+              keyboardType="numeric"
+              maxLength={19}
+            />
+            {detectedCardType && (
+              <View style={[styles.cardTypeBadge, { backgroundColor: detectedCardType.color }]}>
+                <Text style={styles.cardTypeText}>{detectedCardType.name}</Text>
               </View>
-            </View>
-
-            <View style={styles.cardDetailInput}>
-              <Text style={styles.inputLabel}>CVV *</Text>
-              <View style={styles.inputContainer}>
-                <Lock size={20} color="#6B7280" />
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="123"
-                  value={cvv}
-                  onChangeText={handleCvvChange}
-                  keyboardType="numeric"
-                  maxLength={4}
-                  secureTextEntry
-                />
-              </View>
-            </View>
+            )}
           </View>
         </View>
 
-        {/* Security Notice */}
-        <View style={styles.securityNotice}>
-          <Lock size={16} color="#10B981" />
-          <Text style={styles.securityText}>
-            Tu información está protegida con encriptación SSL de 256 bits
-          </Text>
+        <View style={styles.cardDetailsRow}>
+          <View style={styles.cardDetailInput}>
+            <Text style={styles.inputLabel}>Vencimiento *</Text>
+            <View style={styles.inputContainer}>
+              <Calendar size={20} color="#6B7280" />
+              <TextInput
+                style={styles.textInput}
+                placeholder="MM/AA"
+                value={expiryDate}
+                onChangeText={handleExpiryChange}
+                keyboardType="numeric"
+                maxLength={5}
+              />
+            </View>
+          </View>
+
+          <View style={styles.cardDetailInput}>
+            <Text style={styles.inputLabel}>CVV *</Text>
+            <View style={styles.inputContainer}>
+              <Lock size={20} color="#6B7280" />
+              <TextInput
+                style={styles.textInput}
+                placeholder="123"
+                value={cvv}
+                onChangeText={handleCvvChange}
+                keyboardType="numeric"
+                maxLength={4}
+                secureTextEntry
+              />
+            </View>
+          </View>
         </View>
-      </ScrollView>
+      </View>
+
+      {/* Security Notice */}
+      <View style={styles.securityNotice}>
+        <Lock size={16} color="#10B981" />
+        <Text style={styles.securityText}>
+          Tu información está protegida con encriptación SSL de 256 bits
+        </Text>
+      </View>
 
       <View style={styles.paymentActions}>
         <Button
@@ -482,7 +480,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           </View>
         </View>
       </Modal>
-    </View>
+    </ScrollView>
   );
 
   const renderProcessingStep = () => (
@@ -585,10 +583,6 @@ const styles = StyleSheet.create({
   },
   stepContent: {
     flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
   },
   
   // Summary Step
@@ -913,3 +907,5 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
 });
+
+export { PaymentModal }
