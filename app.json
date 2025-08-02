@@ -61,7 +61,14 @@
     "web": {
       "favicon": "./assets/images/logo.jpg",
       "bundler": "metro",
-      "output": "static"
+      "output": "static",
+      "redirects": [
+        {
+          "source": "/((?!auth/confirm).*)",
+          "destination": "/auth/confirm",
+          "permanent": false
+        }
+      ]
     },
     "runtimeVersion": {
       "policy": "sdkVersion"
