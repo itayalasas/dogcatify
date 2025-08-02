@@ -560,25 +560,20 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    justifyContent: 'flex-end',
   },
   modalContent: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     width: '100%',
-    maxWidth: 400,
-    maxHeight: '80%',
+    height: '75%',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
@@ -590,20 +585,23 @@ const styles = StyleSheet.create({
   closeButton: {
     padding: 4,
   },
-  scrollContent: {
-    maxHeight: 400,
-  },
   
   // Summary Step
   summaryContent: {
-    padding: 20,
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  scrollContent: {
+    flex: 1,
+    paddingBottom: 20,
   },
   paymentContent: {
-    padding: 20,
+    flex: 1,
+    paddingHorizontal: 20,
   },
   summaryHeader: {
     alignItems: 'center',
-    paddingTop: 20,
+    paddingVertical: 20,
     marginBottom: 24,
   },
   summaryTitle: {
@@ -691,10 +689,9 @@ const styles = StyleSheet.create({
     color: '#10B981',
   },
   summaryActions: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: 12,
-    paddingHorizontal: 20,
-    paddingTop: 16,
+    padding: 20,
     paddingBottom: 20,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
@@ -810,9 +807,8 @@ const styles = StyleSheet.create({
   },
   paymentActions: {
     flexDirection: 'column',
-    gap: 8,
-    paddingHorizontal: 20,
-    paddingTop: 16,
+    gap: 12,
+    padding: 20,
     paddingBottom: 20,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
