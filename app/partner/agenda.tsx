@@ -658,6 +658,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 12,
   },
+  paidBadge: {
+    fontSize: 12,
+    fontFamily: 'Inter-Bold',
+    color: '#10B981',
+  },
   bookingInfo: {
     flex: 1,
   },
