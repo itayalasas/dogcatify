@@ -12,15 +12,6 @@ import { Platform } from 'react-native';
 export default function RootLayout() {
   useFrameworkReady();
 
-  useEffect(() => {
-    if (Platform.OS === 'web') {
-      const currentPath = window.location.pathname;
-      if (currentPath !== '/web-info' && !currentPath.includes('/auth/confirm')) {
-        router.replace('/web-info');
-      }
-    }
-  }, []);
-
   return (
     <LanguageProvider>
       <AuthProvider>
