@@ -464,34 +464,31 @@ export default function PartnerServices() {
       
       // Verificar si ya existe una conversación
       const { data: existingConversation, error: checkError } = await supabaseClient
-        .from('adoption_chats')
+        .from('chat_conversations')
         .select('id')
-        .eq('pet_id', petId)
-        .eq('customer_id', currentUser!.id)
+        .eq('adoption_pet_id', petId)
+        .eq('user_id', currentUser!.id)
         .single();
 
       console.log('Existing conversation check:', { existingConversation, checkError });
 
       let conversationId;
 
-      if (checkError && checkError.code === 'PGRST116') {
+      if (!existingConversation) {
         // No existe conversación, crear una nueva
         console.log('Creating new conversation...');
         
         // Crear conversación usando insert directo
         const conversationData = {
-          pet_id: petId,
+          adoption_pet_id: petId,
           partner_id: id,
-          customer_id: currentUser!.id,
-          pet_name: petName,
-          partner_name: partnerInfo?.businessName || 'Refugio',
-          customer_name: currentUser!.displayName || 'Usuario',
+          user_id: currentUser!.id,
           status: 'active',
           created_at: new Date().toISOString()
         };
         
         const { error: createError } = await supabaseClient
-          .from('adoption_chats')
+          .from('chat_conversations')
           .insert([conversationData]);
 
         if (createError) {
@@ -503,10 +500,10 @@ export default function PartnerServices() {
         
         // Buscar la conversación recién creada para obtener el ID
         const { data: createdConversation, error: fetchError } = await supabaseClient
-          .from('adoption_chats')
+          .from('chat_conversations')
           .select('id')
-          .eq('pet_id', petId)
-          .eq('customer_id', currentUser!.id)
+          .eq('adoption_pet_id', petId)
+          .eq('user_id', currentUser!.id)
           .eq('partner_id', id)
           .single();
         
@@ -520,15 +517,16 @@ export default function PartnerServices() {
 
         // Enviar mensaje inicial
         const messageData = {
-          chat_id: conversationId,
+          conversation_id: conversationId,
           sender_id: currentUser!.id,
-          sender_name: currentUser!.displayName || 'Usuario',
           message: `Hola! Estoy interesado/a en adoptar a ${petName}. ¿Podrían darme más información?`,
+          message_type: 'text',
+          is_read: false,
           created_at: new Date().toISOString()
         };
         
         const { error: messageError } = await supabaseClient
-          .from('adoption_messages')
+          .from('chat_messages')
           .insert([messageData]);
         
         if (messageError) {
@@ -544,15 +542,7 @@ export default function PartnerServices() {
 
       console.log('Navigating to chat with conversation ID:', conversationId);
       // Navegar al chat
-      router.push({
-        pathname: '/chat/adoption',
-        params: {
-          petId: petId,
-          petName: petName,
-          partnerId: id,
-          partnerName: partnerInfo?.businessName || 'Refugio'
-        }
-      });
+      router.push(`/chat/${conversationId}?petName=${petName}`);
     } catch (error) {
       console.error('Error starting adoption chat:', error);
       Alert.alert('Error', `No se pudo iniciar la conversación: ${error?.message || error || 'Error desconocido'}`);
