@@ -8,6 +8,7 @@ import { Input } from '../../components/ui/Input';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabaseClient } from '../../lib/supabase';
 import { NotificationService } from '../../utils/notifications';
+import { PaymentModal } from '../../components/PaymentModal';
 
 const ServiceBooking = () => {
   const { serviceId, partnerId, petId } = useLocalSearchParams<{ 
@@ -28,6 +29,7 @@ const ServiceBooking = () => {
   const [loading, setLoading] = useState(true);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [notes, setNotes] = useState('');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   useEffect(() => {
     if (!serviceId || !partnerId || !petId || !currentUser) {
@@ -294,6 +296,12 @@ const ServiceBooking = () => {
       return;
     }
     
+    // Show payment modal instead of direct booking
+    setShowPaymentModal(true);
+  };
+
+  const handlePaymentSuccess = async (paymentResult: any) => {
+    console.log('Payment successful:', paymentResult);
     setBookingLoading(true);
     try {
       // Create booking date by combining selected date and time
@@ -365,7 +373,7 @@ const ServiceBooking = () => {
       
       Alert.alert(
         'Reserva Exitosa',
-        'Tu reserva ha sido enviada al proveedor. Recibirás una notificación cuando sea confirmada.',
+        `Tu reserva ha sido confirmada y el pago de ${formatPrice(service?.price || 0)} procesado correctamente.`,
         [{ text: 'OK', onPress: () => router.push('/(tabs)') }]
       );
     } catch (error) {
@@ -373,6 +381,7 @@ const ServiceBooking = () => {
       Alert.alert('Error', 'No se pudo crear la reserva');
     } finally {
       setBookingLoading(false);
+      setShowPaymentModal(false);
     }
   };
 
@@ -582,6 +591,22 @@ const ServiceBooking = () => {
           />
         </View>
       </ScrollView>
+
+      {/* Payment Modal */}
+      <PaymentModal
+        visible={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        onPaymentSuccess={handlePaymentSuccess}
+        paymentData={{
+          serviceName: service?.name || 'Servicio',
+          providerName: partnerInfo?.businessName || 'Proveedor',
+          price: service?.price || 0,
+          hasShipping: false,
+          petName: pet?.name,
+          date: selectedDate?.toLocaleDateString(),
+          time: selectedTime || ''
+        }}
+      />
     </SafeAreaView>
   );
 };
