@@ -566,8 +566,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '90%',
-    height: '90%',
+    maxHeight: '85%',
+    minHeight: '60%',
+    flex: 1,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -586,21 +587,18 @@ const styles = StyleSheet.create({
   closeButton: {
     padding: 4,
   },
-  stepContent: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
   scrollContent: {
     flex: 1,
-    paddingBottom: 20,
   },
   
   // Summary Step
   summaryContent: {
-    paddingHorizontal: 20,
+    padding: 20,
+    paddingBottom: 100, // Extra space for buttons
   },
   paymentContent: {
-    paddingHorizontal: 20,
+    padding: 20,
+    paddingBottom: 100, // Extra space for buttons
   },
   summaryHeader: {
     alignItems: 'center',
