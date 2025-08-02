@@ -1,17 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Image, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Image, Alert, KeyboardAvoidingView, Platform, TextInput } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, MessageCircle, User, Calendar } from 'lucide-react-native';
+import { ArrowLeft, MessageCircle, User, Calendar, Send } from 'lucide-react-native';
 import { Card } from '../../components/ui/Card';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabaseClient } from '../../lib/supabase';
 
 export default function ChatContacts() {
-  const { businessId } = useLocalSearchParams<{ businessId: string }>();
+  const { businessId, id, petName } = useLocalSearchParams<{ businessId: string; id: string; petName: string }>();
   const { currentUser } = useAuth();
   const [adoptionChats, setAdoptionChats] = useState<any[]>([]);
   const [partnerProfile, setPartnerProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [conversation, setConversation] = useState<any>(null);
+  const [newMessage, setNewMessage] = useState('');
+  const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     if (!currentUser || !businessId) {
@@ -22,165 +26,14 @@ export default function ChatContacts() {
     fetchAdoptionChats();
   }, [currentUser, businessId]);
 
-  const fetchPartnerProfile = async () => {
-    try {
-      const { data, error } = await supabaseClient
-        .from('partners')
-        .select('*')
-        .eq('id', businessId)
-        .single();
-      
-      if (error) throw error;
-      setPartnerProfile(data);
-    } catch (error) {
-      console.error('Error fetching partner profile:', error);
+  useEffect(() => {
+    if (!currentUser || !id) {
+      return;
     }
-  };
 
-  const fetchAdoptionChats = async () => {
-    try {
-      const { data, error } = await supabaseClient
-        .from('adoption_chats')
-        .select('*')
-        .eq('partner_id', businessId)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      
-      setAdoptionChats(data || []);
-      
-      // Set up real-time subscription for chat updates
-      const subscription = supabaseClient
-        .channel(`partner-chats-${businessId}`)
-        .on('postgres_changes', 
-          { 
-            event: '*', 
-            schema: 'public', 
-            table: 'adoption_chats',
-            filter: `partner_id=eq.${businessId}`
-          }, 
-          () => {
-            fetchAdoptionChats();
-          }
-        )
-        .subscribe();
-      
-      return () => {
-        subscription.unsubscribe();
-      };
-    } catch (error) {
-      console.error('Error fetching adoption chats:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    fetchConversation();
+    fetchMessages();
 
-  const handleChatPress = (chat: any) => {
-    router.push({
-      pathname: '/chat/adoption',
-      params: {
-        petId: chat.pet_id,
-        petName: chat.pet_name,
-        partnerId: chat.partner_id,
-        partnerName: chat.partner_name
-      }
-    });
-  };
-
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-    
-    if (diffInHours < 1) return 'Hace un momento';
-    if (diffInHours < 24) return `Hace ${diffInHours}h`;
-    
-    const diffInDays = Math.floor(diffInHours / 24);
-    if (diffInDays < 7) return `Hace ${diffInDays}d`;
-    
-    return date.toLocaleDateString();
-  };
-
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <ArrowLeft size={24} color="#111827" />
-          </TouchableOpacity>
-          <Text style={styles.title}>Contactos de Adopción</Text>
-          <View style={styles.placeholder} />
-        </View>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Cargando conversaciones...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ArrowLeft size={24} color="#111827" />
-        </TouchableOpacity>
-        <Text style={styles.title}>Contactos de Adopción</Text>
-        <View style={styles.placeholder} />
-      </View>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {adoptionChats.length === 0 ? (
-          <Card style={styles.emptyCard}>
-            <MessageCircle size={48} color="#9CA3AF" />
-            <Text style={styles.emptyTitle}>No hay conversaciones</Text>
-            <Text style={styles.emptySubtitle}>
-              Las conversaciones sobre adopción aparecerán aquí cuando los usuarios se interesen en tus mascotas
-            </Text>
-          </Card>
-        ) : (
-          adoptionChats.map((chat) => (
-            <Card key={chat.id} style={styles.chatCard}>
-              <TouchableOpacity 
-                style={styles.chatContent}
-                onPress={() => handleChatPress(chat)}
-              >
-                <View style={styles.chatHeader}>
-                  <View style={styles.petInfo}>
-                    <Text style={styles.petName}>🐾 {chat.pet_name}</Text>
-                    <Text style={styles.customerName}>con {chat.customer_name}</Text>
-                  </View>
-                  <View style={styles.chatMeta}>
-                    <Text style={styles.chatTime}>
-                      {formatTime(chat.created_at)}
-                    </Text>
-                    <View style={[
-                      styles.statusBadge,
-                      { backgroundColor: chat.status === 'active' ? '#D1FAE5' : '#FEE2E2' }
-                    ]}>
-                      <Text style={[
-                        styles.statusText,
-                        { color: chat.status === 'active' ? '#065F46' : '#991B1B' }
-                      ]}>
-                        {chat.status === 'active' ? 'Activo' : 'Cerrado'}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-                
-                <View style={styles.chatPreview}>
-                  <User size={16} color="#6B7280" />
-                  <Text style={styles.previewText}>
-                    Interesado en adoptar a {chat.pet_name}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            </Card>
-          ))
-        )}
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
     const subscription = supabaseClient
       .channel(`chat-${id}`)
       .on('postgres_changes', 
@@ -243,6 +96,59 @@ export default function ChatContacts() {
       }
     };
   }, [currentUser, id]);
+
+  const fetchPartnerProfile = async () => {
+    try {
+      const { data, error } = await supabaseClient
+        .from('partners')
+        .select('*')
+        .eq('id', businessId)
+        .single();
+      
+      if (error) throw error;
+      setPartnerProfile(data);
+    } catch (error) {
+      console.error('Error fetching partner profile:', error);
+    }
+  };
+
+  const fetchAdoptionChats = async () => {
+    try {
+      const { data, error } = await supabaseClient
+        .from('adoption_chats')
+        .select('*')
+        .eq('partner_id', businessId)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      setAdoptionChats(data || []);
+      
+      // Set up real-time subscription for chat updates
+      const subscription = supabaseClient
+        .channel(`partner-chats-${businessId}`)
+        .on('postgres_changes', 
+          { 
+            event: '*', 
+            schema: 'public', 
+            table: 'adoption_chats',
+            filter: `partner_id=eq.${businessId}`
+          }, 
+          () => {
+            fetchAdoptionChats();
+          }
+        )
+        .subscribe();
+      
+      return () => {
+        subscription.unsubscribe();
+      };
+    } catch (error) {
+      console.error('Error fetching adoption chats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchConversation = async () => {
     try {
@@ -492,9 +398,30 @@ export default function ChatContacts() {
     }, 100);
   };
 
+  const handleChatPress = (chat: any) => {
+    router.push({
+      pathname: '/chat/adoption',
+      params: {
+        petId: chat.pet_id,
+        petName: chat.pet_name,
+        partnerId: chat.partner_id,
+        partnerName: chat.partner_name
+      }
+    });
+  };
+
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const now = new Date();
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) return 'Hace un momento';
+    if (diffInHours < 24) return `Hace ${diffInHours}h`;
+    
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) return `Hace ${diffInDays}d`;
+    
+    return date.toLocaleDateString();
   };
 
   const renderMessage = (message: any) => {
@@ -527,9 +454,77 @@ export default function ChatContacts() {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Cargando conversación...</Text>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <ArrowLeft size={24} color="#111827" />
+          </TouchableOpacity>
+          <Text style={styles.title}>Contactos de Adopción</Text>
+          <View style={styles.placeholder} />
         </View>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Cargando conversaciones...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (id) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <ArrowLeft size={24} color="#111827" />
+          </TouchableOpacity>
+          <Text style={styles.title}>
+            {petName ? `Adopción de ${petName}` : 'Chat'}
+          </Text>
+          <View style={styles.placeholder} />
+        </View>
+
+        <KeyboardAvoidingView 
+          style={styles.chatContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        >
+          <ScrollView
+            ref={scrollViewRef}
+            style={styles.messagesContainer}
+            contentContainerStyle={styles.messagesContent}
+            showsVerticalScrollIndicator={false}
+            onContentSizeChange={scrollToBottom}
+          >
+            {messages.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>
+                  Inicia la conversación sobre la adopción de {petName}
+                </Text>
+              </View>
+            ) : (
+              messages.map(renderMessage)
+            )}
+          </ScrollView>
+
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.messageInput}
+              placeholder="Escribe un mensaje..."
+              value={newMessage}
+              onChangeText={setNewMessage}
+              multiline
+              maxLength={500}
+            />
+            <TouchableOpacity
+              style={[
+                styles.sendButton,
+                !newMessage.trim() && styles.sendButtonDisabled
+              ]}
+              onPress={sendMessage}
+              disabled={!newMessage.trim()}
+            >
+              <Send size={20} color={newMessage.trim() ? "#FFFFFF" : "#9CA3AF"} />
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     );
   }
@@ -540,56 +535,60 @@ export default function ChatContacts() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <ArrowLeft size={24} color="#111827" />
         </TouchableOpacity>
-        <Text style={styles.title}>
-          {petName ? `Adopción de ${petName}` : 'Chat'}
-        </Text>
+        <Text style={styles.title}>Contactos de Adopción</Text>
         <View style={styles.placeholder} />
       </View>
 
-      <KeyboardAvoidingView 
-        style={styles.chatContainer}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-      >
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.messagesContainer}
-          contentContainerStyle={styles.messagesContent}
-          showsVerticalScrollIndicator={false}
-          onContentSizeChange={scrollToBottom}
-        >
-          {messages.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>
-                Inicia la conversación sobre la adopción de {petName}
-              </Text>
-            </View>
-          ) : (
-            messages.map(renderMessage)
-          )}
-        </ScrollView>
-
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.messageInput}
-            placeholder="Escribe un mensaje..."
-            value={newMessage}
-            onChangeText={setNewMessage}
-            multiline
-            maxLength={500}
-          />
-          <TouchableOpacity
-            style={[
-              styles.sendButton,
-              !newMessage.trim() && styles.sendButtonDisabled
-            ]}
-            onPress={sendMessage}
-            disabled={!newMessage.trim()}
-          >
-            <Send size={20} color={newMessage.trim() ? "#FFFFFF" : "#9CA3AF"} />
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {adoptionChats.length === 0 ? (
+          <Card style={styles.emptyCard}>
+            <MessageCircle size={48} color="#9CA3AF" />
+            <Text style={styles.emptyTitle}>No hay conversaciones</Text>
+            <Text style={styles.emptySubtitle}>
+              Las conversaciones sobre adopción aparecerán aquí cuando los usuarios se interesen en tus mascotas
+            </Text>
+          </Card>
+        ) : (
+          adoptionChats.map((chat) => (
+            <Card key={chat.id} style={styles.chatCard}>
+              <TouchableOpacity 
+                style={styles.chatContent}
+                onPress={() => handleChatPress(chat)}
+              >
+                <View style={styles.chatHeader}>
+                  <View style={styles.petInfo}>
+                    <Text style={styles.petName}>🐾 {chat.pet_name}</Text>
+                    <Text style={styles.customerName}>con {chat.customer_name}</Text>
+                  </View>
+                  <View style={styles.chatMeta}>
+                    <Text style={styles.chatTime}>
+                      {formatTime(chat.created_at)}
+                    </Text>
+                    <View style={[
+                      styles.statusBadge,
+                      { backgroundColor: chat.status === 'active' ? '#D1FAE5' : '#FEE2E2' }
+                    ]}>
+                      <Text style={[
+                        styles.statusText,
+                        { color: chat.status === 'active' ? '#065F46' : '#991B1B' }
+                      ]}>
+                        {chat.status === 'active' ? 'Activo' : 'Cerrado'}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+                
+                <View style={styles.chatPreview}>
+                  <User size={16} color="#6B7280" />
+                  <Text style={styles.previewText}>
+                    Interesado en adoptar a {chat.pet_name}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </Card>
+          ))
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -598,6 +597,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
+    paddingTop: 50,
   },
   header: {
     flexDirection: 'row',
@@ -622,21 +622,12 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 16,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
+    paddingHorizontal: 16,
   },
   emptyCard: {
     alignItems: 'center',
     paddingVertical: 40,
+    marginTop: 40,
   },
   emptyTitle: {
     fontSize: 18,
@@ -653,7 +644,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   chatCard: {
-    marginBottom: 12,
+    marginVertical: 8,
   },
   chatContent: {
     padding: 16,
@@ -685,15 +676,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'Inter-Regular',
     color: '#9CA3AF',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   statusBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   statusText: {
-    fontSize: 10,
+    fontSize: 12,
     fontFamily: 'Inter-Medium',
   },
   chatPreview: {
@@ -704,9 +695,59 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
-    marginLeft: 6,
+    marginLeft: 8,
   },
-});
+  chatContainer: {
+    flex: 1,
+  },
+  messagesContainer: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+  messagesContent: {
+    paddingVertical: 16,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  messageContainer: {
+    marginBottom: 12,
+    maxWidth: '80%',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+  },
+  ownMessage: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#EF4444',
+  },
+  otherMessage: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  messageText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    lineHeight: 20,
+  },
+  ownMessageText: {
+    color: '#FFFFFF',
+  },
+  otherMessageText: {
+    color: '#111827',
+  },
+  messageTime: {
     fontSize: 12,
     fontFamily: 'Inter-Regular',
     marginTop: 4,
