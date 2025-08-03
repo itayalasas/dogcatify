@@ -61,9 +61,7 @@ export default function ConfirmScreen() {
           setConfirmed(true);
         }
       }
-      }
-
-    } catch (error) {
+      } catch (error) {
       console.error('Custom confirmation error:', error);
       setError('Error al procesar la confirmación');
       setLoading(false);
