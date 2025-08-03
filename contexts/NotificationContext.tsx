@@ -140,18 +140,40 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         if (currentUser && tokenData.data) {
           console.log('Storing push token in user profile...');
           try {
-            const { error } = await supabaseClient
+            // First check if user already has a different token
+            const { data: existingProfile, error: fetchError } = await supabaseClient
               .from('profiles')
-              .update({ push_token: tokenData.data })
+              .select('push_token')
               .eq('id', currentUser.id);
             
-            if (error) {
-              console.error('Error storing push token:', error);
+            if (fetchError) {
+              console.error('Error fetching existing profile:', fetchError);
             } else {
-              console.log('Push token stored successfully in profile');
+              const currentToken = existingProfile?.[0]?.push_token;
+              console.log('Current stored token:', currentToken ? 'EXISTS' : 'NULL');
+              console.log('New token:', tokenData.data);
+              
+              if (currentToken !== tokenData.data) {
+                console.log('Token changed, updating in database...');
+                const { error: updateError } = await supabaseClient
+                  .from('profiles')
+                  .update({ 
+                    push_token: tokenData.data,
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('id', currentUser.id);
+                
+                if (updateError) {
+                  console.error('Error updating push token:', updateError);
+                } else {
+                  console.log('Push token updated successfully in profile');
+                }
+              } else {
+                console.log('Token unchanged, no update needed');
+              }
             }
           } catch (dbError) {
-            console.error('Database error storing push token:', dbError);
+            console.error('Database error managing push token:', dbError);
           }
         }
 
@@ -174,37 +196,54 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     data?: any
   ): Promise<void> => {
     try {
-      console.log('Sending notification to user:', userId);
+      console.log('=== SENDING PUSH NOTIFICATION ===');
+      console.log('Target user ID:', userId);
       console.log('Notification title:', title);
       console.log('Notification body:', body);
+      console.log('Additional data:', data);
       
-      // Get user's push token - fix the query to handle multiple results
+      // Get user's push token - fix the query to handle the response correctly
+      console.log('Fetching push token for user...');
       const { data: userData, error } = await supabaseClient
         .from('profiles')
-        .select('push_token')
+        .select('push_token, display_name')
         .eq('id', userId);
       
-      console.log('Push token query result:', { userData, error });
+      console.log('Push token query result:', { 
+        userData, 
+        error: error?.message,
+        userCount: userData?.length || 0
+      });
 
-      if (error || !userData || userData.length === 0) {
-        console.log('User does not have a push token or error fetching:', {
-          error: error?.message,
-          userDataLength: userData?.length || 0
-        });
+      if (error) {
+        console.error('Database error fetching user:', error);
+        return;
+      }
+      
+      if (!userData || userData.length === 0) {
+        console.log('No user profile found for ID:', userId);
         return;
       }
       
       const userProfile = userData[0];
-      if (!userProfile?.push_token) {
-        console.log('User profile found but no push token:', {
-          userId,
-          hasProfile: !!userProfile,
-          pushToken: userProfile?.push_token || 'NULL'
-        });
+      console.log('User profile found:', {
+        displayName: userProfile.display_name,
+        hasPushToken: !!userProfile.push_token,
+        tokenPreview: userProfile.push_token ? userProfile.push_token.substring(0, 20) + '...' : 'NULL'
+      });
+      
+      if (!userProfile.push_token) {
+        console.log('❌ User has no push token registered');
         return;
       }
+      
+      console.log('✅ User has push token, preparing notification...');
 
-      console.log('Sending push notification to token:', userProfile.push_token);
+      // Validate token format
+      if (!userProfile.push_token.startsWith('ExponentPushToken[')) {
+        console.error('❌ Invalid push token format:', userProfile.push_token);
+        return;
+      }
 
       // Send push notification
       const notificationPayload = {
@@ -217,7 +256,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         channelId: 'default',
       };
       
-      console.log('Notification payload:', notificationPayload);
+      console.log('📤 Sending push notification with payload:', {
+        to: userProfile.push_token.substring(0, 20) + '...',
+        title,
+        body,
+        dataKeys: Object.keys(data || {})
+      });
       
       const response = await fetch('https://exp.host/--/api/v2/push/send', {
         method: 'POST',
@@ -229,26 +273,35 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         body: JSON.stringify(notificationPayload),
       });
 
-      console.log('Push notification response status:', response.status);
-      
-      const result = await response.json();
-      console.log('Push notification result:', result);
+      console.log('📨 Push notification API response status:', response.status);
       
       if (!response.ok) {
-        console.error('Push notification failed:', result);
-        throw new Error(`Push notification failed: ${JSON.stringify(result)}`);
+        const errorText = await response.text();
+        console.error('❌ Push notification API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
+        throw new Error(`Push notification API error: ${response.status} - ${errorText}`);
       }
+      
+      const result = await response.json();
+      console.log('📨 Push notification API result:', result);
       
       // Check for errors in the result
-      if (result.data && result.data.status === 'error') {
-        console.error('Push notification error in result:', result.data);
-        throw new Error(`Push notification error: ${result.data.message}`);
+      if (result.data && Array.isArray(result.data)) {
+        const firstResult = result.data[0];
+        if (firstResult && firstResult.status === 'error') {
+          console.error('❌ Push notification error in result:', firstResult);
+          throw new Error(`Push notification error: ${firstResult.message || firstResult.details}`);
+        }
       }
       
-      console.log('Push notification sent successfully');
+      console.log('✅ Push notification sent successfully!');
+      console.log('=== END PUSH NOTIFICATION ===');
     } catch (error) {
-      console.error('Error sending notification to user:', error);
-      throw error; // Re-throw to let caller handle it
+      console.error('❌ Error in sendNotificationToUser:', error);
+      // Don't throw error to avoid breaking the chat flow
     }
   };
 
@@ -260,11 +313,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       console.log('Sending notification to admin');
       
-      // Get admin users (you can define admin criteria)
+      // Get admin users
       const { data: adminUsers, error } = await supabaseClient
         .from('profiles')
         .select('push_token')
-        .eq('email', 'admin@dogcatify.com'); // Or however you identify admins
+        .eq('email', 'admin@dogcatify.com');
 
       if (error || !adminUsers?.length) {
         console.log('No admin users found or error:', error);
