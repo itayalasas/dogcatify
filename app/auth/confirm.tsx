@@ -48,30 +48,30 @@ export default function ConfirmScreen() {
         }
 
         if (result.userId && result.email) {
-        console.log('Custom email confirmation successful for:', result.email);
-        setUserEmail(result.email);
-        
-        if (type === 'password_reset') {
-          // For password reset, show password form
-          setUserId(result.userId);
-          setResetToken(token_hash as string);
-          setConfirmed(false); // Don't show success yet
-        } else {
-          // For signup confirmation, show success
-          setConfirmed(true);
+          console.log('Custom email confirmation successful for:', result.email);
+          setUserEmail(result.email);
+          
+          if (type === 'password_reset') {
+            // For password reset, show password form
+            setUserId(result.userId);
+            setResetToken(token_hash as string);
+            setConfirmed(false); // Don't show success yet
+          } else {
+            // For signup confirmation, show success
+            setConfirmed(true);
+          }
         }
-      }
       } catch (error) {
-      console.error('Custom confirmation error:', error);
-      setError('Error al procesar la confirmación');
-      setLoading(false);
-      setShowResendForm(true);
-    } finally {
-      setLoading(false);
-    }
-  };
+        console.error('Custom confirmation error:', error);
+        setError('Error al procesar la confirmación');
+        setLoading(false);
+        setShowResendForm(true);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  confirmEmail();
+    confirmEmail();
   }, [params]);
 
   const handleResendConfirmation = async () => {
