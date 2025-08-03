@@ -533,6 +533,6 @@ const styles = StyleSheet.create({
     minHeight: 44,
   },
   sendButtonDisabled: {
-    backgroundColor: '#D1D5DB',
+    backgroundColor: '#D1D5DB'
   },
 });
