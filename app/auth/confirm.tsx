@@ -246,6 +246,32 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 24,
   },
+  passwordCard: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    width: '100%',
+    maxWidth: 400,
+  },
+  passwordTitle: {
+    fontSize: 24,
+    fontFamily: 'Inter-Bold',
+    color: '#2D6A6F',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  passwordText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 24,
+  },
+  passwordForm: {
+    width: '100%',
+    gap: 16,
+  },
   errorCard: {
     alignItems: 'center',
     paddingVertical: 40,
