@@ -299,6 +299,7 @@ export default function ConfirmScreen() {
       </Card>
     </View>
   );
+}
 
 const styles = StyleSheet.create({
   container: {
