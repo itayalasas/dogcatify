@@ -1,7 +1,53 @@
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, Alert, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { CheckCircle, XCircle, Mail } from 'lucide-react-native';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { confirmEmailCustom, resendConfirmationEmail } from '@/utils/emailConfirmation';
+
+export default function ConfirmScreen() {
+  const params = useLocalSearchParams();
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [confirmed, setConfirmed] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showResendForm, setShowResendForm] = useState(false);
+  const [email, setEmail] = useState('');
+  const [resending, setResending] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  
+  // Password reset specific states
+  const [userId, setUserId] = useState<string | null>(null);
+  const [resetToken, setResetToken] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+  const [passwordUpdated, setPasswordUpdated] = useState(false);
+
+  useEffect(() => {
+    const confirmEmail = async () => {
+      const { token_hash, type } = params;
+      
+      if (!token_hash) {
+        setError('Token de confirmación no encontrado');
+        setLoading(false);
+        setShowResendForm(true);
         return;
       }
 
-      if (result.userId && result.email) {
+      try {
+        const result = await confirmEmailCustom(token_hash as string, type as string);
+        
+        if (!result.success) {
+          setError(result.error || 'Error al confirmar el email');
+          setLoading(false);
+          setShowResendForm(true);
+          return;
+        }
+
+        if (result.userId && result.email) {
         console.log('Custom email confirmation successful for:', result.email);
         setUserEmail(result.email);
         
