@@ -77,6 +77,8 @@ export default function ResetPasswordScreen() {
   }, [params]);
 
   const handlePasswordReset = async () => {
+    console.log('handlePasswordReset called');
+    
     if (!newPassword || !confirmPassword) {
       Alert.alert('Error', 'Por favor completa ambos campos de contraseña');
       return;
@@ -93,16 +95,25 @@ export default function ResetPasswordScreen() {
     }
 
     if (!userId || !params.token) {
+      console.log('Missing userId or token:', { userId, token: params.token });
       Alert.alert('Error', 'Información de reset inválida');
       return;
     }
 
     setUpdatingPassword(true);
+    console.log('Starting password reset process...');
+    
     try {
       console.log('Calling reset-password function...');
       
       // Call our Edge Function to reset password securely
       const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+      console.log('Supabase URL:', supabaseUrl);
+      
+      if (!supabaseUrl) {
+        throw new Error('Supabase URL not configured');
+      }
+      
       const response = await fetch(`${supabaseUrl}/functions/v1/reset-password`, {
         method: 'POST',
         headers: {
@@ -115,15 +126,24 @@ export default function ResetPasswordScreen() {
         }),
       });
 
+      console.log('Response status:', response.status);
+      
       const result = await response.json();
       console.log('Reset password function result:', result);
 
       if (!response.ok || !result.success) {
+        console.error('Reset password failed:', result);
         throw new Error(result.error || 'Error al actualizar contraseña');
       }
 
       setPasswordUpdated(true);
       console.log('Password updated successfully');
+      
+      Alert.alert(
+        'Contraseña actualizada',
+        'Tu contraseña ha sido cambiada exitosamente. Ya puedes iniciar sesión con tu nueva contraseña.',
+        [{ text: 'OK', onPress: () => handleGoToLogin() }]
+      );
       
     } catch (error: any) {
       console.error('Error updating password:', error);
