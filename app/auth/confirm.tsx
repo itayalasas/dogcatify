@@ -61,6 +61,7 @@ export default function ConfirmScreen() {
           setConfirmed(true);
         }
       }
+      }
 
     } catch (error) {
       console.error('Custom confirmation error:', error);
