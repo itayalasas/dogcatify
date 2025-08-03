@@ -184,7 +184,7 @@ export const isEmailConfirmed = async (userId: string): Promise<boolean> => {
  * Generate confirmation URL
  */
 export const generateConfirmationUrl = (token: string, type: 'signup' | 'password_reset' = 'signup'): string => {
-  const baseUrl = process.env.EXPO_PUBLIC_APP_DOMAIN ;
+  const baseUrl = process.env.EXPO_PUBLIC_APP_DOMAIN || 'https://dogcatify.com';
   return `${baseUrl}/auth/confirm?token_hash=${token}&type=${type}`;
 };
 

@@ -39,10 +39,14 @@ export default function ForgotPassword() {
         return;
       }
 
+      console.log('User found, creating custom password reset token...');
+      
       // Crear token personalizado para reset de contraseña
       const token = await createEmailConfirmationToken(userData.id, email.toLowerCase().trim(), 'password_reset');
       const resetUrl = generateConfirmationUrl(token, 'password_reset');
 
+      console.log('Sending custom password reset email...');
+      
       // Enviar email personalizado
       await NotificationService.sendPasswordResetEmail(
         email.toLowerCase().trim(),
@@ -50,6 +54,8 @@ export default function ForgotPassword() {
         resetUrl
       );
 
+      console.log('Custom password reset email sent successfully');
+      
       setResetSent(true);
       Alert.alert(
         '✅ Correo enviado',
