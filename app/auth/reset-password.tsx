@@ -19,8 +19,14 @@ export default function ResetPasswordScreen() {
   const [passwordUpdated, setPasswordUpdated] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [resetToken, setResetToken] = useState<string | null>(null);
 
   useEffect(() => {
+    // Don't re-validate token if password was already updated
+    if (passwordUpdated) {
+      return;
+    }
+    
     const validateToken = async () => {
       const { token } = params;
       
@@ -29,6 +35,8 @@ export default function ResetPasswordScreen() {
         setLoading(false);
         return;
       }
+
+      setResetToken(token as string);
 
       try {
         console.log('Validating password reset token:', token);
@@ -74,7 +82,7 @@ export default function ResetPasswordScreen() {
     };
 
     validateToken();
-  }, [params]);
+  }, [params, passwordUpdated]);
 
   const handlePasswordReset = async () => {
     console.log('handlePasswordReset called');
@@ -94,8 +102,8 @@ export default function ResetPasswordScreen() {
       return;
     }
 
-    if (!userId || !params.token) {
-      console.log('Missing userId or token:', { userId, token: params.token });
+    if (!userId || !resetToken) {
+      console.log('Missing userId or token:', { userId, token: resetToken });
       Alert.alert('Error', 'Información de reset inválida');
       return;
     }
@@ -123,7 +131,7 @@ export default function ResetPasswordScreen() {
         body: JSON.stringify({
           userId,
           newPassword,
-          token: params.token
+          token: resetToken
         }),
       });
 
@@ -140,11 +148,14 @@ export default function ResetPasswordScreen() {
       setPasswordUpdated(true);
       console.log('Password updated successfully');
       
-      Alert.alert(
-        'Contraseña actualizada',
-        'Tu contraseña ha sido cambiada exitosamente. Ya puedes iniciar sesión con tu nueva contraseña.',
-        [{ text: 'OK', onPress: () => handleGoToLogin() }]
-      );
+      // Don't show alert immediately, let the UI update first
+      setTimeout(() => {
+        Alert.alert(
+          'Contraseña actualizada',
+          'Tu contraseña ha sido cambiada exitosamente. Ya puedes iniciar sesión con tu nueva contraseña.',
+          [{ text: 'OK', onPress: () => handleGoToLogin() }]
+        );
+      }, 500);
       
     } catch (error: any) {
       console.error('Error updating password:', error);
