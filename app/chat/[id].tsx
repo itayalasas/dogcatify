@@ -148,7 +148,7 @@ export default function ChatScreen() {
           let senderName = 'Usuario';
           
           try {
-            if (msg.sender_id === currentUser?.id) {
+            await sendNotificationToUser(
               senderName = currentUser.displayName || 'Tú';
             } else {
               // Get sender name from profiles
