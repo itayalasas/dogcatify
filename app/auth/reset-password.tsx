@@ -367,4 +367,30 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontStyle: 'italic',
   },
+  successCard: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    width: '100%',
+    maxWidth: 400,
+  },
+  successTitle: {
+    fontSize: 24,
+    fontFamily: 'Inter-Bold',
+    color: '#10B981',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  successText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 24,
+  },
+});
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
 });
