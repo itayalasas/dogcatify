@@ -44,7 +44,7 @@ export default function ChatScreen() {
     petName?: string; 
   }>();
   const { currentUser } = useAuth();
-  const { sendChatNotification } = useNotifications();
+  const { sendNotificationToUser } = useNotifications();
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -246,12 +246,16 @@ export default function ChatScreen() {
       // Send push notification to recipient
       if (recipientId && recipientName) {
         try {
-          await sendChatNotification(
+          await sendNotificationToUser(
             recipientId,
-            currentUser.displayName || 'Usuario',
-            petName || 'mascota',
+            `Nuevo mensaje de ${currentUser.displayName || 'Usuario'}`,
             newMessage.trim(),
-            conversationId
+            {
+              type: 'chat_message',
+              conversationId: conversationId,
+              petName: petName || 'mascota',
+              senderName: currentUser.displayName || 'Usuario'
+            }
           );
           console.log('Push notification sent');
         } catch (notificationError) {
