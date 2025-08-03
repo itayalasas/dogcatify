@@ -5,7 +5,8 @@ import { CircleCheck as CheckCircle, Circle as XCircle, Mail } from 'lucide-reac
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { confirmEmailCustom, resendConfirmationEmail } from '@/utils/emailConfirmation';
+import { resendConfirmationEmail } from '../../utils/emailConfirmation';
+import { supabaseClient } from '../../lib/supabase';
 
 export default function ConfirmScreen() {
   const params = useLocalSearchParams();
@@ -17,18 +18,10 @@ export default function ConfirmScreen() {
   const [email, setEmail] = useState('');
   const [resending, setResending] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  
-  // Password reset specific states
-  const [userId, setUserId] = useState<string | null>(null);
-  const [resetToken, setResetToken] = useState<string | null>(null);
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [updatingPassword, setUpdatingPassword] = useState(false);
-  const [passwordUpdated, setPasswordUpdated] = useState(false);
 
   useEffect(() => {
     const confirmEmail = async () => {
-      const { token_hash, type } = params;
+      const { token_hash, type = 'signup' } = params;
       
       if (!token_hash) {
         setError('Token de confirmación no encontrado');
@@ -37,35 +30,76 @@ export default function ConfirmScreen() {
         return;
       }
 
+      // ONLY handle signup confirmations here
+      if (type !== 'signup') {
+        setError('Esta página es solo para confirmación de registro. Para recuperar contraseña, usa el enlace correcto.');
+        setLoading(false);
+        return;
+      }
       try {
-        const result = await confirmEmailCustom(token_hash as string, type as string);
-        
-        if (!result.success) {
-          setError(result.error || 'Error al confirmar el email');
+        // Find and verify the signup confirmation token
+        const { data: tokenData, error } = await supabaseClient
+          .from('email_confirmations')
+          .select('*')
+          .eq('token_hash', token_hash)
+          .eq('type', 'signup')
+          .eq('is_confirmed', false)
+          .single();
+
+        if (error || !tokenData) {
+          setError('Token no encontrado o ya utilizado');
           setLoading(false);
           setShowResendForm(true);
           return;
         }
 
-        if (result.userId && result.email) {
-          console.log('Custom email confirmation successful for:', result.email);
-          setUserEmail(result.email);
-          
-          if (type === 'password_reset') {
-            // For password reset, show password form
-            setUserId(result.userId);
-            setResetToken(token_hash as string);
-            setConfirmed(false);
-            setError(null); // Clear any errors
-          } else {
-            // For signup confirmation, show success
-            setConfirmed(true);
-          }
-        } else {
-          setError('Error al procesar la confirmación');
+        // Check if token has expired
+        const now = new Date();
+        const expiresAt = new Date(tokenData.expires_at);
+        
+        if (now > expiresAt) {
+          setError('Token expirado. Solicita un nuevo enlace de confirmación.');
+          setLoading(false);
+          setShowResendForm(true);
+          return;
         }
+
+        // Mark token as confirmed
+        const { error: updateError } = await supabaseClient
+          .from('email_confirmations')
+          .update({
+            is_confirmed: true,
+            confirmed_at: new Date().toISOString()
+          })
+          .eq('id', tokenData.id);
+
+        if (updateError) {
+          console.error('Error updating token:', updateError);
+          setError('Error al confirmar token');
+          setLoading(false);
+          return;
+        }
+
+        // Update user profile to mark email as confirmed
+        const { error: profileError } = await supabaseClient
+          .from('profiles')
+          .update({
+            email_confirmed: true,
+            email_confirmed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', tokenData.user_id);
+
+        if (profileError) {
+          console.error('Error updating profile:', profileError);
+          // Don't fail the confirmation if profile update fails
+        }
+        
+        console.log('Email confirmation successful for:', tokenData.email);
+        setUserEmail(tokenData.email);
+        setConfirmed(true);
       } catch (error) {
-        console.error('Custom confirmation error:', error);
+        console.error('Email confirmation error:', error);
         setError('Error al procesar la confirmación');
         setLoading(false);
         setShowResendForm(true);
@@ -97,6 +131,14 @@ export default function ConfirmScreen() {
       Alert.alert('Error', 'Ocurrió un error al reenviar el email');
     } finally {
       setResending(false);
+    }
+  };
+
+  const handleGoToLogin = () => {
+    if (Platform.OS === 'web') {
+      router.replace('/web-info');
+    } else {
+      router.replace('/auth/login');
     }
   };
 
@@ -177,50 +219,6 @@ export default function ConfirmScreen() {
     );
   }
 
-  // Show password reset form for password_reset type
-  if (params.type === 'password_reset' && userId && resetToken && !passwordUpdated) {
-    return (
-      <View style={styles.container}>
-        <Card style={styles.passwordCard}>
-          <View style={styles.iconContainer}>
-            <CheckCircle size={64} color="#2D6A6F" />
-          </View>
-          
-          <Text style={styles.passwordTitle}>Restablecer Contraseña</Text>
-          <Text style={styles.passwordText}>
-            Ingresa tu nueva contraseña para la cuenta: {userEmail}
-          </Text>
-
-          <View style={styles.passwordForm}>
-            <Input
-              label="Nueva contraseña"
-              placeholder="Mínimo 6 caracteres"
-              value={newPassword}
-              onChangeText={setNewPassword}
-              secureTextEntry
-            />
-
-            <Input
-              label="Confirmar contraseña"
-              placeholder="Repite la nueva contraseña"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-            />
-
-            <Button
-              title={updatingPassword ? "Actualizando..." : "Cambiar Contraseña"}
-              onPress={handlePasswordReset}
-              loading={updatingPassword}
-              disabled={!newPassword || !confirmPassword || updatingPassword}
-              size="large"
-            />
-          </View>
-        </Card>
-      </View>
-    );
-  }
-
   if (confirmed) {
     return (
       <View style={styles.container}>
@@ -237,7 +235,7 @@ export default function ConfirmScreen() {
           )}
           <Button
             title="Ir a Iniciar Sesión"
-            onPress={handleGoToLogin}
+            onPress={() => router.replace('/auth/login')}
             size="large"
           />
         </Card>
@@ -277,7 +275,7 @@ export default function ConfirmScreen() {
             />
           </View>
 
-          <TouchableOpacity style={styles.linkButton} onPress={handleGoToLogin}>
+          <TouchableOpacity style={styles.linkButton} onPress={() => router.replace('/auth/login')}>
             <Text style={styles.linkText}>Volver al Login</Text>
           </TouchableOpacity>
         </Card>
@@ -295,7 +293,7 @@ export default function ConfirmScreen() {
         </Text>
         <Button
           title="Volver al Login"
-          onPress={handleGoToLogin}
+          onPress={() => router.replace('/auth/login')}
           size="large"
         />
       </Card>

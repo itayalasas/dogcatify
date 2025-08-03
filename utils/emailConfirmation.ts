@@ -185,7 +185,14 @@ export const isEmailConfirmed = async (userId: string): Promise<boolean> => {
  */
 export const generateConfirmationUrl = (token: string, type: 'signup' | 'password_reset' = 'signup'): string => {
   const baseUrl = process.env.EXPO_PUBLIC_APP_DOMAIN || 'https://app-dogcatify.netlify.app';
-  return `${baseUrl}/auth/confirm?token_hash=${token}&type=${type}`;
+  
+  if (type === 'password_reset') {
+    // Password reset goes to a SEPARATE reset password page
+    return `${baseUrl}/auth/reset-password?token=${token}`;
+  } else {
+    // Email confirmation goes to the confirm page (ONLY for signup)
+    return `${baseUrl}/auth/confirm?token_hash=${token}&type=signup`;
+  }
 };
 
 /**
