@@ -382,6 +382,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 400,
   },
+  },
   errorTitle: {
     fontSize: 24,
     fontFamily: 'Inter-Bold',
