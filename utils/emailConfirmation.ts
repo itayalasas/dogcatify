@@ -80,7 +80,7 @@ export const createEmailConfirmationToken = async (
 /**
  * Verify email confirmation token
  */
-export const verifyEmailConfirmationToken = async (
+export const confirmEmailCustom = async (
   token: string,
   type: 'signup' | 'password_reset' = 'signup'
 ): Promise<{ success: boolean; userId?: string; email?: string; error?: string }> => {

@@ -55,11 +55,14 @@ export default function ConfirmScreen() {
             // For password reset, show password form
             setUserId(result.userId);
             setResetToken(token_hash as string);
-            setConfirmed(false); // Don't show success yet
+            setConfirmed(false);
+            setError(null); // Clear any errors
           } else {
             // For signup confirmation, show success
             setConfirmed(true);
           }
+        } else {
+          setError('Error al procesar la confirmación');
         }
       } catch (error) {
         console.error('Custom confirmation error:', error);
@@ -175,7 +178,7 @@ export default function ConfirmScreen() {
   }
 
   // Show password reset form for password_reset type
-  if (!confirmed && !error && userId && resetToken && params.type === 'password_reset') {
+  if (params.type === 'password_reset' && userId && resetToken && !passwordUpdated) {
     return (
       <View style={styles.container}>
         <Card style={styles.passwordCard}>
