@@ -134,14 +134,6 @@ export default function ConfirmScreen() {
     }
   };
 
-  const handleGoToLogin = () => {
-    if (Platform.OS === 'web') {
-      router.replace('/web-info');
-    } else {
-      router.replace('/auth/login');
-    }
-  };
-
   const handlePasswordReset = async () => {
     if (!newPassword || !confirmPassword) {
       Alert.alert('Error', 'Por favor completa ambos campos de contraseña');
