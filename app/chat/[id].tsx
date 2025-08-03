@@ -151,6 +151,78 @@ export default function ChatScreen() {
             if (msg.sender_id === currentUser?.id) {
               senderName = currentUser.displayName || 'Tú';
             } else {
+              // Get sender name from profiles or partners
+              const { data: profileData } = await supabaseClient
+                .from('profiles')
+                .select('display_name')
+                .eq('id', msg.sender_id)
+                .single();
+              
+              if (profileData?.display_name) {
+                senderName = profileData.display_name;
+              } else {
+                // Try partners table
+                const { data: partnerData } = await supabaseClient
+                  .from('partners')
+                  .select('business_name')
+                  .eq('id', msg.sender_id)
+                  .single();
+                
+                senderName = partnerData?.business_name || 'Usuario';
+              }
+            }
+          } catch (error) {
+            console.error('Error getting sender name:', error);
+          }
+          
+          return {
+            ...msg,
+            sender_name: senderName
+          };
+        })
+      );
+
+      setMessages(messagesWithSenderNames);
+      setLoading(false);
+      
+      // Scroll to bottom after loading messages
+      setTimeout(() => {
+        scrollToBottom();
+      }, 100);
+      
+    } catch (error) {
+      console.error('Error loading messages:', error);
+      setLoading(false);
+    }
+  };
+
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !currentUser || !conversationId) {
+      return;
+    }
+
+    try {
+      console.log('Sending message:', newMessage.trim());
+      
+      const { error } = await supabaseClient
+        .from('chat_messages')
+        .insert({
+          conversation_id: conversationId,
+          sender_id: currentUser.id,
+          message: newMessage.trim(),
+          is_read: false
+        });
+
+      if (error) {
+        console.error('Error sending message:', error);
+        throw error;
+      }
+
+      console.log('Message sent successfully');
+      
+      // Send push notification to recipient
+      if (recipientId) {
+        try {
           await sendNotificationToUser(
             recipientId,
             `Nuevo mensaje de ${currentUser.displayName || 'Usuario'}`,
