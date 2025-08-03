@@ -63,7 +63,13 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       // Check if running in Expo Go
       const isExpoGo = Constants.appOwnership === 'expo';
       if (isExpoGo) {
-        console.log('Running in Expo Go - push notifications not supported in SDK 53+');
+        console.log('Running in Expo Go - push notifications may have limitations');
+        // Don't return null immediately, try to register anyway
+      }
+      
+      // For web, skip push notifications
+      if (Platform.OS === 'web') {
+        console.log('Web platform - push notifications not supported');
         return null;
       }
 
@@ -162,6 +168,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   ): Promise<void> => {
     try {
       console.log('Sending notification to user:', userId);
+      console.log('Notification title:', title);
+      console.log('Notification body:', body);
       
       // Get user's push token
       const { data: userData, error } = await supabaseClient
@@ -171,13 +179,29 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         .single();
 
       if (error || !userData?.push_token) {
-        console.log('User does not have a push token or error fetching:', error);
+        console.log('User does not have a push token or error fetching:', {
+          error: error?.message,
+          hasToken: !!userData?.push_token,
+          token: userData?.push_token ? 'EXISTS' : 'NULL'
+        });
         return;
       }
 
       console.log('Sending push notification to token:', userData.push_token);
 
       // Send push notification
+      const notificationPayload = {
+        to: userData.push_token,
+        title,
+        body,
+        data: data || {},
+        sound: 'default',
+        priority: 'high',
+        channelId: 'default',
+      };
+      
+      console.log('Notification payload:', notificationPayload);
+      
       const response = await fetch('https://exp.host/--/api/v2/push/send', {
         method: 'POST',
         headers: {
@@ -185,20 +209,29 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           'Accept-encoding': 'gzip, deflate',
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          to: userData.push_token,
-          title,
-          body,
-          data,
-          sound: 'default',
-          priority: 'high',
-        }),
+        body: JSON.stringify(notificationPayload),
       });
 
+      console.log('Push notification response status:', response.status);
+      
       const result = await response.json();
       console.log('Push notification result:', result);
+      
+      if (!response.ok) {
+        console.error('Push notification failed:', result);
+        throw new Error(`Push notification failed: ${JSON.stringify(result)}`);
+      }
+      
+      // Check for errors in the result
+      if (result.data && result.data.status === 'error') {
+        console.error('Push notification error in result:', result.data);
+        throw new Error(`Push notification error: ${result.data.message}`);
+      }
+      
+      console.log('Push notification sent successfully');
     } catch (error) {
       console.error('Error sending notification to user:', error);
+      throw error; // Re-throw to let caller handle it
     }
   };
 
