@@ -15,6 +15,12 @@ export default function ConfirmScreen() {
   const [email, setEmail] = useState('');
   const [resending, setResending] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [resetToken, setResetToken] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+  const [passwordUpdated, setPasswordUpdated] = useState(false);
   
   const params = useLocalSearchParams();
 
@@ -67,7 +73,16 @@ export default function ConfirmScreen() {
       if (result.userId && result.email) {
         console.log('Custom email confirmation successful for:', result.email);
         setUserEmail(result.email);
-        setConfirmed(true);
+        
+        if (type === 'password_reset') {
+          // For password reset, show password form
+          setUserId(result.userId);
+          setResetToken(token_hash);
+          setConfirmed(false); // Don't show success yet
+        } else {
+          // For signup confirmation, show success
+          setConfirmed(true);
+        }
       }
 
     } catch (error) {
@@ -103,8 +118,70 @@ export default function ConfirmScreen() {
     }
   };
 
+  const handlePasswordReset = async () => {
+    if (!newPassword || !confirmPassword) {
+      Alert.alert('Error', 'Por favor completa ambos campos de contraseña');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Error', 'Las contraseñas no coinciden');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+
+    if (!userId || !resetToken) {
+      Alert.alert('Error', 'Información de reset inválida');
+      return;
+    }
+
+    setUpdatingPassword(true);
+    try {
+      // Call our Edge Function to reset password securely
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          newPassword,
+          token: resetToken
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Error al actualizar contraseña');
+      }
+
+      setPasswordUpdated(true);
+      Alert.alert(
+        'Contraseña actualizada',
+        'Tu contraseña ha sido cambiada exitosamente. Ya puedes iniciar sesión con tu nueva contraseña.',
+        [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
+      );
+
+    } catch (error) {
+      console.error('Error updating password:', error);
+      Alert.alert('Error', error.message || 'No se pudo actualizar la contraseña');
+    } finally {
+      setUpdatingPassword(false);
+    }
+  };
+
   const handleGoToLogin = () => {
-    router.replace('/web-info');
+    if (Platform.OS === 'web') {
+      router.replace('/web-info');
+    } else {
+      router.replace('/auth/login');
+    }
   };
 
   if (loading) {
@@ -113,6 +190,50 @@ export default function ConfirmScreen() {
         <Card style={styles.loadingCard}>
           <ActivityIndicator size="large" color="#2D6A6F" />
           <Text style={styles.loadingText}>Confirmando tu email...</Text>
+        </Card>
+      </View>
+    );
+  }
+
+  // Show password reset form for password_reset type
+  if (!confirmed && !error && userId && resetToken && params.type === 'password_reset') {
+    return (
+      <View style={styles.container}>
+        <Card style={styles.passwordCard}>
+          <View style={styles.iconContainer}>
+            <CheckCircle size={64} color="#2D6A6F" />
+          </View>
+          
+          <Text style={styles.passwordTitle}>Restablecer Contraseña</Text>
+          <Text style={styles.passwordText}>
+            Ingresa tu nueva contraseña para la cuenta: {userEmail}
+          </Text>
+
+          <View style={styles.passwordForm}>
+            <Input
+              label="Nueva contraseña"
+              placeholder="Mínimo 6 caracteres"
+              value={newPassword}
+              onChangeText={setNewPassword}
+              secureTextEntry
+            />
+
+            <Input
+              label="Confirmar contraseña"
+              placeholder="Repite la nueva contraseña"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+            />
+
+            <Button
+              title={updatingPassword ? "Actualizando..." : "Cambiar Contraseña"}
+              onPress={handlePasswordReset}
+              loading={updatingPassword}
+              disabled={!newPassword || !confirmPassword || updatingPassword}
+              size="large"
+            />
+          </View>
         </Card>
       </View>
     );
