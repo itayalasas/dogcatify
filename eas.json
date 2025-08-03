@@ -5,10 +5,13 @@
   "build": {
     "default": {
       "android": {
-        "buildType": "apk"
+        "buildType": "app-bundle"      
       }
     },
     "production": {
+      "android": {
+        "buildType": "app-bundle"
+      },
       "ios": {
         "resourceClass": "m-medium"
       }
