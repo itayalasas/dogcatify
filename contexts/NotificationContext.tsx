@@ -38,6 +38,13 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [notification, setNotification] = useState<Notifications.Notification | null>(null);
   const { currentUser } = useAuth();
 
+  // Auto-register push token when user is authenticated
+  useEffect(() => {
+    if (currentUser && !expoPushToken) {
+      console.log('User authenticated, auto-registering push notifications...');
+      registerForPushNotifications();
+    }
+  }, [currentUser]);
   useEffect(() => {
     // Set up notification listeners
     const notificationListener = Notifications.addNotificationReceivedListener(notification => {
@@ -171,27 +178,37 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       console.log('Notification title:', title);
       console.log('Notification body:', body);
       
-      // Get user's push token
+      // Get user's push token - fix the query to handle multiple results
       const { data: userData, error } = await supabaseClient
         .from('profiles')
         .select('push_token')
-        .eq('id', userId)
-        .single();
+        .eq('id', userId);
+      
+      console.log('Push token query result:', { userData, error });
 
-      if (error || !userData?.push_token) {
+      if (error || !userData || userData.length === 0) {
         console.log('User does not have a push token or error fetching:', {
           error: error?.message,
-          hasToken: !!userData?.push_token,
-          token: userData?.push_token ? 'EXISTS' : 'NULL'
+          userDataLength: userData?.length || 0
+        });
+        return;
+      }
+      
+      const userProfile = userData[0];
+      if (!userProfile?.push_token) {
+        console.log('User profile found but no push token:', {
+          userId,
+          hasProfile: !!userProfile,
+          pushToken: userProfile?.push_token || 'NULL'
         });
         return;
       }
 
-      console.log('Sending push notification to token:', userData.push_token);
+      console.log('Sending push notification to token:', userProfile.push_token);
 
       // Send push notification
       const notificationPayload = {
-        to: userData.push_token,
+        to: userProfile.push_token,
         title,
         body,
         data: data || {},
