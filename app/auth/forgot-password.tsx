@@ -5,7 +5,6 @@ import { ArrowLeft, Mail } from 'lucide-react-native';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { createEmailConfirmationToken, generateConfirmationUrl } from '../../utils/emailConfirmation';
-import { NotificationService } from '../../utils/notifications';
 import { supabaseClient } from '../../lib/supabase';
 import { useLanguage } from '../../contexts/LanguageContext'; 
 
@@ -48,6 +47,7 @@ export default function ForgotPassword() {
       console.log('Sending custom password reset email...');
       
       // Enviar email personalizado
+      const { NotificationService } = await import('../../utils/notifications');
       await NotificationService.sendPasswordResetEmail(
         email.toLowerCase().trim(),
         userData.display_name || 'Usuario',
