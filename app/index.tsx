@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, SafeAreaView, Alert, RefreshControl, ActivityIndicator, Platform } from 'react-native';
-import { router } from 'expo-router';
+import { router, useRouter } from 'expo-router';
 import { Linking } from 'react-native';
 import PostCard from '../components/PostCard';
 import PromotionCard from '../components/PromotionCard';
@@ -43,14 +43,24 @@ const PromotionWrapper = ({ promotion, onPress, onLike }: { promotion: any; onPr
 export default function Home() {
   const [posts, setPosts] = useState<any[]>([]);
   const [promotions, setPromotions] = useState<any[]>([]);
+  const routerInstance = useRouter();
 
   // En web, redirigir a página informativa
   useEffect(() => {
     if (Platform.OS === 'web') {
-      router.replace('/web-info');
-      return;
+      const handleWebRedirect = () => {
+        if (routerInstance.canGoBack !== undefined) {
+          // Router is ready
+          router.replace('/web-info');
+        } else {
+          // Wait for router to be ready
+          setTimeout(handleWebRedirect, 100);
+        }
+      };
+      
+      handleWebRedirect();
     }
-  }, []);
+  }, [routerInstance]);
 
   // No renderizar contenido en web
   if (Platform.OS === 'web') {
