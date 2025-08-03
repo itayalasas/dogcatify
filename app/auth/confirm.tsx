@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Alert, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { CheckCircle, XCircle, Mail } from 'lucide-react-native';
+import { CircleCheck as CheckCircle, Circle as XCircle, Mail } from 'lucide-react-native';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -54,7 +54,7 @@ export default function ConfirmScreen() {
         if (type === 'password_reset') {
           // For password reset, show password form
           setUserId(result.userId);
-          setResetToken(token_hash);
+          setResetToken(token_hash as string);
           setConfirmed(false); // Don't show success yet
         } else {
           // For signup confirmation, show success
@@ -71,6 +71,9 @@ export default function ConfirmScreen() {
       setLoading(false);
     }
   };
+
+  confirmEmail();
+  }, [params]);
 
   const handleResendConfirmation = async () => {
     if (!email.trim()) {
@@ -145,7 +148,7 @@ export default function ConfirmScreen() {
         [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
       );
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating password:', error);
       Alert.alert('Error', error.message || 'No se pudo actualizar la contraseña');
     } finally {
@@ -349,6 +352,9 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
     width: '100%',
     maxWidth: 400,
+  },
+  iconContainer: {
+    marginBottom: 16,
   },
   passwordTitle: {
     fontSize: 24,
