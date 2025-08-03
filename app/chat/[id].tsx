@@ -535,4 +535,3 @@ const styles = StyleSheet.create({
   sendButtonDisabled: {
     backgroundColor: '#D1D5DB',
   },
-});
