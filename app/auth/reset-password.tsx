@@ -367,6 +367,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontStyle: 'italic',
   },
+});
+    color: '#6B7280',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
   successCard: {
     alignItems: 'center',
     paddingVertical: 40,
