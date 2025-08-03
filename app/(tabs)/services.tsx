@@ -4,7 +4,7 @@ import { Search } from 'lucide-react-native';
 import { ServiceCard } from '../../components/ServiceCard'; 
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { useLocation } from '../../contexts/LocationContext';
+import { useLocation } from '../../../contexts/LocationContext';
 import { supabaseClient } from '../../lib/supabase';
 import { router } from 'expo-router';
 
