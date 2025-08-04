@@ -460,32 +460,21 @@ export default function AddIllness() {
             )}
           </View>
 
-          {/* Treatment with Autocomplete */}
+          {/* Treatment with Navigation */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Tratamiento</Text>
-            <View style={styles.searchInputContainer}>
-              <Search size={20} color="#6B7280" style={styles.searchIcon} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Medicamentos, terapias, cirugías..."
-                value={treatmentQuery}
-                onChangeText={(text) => {
-                  setTreatmentQuery(text);
-                  setTreatment(text);
-                  if (text.trim().length > 0) {
-                    setShowTreatmentModal(true);
-                  } else {
-                    setShowTreatmentModal(false);
-                  }
-                }}
-              />
-              <TouchableOpacity 
-                style={styles.dropdownButton}
-                onPress={() => setShowTreatmentModal(true)}
-              >
-                <ChevronDown size={20} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity 
+              style={styles.selectableInput}
+              onPress={handleSelectTreatment}
+            >
+              <Text style={[
+                styles.selectableInputText,
+                !treatment && styles.placeholderText
+              ]}>
+                {treatment || "Medicamentos, terapias, cirugías..."}
+              </Text>
+              <ChevronDown size={20} color="#6B7280" />
+            </TouchableOpacity>
           </View>
 
           {/* Veterinarian with Autocomplete */}
