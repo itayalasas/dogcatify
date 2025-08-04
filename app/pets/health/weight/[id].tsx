@@ -83,7 +83,7 @@ export default function PetWeight() {
 
   const createInitialWeightRecord = async () => {
     if (!pet || !pet.weight || !currentUser || weightRecords.length > 0) {
-      console.log('Cannot create initial weight record - missing data or records already exist');
+      console.log('Cannot create initial weight record - missing data or records already exist', {
         hasPet: !!pet,
         hasWeight: !!pet?.weight,
         hasUser: !!currentUser,
@@ -682,40 +682,38 @@ export default function PetWeight() {
             
             return (
               <View key={index} style={styles.weightBarContainer}>
-                <>
-                  <View style={styles.weightBarBackground}>
-                    {/* Ideal range indicator */}
-                    {idealWeightRange && (
-                      <View
-                        style={[
-                          styles.idealRangeIndicator,
-                          {
-                            bottom: Math.max(((idealWeightRange.min - minWeight) / weightRange) * 120, 0),
-                            height: Math.min(((idealWeightRange.max - idealWeightRange.min) / weightRange) * 120, 120),
-                          }
-                        ]}
-                      />
-                    )}
-                    
+                <View style={styles.weightBarBackground}>
+                  {/* Ideal range indicator */}
+                  {idealWeightRange && (
                     <View
                       style={[
-                        styles.weightBar,
+                        styles.idealRangeIndicator,
                         {
-                          height: barHeight,
-                          backgroundColor: record.isInRange ? '#10B981' : 
-                            record.status === 'underweight' ? '#F59E0B' : '#EF4444'
+                          bottom: Math.max(((idealWeightRange.min - minWeight) / weightRange) * 120, 0),
+                          height: Math.min(((idealWeightRange.max - idealWeightRange.min) / weightRange) * 120, 120),
                         }
                       ]}
                     />
-                  </View>
+                  )}
                   
-                  <Text style={styles.weightBarLabel}>
-                    {weightInKg.toFixed(1)}kg
-                  </Text>
-                  <Text style={styles.weightBarDate}>
-                    {record.date.split('/').slice(0, 2).join('/')}
-                  </Text>
-                </>
+                  <View
+                    style={[
+                      styles.weightBar,
+                      {
+                        height: barHeight,
+                        backgroundColor: record.isInRange ? '#10B981' : 
+                          record.status === 'underweight' ? '#F59E0B' : '#EF4444'
+                      }
+                    ]}
+                  />
+                </View>
+                
+                <Text style={styles.weightBarLabel}>
+                  {weightInKg.toFixed(1)}kg
+                </Text>
+                <Text style={styles.weightBarDate}>
+                  {record.date.split('/').slice(0, 2).join('/')}
+                </Text>
               </View>
             );
           })}
@@ -1328,13 +1326,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     position: 'relative',
     justifyContent: 'flex-end',
-  },
-  idealRangeIndicator: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
-    borderRadius: 4,
   },
   weightBar: {
     width: '100%',
