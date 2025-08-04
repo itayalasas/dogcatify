@@ -140,7 +140,10 @@ export default function AddDeworming() {
       }
 
       Alert.alert('Éxito', 'Desparasitación guardada correctamente', [
-        { text: 'OK', onPress: () => router.back() }
+        { text: 'OK', onPress: () => router.push({
+          pathname: `/pets/${id}`,
+          params: { activeTab: 'health' }
+        }) }
       ]);
     } catch (error) {
       console.error('Error saving deworming:', error);
@@ -150,10 +153,16 @@ export default function AddDeworming() {
     }
   };
 
+  const handleBackNavigation = () => {
+    router.push({
+      pathname: `/pets/${id}`,
+      params: { activeTab: 'health' }
+    });
+  };
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={handleBackNavigation} style={styles.backButton}>
           <ArrowLeft size={24} color="#111827" />
         </TouchableOpacity>
         <Text style={styles.title}>{isEditing ? 'Editar Desparasitación' : 'Agregar Desparasitación'}</Text>

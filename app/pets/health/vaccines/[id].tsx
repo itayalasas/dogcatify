@@ -140,7 +140,10 @@ export default function AddVaccine() {
       }
 
       Alert.alert('Éxito', isEditing ? 'Vacuna actualizada correctamente' : 'Vacuna registrada correctamente', [
-        { text: 'OK', onPress: () => router.back() }
+        { text: 'OK', onPress: () => router.push({
+          pathname: `/pets/${id}`,
+          params: { activeTab: 'health' }
+        }) }
       ]);
     } catch (error) {
       console.error('Error saving vaccine:', error);
@@ -150,10 +153,16 @@ export default function AddVaccine() {
     }
   };
 
+  const handleBackNavigation = () => {
+    router.push({
+      pathname: `/pets/${id}`,
+      params: { activeTab: 'health' }
+    });
+  };
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={handleBackNavigation} style={styles.backButton}>
           <ArrowLeft size={24} color="#111827" />
         </TouchableOpacity>
         <Text style={styles.title}>{isEditing ? 'Editar Vacuna' : 'Agregar Vacuna'}</Text>

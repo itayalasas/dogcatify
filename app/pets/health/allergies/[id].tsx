@@ -106,7 +106,10 @@ export default function AddAllergy() {
       }
 
       Alert.alert('Éxito', isEditing ? 'Alergia actualizada correctamente' : 'Alergia registrada correctamente', [
-        { text: 'OK', onPress: () => router.back() }
+        { text: 'OK', onPress: () => router.push({
+          pathname: `/pets/${id}`,
+          params: { activeTab: 'health' }
+        }) }
       ]);
     } catch (error) {
       console.error('Error saving allergy:', error);
@@ -116,10 +119,16 @@ export default function AddAllergy() {
     }
   };
 
+  const handleBackNavigation = () => {
+    router.push({
+      pathname: `/pets/${id}`,
+      params: { activeTab: 'health' }
+    });
+  };
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={handleBackNavigation} style={styles.backButton}>
           <ArrowLeft size={24} color="#111827" />
         </TouchableOpacity>
         <Text style={styles.title}>{isEditing ? 'Editar Alergia' : 'Agregar Alergia'}</Text>

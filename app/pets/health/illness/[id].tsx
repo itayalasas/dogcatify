@@ -30,6 +30,13 @@ export default function AddIllness() {
   // UI state
   const [showDatePicker, setShowDatePicker] = useState(false);
 
+  const handleBackNavigation = () => {
+    // Always go back to the pet detail health tab
+    router.push({
+      pathname: `/pets/${id}`,
+      params: { activeTab: 'health' }
+    });
+  };
   // Handle return parameters from selection screens
   useEffect(() => {
     // Handle selected condition
@@ -238,7 +245,7 @@ export default function AddIllness() {
       }
 
       Alert.alert('Éxito', isEditing ? 'Enfermedad actualizada correctamente' : 'Enfermedad registrada correctamente', [
-        { text: 'OK', onPress: () => router.back() }
+        { text: 'OK', onPress: handleBackNavigation }
       ]);
     } catch (error) {
       console.error('Error saving illness:', error);
@@ -251,7 +258,7 @@ export default function AddIllness() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={handleBackNavigation} style={styles.backButton}>
           <ArrowLeft size={24} color="#111827" />
         </TouchableOpacity>
         <Text style={styles.title}>{isEditing ? 'Editar Enfermedad' : 'Agregar Enfermedad'}</Text>
