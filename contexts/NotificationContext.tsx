@@ -202,8 +202,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       console.log('Notification body:', body);
       console.log('Additional data:', data);
       
-      // Get user's push token - fix the query to handle the response correctly
+      // First check if this is a partner_id that needs to be converted to user_id
       console.log('Fetching push token for user...');
+      
+      // Try to get user profile directly first
       const { data: userData, error } = await supabaseClient
         .from('profiles')
         .select('push_token, display_name')
@@ -215,13 +217,66 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         userCount: userData?.length || 0
       });
 
-      if (error) {
-        console.error('Database error fetching user:', error);
-        return;
-      }
-      
-      if (!userData || userData.length === 0) {
-        console.log('No user profile found for ID:', userId);
+      if (error || !userData || userData.length === 0) {
+        console.log('No direct user profile found, checking if this is a partner_id...');
+        
+        // Try to find partner and get their user_id
+        const { data: partnerData, error: partnerError } = await supabaseClient
+          .from('partners')
+          .select('user_id, business_name')
+          .eq('id', userId);
+        
+        console.log('Partner lookup result:', {
+          partnerData,
+          error: partnerError?.message,
+          partnerCount: partnerData?.length || 0
+        });
+        
+        if (partnerError || !partnerData || partnerData.length === 0) {
+          console.log('❌ No partner found with ID:', userId);
+          return;
+        }
+        
+        const partner = partnerData[0];
+        if (!partner.user_id) {
+          console.log('❌ Partner has no user_id:', partner);
+          return;
+        }
+        
+        console.log('✅ Found partner, getting user profile for user_id:', partner.user_id);
+        
+        // Now get the actual user profile
+        const { data: partnerUserData, error: partnerUserError } = await supabaseClient
+          .from('profiles')
+          .select('push_token, display_name')
+          .eq('id', partner.user_id);
+        
+        console.log('Partner user profile result:', {
+          partnerUserData,
+          error: partnerUserError?.message,
+          userCount: partnerUserData?.length || 0
+        });
+        
+        if (partnerUserError || !partnerUserData || partnerUserData.length === 0) {
+          console.log('❌ No user profile found for partner user_id:', partner.user_id);
+          return;
+        }
+        
+        // Use partner user data
+        const userProfile = partnerUserData[0];
+        console.log('✅ Using partner user profile:', {
+          displayName: userProfile.display_name,
+          hasPushToken: !!userProfile.push_token,
+          tokenPreview: userProfile.push_token ? userProfile.push_token.substring(0, 20) + '...' : 'NULL'
+        });
+        
+        if (!userProfile.push_token) {
+          console.log('❌ Partner user has no push token registered');
+          return;
+        }
+        
+        // Send notification using partner user's token
+        await sendPushNotification(userProfile.push_token, title, body, data);
         return;
       }
       
@@ -237,17 +292,32 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         return;
       }
       
+      // Send notification using user's token
+      await sendPushNotification(userProfile.push_token, title, body, data);
+    } catch (error) {
+      console.error('❌ Error in sendNotificationToUser:', error);
+      // Don't throw error to avoid breaking the chat flow
+    }
+  };
+
+  const sendPushNotification = async (
+    pushToken: string,
+    title: string,
+    body: string,
+    data?: any
+  ) => {
+    try {
       console.log('✅ User has push token, preparing notification...');
 
       // Validate token format
-      if (!userProfile.push_token.startsWith('ExponentPushToken[')) {
-        console.error('❌ Invalid push token format:', userProfile.push_token);
+      if (!pushToken.startsWith('ExponentPushToken[')) {
+        console.error('❌ Invalid push token format:', pushToken);
         return;
       }
 
       // Send push notification
       const notificationPayload = {
-        to: userProfile.push_token,
+        to: pushToken,
         title,
         body,
         data: data || {},
@@ -257,7 +327,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       };
       
       console.log('📤 Sending push notification with payload:', {
-        to: userProfile.push_token.substring(0, 20) + '...',
+        to: pushToken.substring(0, 20) + '...',
         title,
         body,
         dataKeys: Object.keys(data || {})
@@ -300,8 +370,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       console.log('✅ Push notification sent successfully!');
       console.log('=== END PUSH NOTIFICATION ===');
     } catch (error) {
-      console.error('❌ Error in sendNotificationToUser:', error);
-      // Don't throw error to avoid breaking the chat flow
+      console.error('❌ Error in sendPushNotification:', error);
+      throw error;
     }
   };
 
