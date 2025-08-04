@@ -35,6 +35,15 @@ export default function AddVaccine() {
 
   // Handle return parameters from selection screens
   useEffect(() => {
+    // Handle preserved application date
+    if (params.currentApplicationDate && typeof params.currentApplicationDate === 'string') {
+      try {
+        setVaccineDate(new Date(params.currentApplicationDate));
+      } catch (error) {
+        console.error('Error parsing application date:', error);
+      }
+    }
+    
     // Handle selected vaccine
     if (params.selectedVaccine) {
       try {
@@ -167,7 +176,8 @@ export default function AddVaccine() {
         // Preserve current form values
         currentVeterinarian: veterinarian,
         currentNotes: notes,
-        currentNextDueDate: nextDueDate?.toISOString()
+        currentNextDueDate: nextDueDate?.toISOString(),
+        currentApplicationDate: vaccineDate.toISOString()
       }
     });
   };
@@ -181,7 +191,9 @@ export default function AddVaccine() {
         currentValue: veterinarian,
         // Preserve current form values
         currentCondition: vaccineName,
-        currentNotes: notes
+        currentNotes: notes,
+        currentApplicationDate: vaccineDate.toISOString(),
+        currentNextDueDate: nextDueDate?.toISOString()
       }
     });
   };
@@ -237,7 +249,11 @@ export default function AddVaccine() {
 
   const formatDate = (date: Date | null) => {
     if (!date) return '';
-    return date.toLocaleDateString();
+    return date.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
   };
 
   const onVaccineDateChange = (event: any, selectedDate?: Date) => {

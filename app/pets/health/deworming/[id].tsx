@@ -35,6 +35,15 @@ export default function AddDeworming() {
 
   // Handle return parameters from selection screens
   useEffect(() => {
+    // Handle preserved application date
+    if (params.currentApplicationDate && typeof params.currentApplicationDate === 'string') {
+      try {
+        setApplicationDate(new Date(params.currentApplicationDate));
+      } catch (error) {
+        console.error('Error parsing application date:', error);
+      }
+    }
+    
     // Handle selected dewormer
     if (params.selectedDewormer) {
       try {
@@ -172,7 +181,8 @@ export default function AddDeworming() {
         // Preserve current form values
         currentVeterinarian: veterinarian,
         currentNotes: notes,
-        currentNextDueDate: nextDueDate?.toISOString()
+        currentNextDueDate: nextDueDate?.toISOString(),
+        currentApplicationDate: applicationDate.toISOString()
       }
     });
   };
@@ -186,7 +196,9 @@ export default function AddDeworming() {
         currentValue: veterinarian,
         // Preserve current form values
         currentCondition: productName,
-        currentNotes: notes
+        currentNotes: notes,
+        currentApplicationDate: applicationDate.toISOString(),
+        currentNextDueDate: nextDueDate?.toISOString()
       }
     });
   };
@@ -242,7 +254,11 @@ export default function AddDeworming() {
 
   const formatDate = (date: Date | null) => {
     if (!date) return '';
-    return date.toLocaleDateString();
+    return date.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
   };
 
   const onApplicationDateChange = (event: any, selectedDate?: Date) => {

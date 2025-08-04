@@ -32,6 +32,11 @@ export default function AddAllergy() {
 
   // Handle return parameters from selection screens
   useEffect(() => {
+    // Handle preserved allergy type
+    if (params.currentAllergyType && typeof params.currentAllergyType === 'string') {
+      setAllergyType(params.currentAllergyType);
+    }
+    
     // Handle selected allergy
     if (params.selectedAllergy) {
       try {
@@ -114,7 +119,8 @@ export default function AddAllergy() {
         currentSymptoms: symptoms,
         currentSeverity: severity,
         currentTreatment: treatment,
-        currentNotes: notes
+        currentNotes: notes,
+        currentAllergyType: allergyType
       }
     });
   };
@@ -128,7 +134,10 @@ export default function AddAllergy() {
         currentValue: treatment,
         // Preserve current form values
         currentCondition: allergyName,
-        currentNotes: notes
+        currentNotes: notes,
+        currentSymptoms: symptoms,
+        currentSeverity: severity,
+        currentAllergyType: allergyType
       }
     });
   };

@@ -39,6 +39,15 @@ export default function AddIllness() {
   };
   // Handle return parameters from selection screens
   useEffect(() => {
+    // Handle preserved diagnosis date
+    if (params.currentDiagnosisDate && typeof params.currentDiagnosisDate === 'string') {
+      try {
+        setDiagnosisDate(new Date(params.currentDiagnosisDate));
+      } catch (error) {
+        console.error('Error parsing diagnosis date:', error);
+      }
+    }
+    
     // Handle selected condition
     if (params.selectedCondition) {
       try {
@@ -145,7 +154,8 @@ export default function AddIllness() {
         // Preserve current form values
         currentTreatment: treatment,
         currentVeterinarian: veterinarian,
-        currentNotes: notes
+        currentNotes: notes,
+        currentDiagnosisDate: diagnosisDate.toISOString()
       }
     });
   };
@@ -160,7 +170,8 @@ export default function AddIllness() {
         // Preserve current form values
         currentCondition: illnessName,
         currentVeterinarian: veterinarian,
-        currentNotes: notes
+        currentNotes: notes,
+        currentDiagnosisDate: diagnosisDate.toISOString()
       }
     });
   };
@@ -175,13 +186,18 @@ export default function AddIllness() {
         // Preserve current form values
         currentCondition: illnessName,
         currentTreatment: treatment,
-        currentNotes: notes
+        currentNotes: notes,
+        currentDiagnosisDate: diagnosisDate.toISOString()
       }
     });
   };
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString();
+    return date.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
   };
 
   const onDateChange = (event: any, selectedDate?: Date) => {
