@@ -301,9 +301,14 @@ export default function AddIllness() {
     console.log('🔍 Filtering conditions by species:', pet.species);
     console.log('Available conditions before filter:', filteredConditions.length);
     
-    return filteredConditions.filter(condition => 
+    const speciesFiltered = filteredConditions.filter(condition => 
       condition.species === pet.species || condition.species === 'both'
     );
+    
+    console.log('✅ Conditions after species filter:', speciesFiltered.length);
+    console.log('Sample conditions:', speciesFiltered.slice(0, 3).map(c => c.name));
+    
+    return speciesFiltered;
   };
   const formatDate = (date: Date) => {
     return date.toLocaleDateString();
@@ -431,9 +436,9 @@ export default function AddIllness() {
                 <Text style={styles.suggestionsHeader}>
                   💡 Enfermedades sugeridas para {pet?.species === 'dog' ? 'perros' : 'gatos'}:
                 </Text>
-                {getFilteredConditionsBySpecies().slice(0, 6).map((condition) => (
+                {getFilteredConditionsBySpecies().slice(0, 6).map((condition, index) => (
                   <TouchableOpacity
-                    key={condition.id}
+                    key={condition.id || `condition-${index}`}
                     style={styles.suggestionItem}
                     onPress={() => handleConditionSelect(condition)}
                   >
