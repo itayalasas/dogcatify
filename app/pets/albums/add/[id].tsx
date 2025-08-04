@@ -358,6 +358,19 @@ export default function AddPhoto() {
             console.error('Error fetching user data:', userError);
           }
           
+          // Get the album ID from the insert result
+          const { data: createdAlbum, error: albumFetchError } = await supabaseClient
+            .from('pet_albums')
+            .select('id')
+            .eq('pet_id', id)
+            .eq('user_id', currentUser.id)
+            .eq('title', photoTitle.trim() || 'Álbum sin título')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+          
+          const albumId = createdAlbum?.id;
+          
           // Create post with complete author information
           const postData = {
             user_id: currentUser.id,
@@ -366,6 +379,7 @@ export default function AddPhoto() {
             image_url: imageUrls[0],
             album_images: imageUrls,
             type: 'album',
+            album_id: albumId, // Reference to the album
             author: {
               name: userData?.display_name || currentUser.displayName || 'Usuario',
               avatar: userData?.photo_url || currentUser.photoURL || 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=100'

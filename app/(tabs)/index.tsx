@@ -115,13 +115,272 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false);
   const { t } = useLanguage();
   const { currentUser } = useAuth();
+  const [realtimeSubscription, setRealtimeSubscription] = useState<any>(null);
 
   useEffect(() => {
     if (currentUser) {
       fetchFeedData();
+      setupRealtimeSubscriptions();
     }
+    
+    return () => {
+      // Cleanup subscriptions on unmount
+      if (realtimeSubscription) {
+        realtimeSubscription.unsubscribe();
+      }
+    };
   }, [currentUser]);
 
+  const setupRealtimeSubscriptions = () => {
+    if (!currentUser) return;
+    
+    console.log('Setting up real-time subscriptions for feed updates...');
+    
+    // Subscribe to posts changes (for album posts)
+    const subscription = supabaseClient
+      .channel('feed-updates')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'posts'
+        }, 
+        (payload) => {
+          console.log('Posts table changed:', payload);
+          handlePostsChange(payload);
+        }
+      )
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'pet_albums'
+        }, 
+        (payload) => {
+          console.log('Pet albums table changed:', payload);
+          handleAlbumsChange(payload);
+        }
+      )
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'promotions'
+        }, 
+        (payload) => {
+          console.log('Promotions table changed:', payload);
+          handlePromotionsChange(payload);
+        }
+      )
+      .subscribe();
+    
+    setRealtimeSubscription(subscription);
+  };
+
+  const handlePostsChange = (payload: any) => {
+    const { eventType, new: newRecord, old: oldRecord } = payload;
+    
+    switch (eventType) {
+      case 'INSERT':
+        // New post added - refresh feed to include it
+        console.log('New post added, refreshing feed...');
+        fetchFeedData();
+        break;
+        
+      case 'DELETE':
+        // Post deleted - remove from local state
+        console.log('Post deleted, removing from feed...');
+        setPosts(prevPosts => prevPosts.filter(post => post.id !== oldRecord.id));
+        break;
+        
+      case 'UPDATE':
+        // Post updated - update local state
+        console.log('Post updated, updating in feed...');
+        setPosts(prevPosts => 
+          prevPosts.map(post => 
+            post.id === newRecord.id 
+              ? {
+                  ...post,
+                  content: newRecord.content,
+                  likes: newRecord.likes || [],
+                  albumImages: newRecord.album_images || []
+                }
+              : post
+          )
+        );
+        break;
+    }
+  };
+
+  const handleAlbumsChange = async (payload: any) => {
+    const { eventType, new: newRecord, old: oldRecord } = payload;
+    
+    switch (eventType) {
+      case 'UPDATE':
+        // Album updated - check if sharing status changed
+        const wasShared = oldRecord?.is_shared;
+        const isNowShared = newRecord?.is_shared;
+        
+        console.log('Album updated:', {
+          albumId: newRecord.id,
+          wasShared,
+          isNowShared
+        });
+        
+        if (wasShared && !isNowShared) {
+          // Album was unshared - remove related posts from feed
+          console.log('Album unshared, removing related posts...');
+          await removeAlbumPostsFromFeed(newRecord.id);
+        } else if (!wasShared && isNowShared) {
+          // Album was shared - create new post in feed
+          console.log('Album shared, creating new post...');
+          await createPostFromSharedAlbum(newRecord);
+        }
+        break;
+        
+      case 'DELETE':
+        // Album deleted - remove related posts from feed
+        console.log('Album deleted, removing related posts...');
+        await removeAlbumPostsFromFeed(oldRecord.id);
+        break;
+    }
+  };
+
+  const handlePromotionsChange = (payload: any) => {
+    const { eventType, new: newRecord, old: oldRecord } = payload;
+    
+    switch (eventType) {
+      case 'INSERT':
+        // New promotion added
+        console.log('New promotion added, refreshing...');
+        fetchPromotions();
+        break;
+        
+      case 'DELETE':
+        // Promotion deleted
+        console.log('Promotion deleted, removing from feed...');
+        setPromotions(prevPromotions => 
+          prevPromotions.filter(promo => promo.id !== oldRecord.id)
+        );
+        break;
+        
+      case 'UPDATE':
+        // Promotion updated
+        console.log('Promotion updated, updating in feed...');
+        setPromotions(prevPromotions => 
+          prevPromotions.map(promo => 
+            promo.id === newRecord.id 
+              ? {
+                  ...promo,
+                  title: newRecord.title,
+                  description: newRecord.description,
+                  imageURL: newRecord.image_url,
+                  ctaText: newRecord.cta_text,
+                  ctaUrl: newRecord.cta_url,
+                  isActive: newRecord.is_active,
+                  likes: newRecord.likes || []
+                }
+              : promo
+          )
+        );
+        break;
+    }
+  };
+
+  const removeAlbumPostsFromFeed = async (albumId: string) => {
+    try {
+      // Find and delete posts related to this album
+      const { data: albumPosts, error } = await supabaseClient
+        .from('posts')
+        .select('id')
+        .eq('type', 'album')
+        .contains('album_images', [albumId]); // This might need adjustment based on how album posts are stored
+      
+      if (error) {
+        console.error('Error finding album posts:', error);
+        return;
+      }
+      
+      if (albumPosts && albumPosts.length > 0) {
+        // Delete the posts
+        const { error: deleteError } = await supabaseClient
+          .from('posts')
+          .delete()
+          .in('id', albumPosts.map(post => post.id));
+        
+        if (deleteError) {
+          console.error('Error deleting album posts:', deleteError);
+        } else {
+          console.log('Album posts removed from feed');
+          // Remove from local state
+          const postIds = albumPosts.map(post => post.id);
+          setPosts(prevPosts => prevPosts.filter(post => !postIds.includes(post.id)));
+        }
+      }
+    } catch (error) {
+      console.error('Error removing album posts from feed:', error);
+    }
+  };
+
+  const createPostFromSharedAlbum = async (albumData: any) => {
+    try {
+      // Get pet data
+      const { data: petData, error: petError } = await supabaseClient
+        .from('pets')
+        .select('*')
+        .eq('id', albumData.pet_id)
+        .single();
+      
+      if (petError || !petData) {
+        console.error('Error fetching pet data:', petError);
+        return;
+      }
+      
+      // Get user data for author info
+      const { data: userData, error: userError } = await supabaseClient
+        .from('profiles')
+        .select('display_name, photo_url')
+        .eq('id', albumData.user_id)
+        .single();
+      
+      if (userError) {
+        console.error('Error fetching user data:', userError);
+      }
+      
+      // Create post from album
+      const postData = {
+        user_id: albumData.user_id,
+        pet_id: albumData.pet_id,
+        content: albumData.description || `Álbum compartido: ${albumData.title} 📸`,
+        image_url: albumData.images?.[0] || null,
+        album_images: albumData.images || [],
+        type: 'album',
+        author: {
+          name: userData?.display_name || 'Usuario',
+          avatar: userData?.photo_url || 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=100'
+        },
+        pet: {
+          name: petData.name,
+          species: petData.species === 'dog' ? 'Perro' : 'Gato'
+        },
+        likes: [],
+        created_at: new Date().toISOString()
+      };
+      
+      const { error: postError } = await supabaseClient
+        .from('posts')
+        .insert(postData);
+      
+      if (postError) {
+        console.error('Error creating post from shared album:', postError);
+      } else {
+        console.log('Post created from shared album');
+        // The real-time subscription will handle adding it to the feed
+      }
+    } catch (error) {
+      console.error('Error creating post from shared album:', error);
+    }
+  };
   const fetchFeedData = async () => {
     try {
       await Promise.all([

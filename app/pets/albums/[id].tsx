@@ -296,6 +296,9 @@ export default function AlbumDetail() {
 
   const handleUpdateAlbum = async () => {
     try {
+      const wasShared = album.is_shared;
+      const willBeShared = isShared;
+      
       const { error } = await supabaseClient
         .from('pet_albums')
         .update({
@@ -306,6 +309,21 @@ export default function AlbumDetail() {
         .eq('id', id);
 
       if (error) throw error;
+
+      // Handle sharing status change
+      if (!wasShared && willBeShared) {
+        // Album is now being shared - create post in feed
+        console.log('Album is now shared, creating feed post...');
+        await createFeedPostFromAlbum();
+      } else if (wasShared && !willBeShared) {
+        // Album is no longer shared - remove from feed
+        console.log('Album is no longer shared, removing from feed...');
+        await removeFeedPostFromAlbum();
+      } else if (wasShared && willBeShared) {
+        // Album was already shared and still is - update existing post
+        console.log('Album still shared, updating existing post...');
+        await updateExistingFeedPost();
+      }
 
       // Update local state
       setAlbum({
@@ -323,8 +341,113 @@ export default function AlbumDetail() {
     }
   };
 
+  const createFeedPostFromAlbum = async () => {
+    try {
+      // Get pet data
+      const { data: petData, error: petError } = await supabaseClient
+        .from('pets')
+        .select('*')
+        .eq('id', album.pet_id)
+        .single();
+      
+      if (petError || !petData) {
+        console.error('Error fetching pet data:', petError);
+        return;
+      }
+      
+      // Get user data for author info
+      const { data: userData, error: userError } = await supabaseClient
+        .from('profiles')
+        .select('display_name, photo_url')
+        .eq('id', currentUser.id)
+        .single();
+      
+      if (userError) {
+        console.error('Error fetching user data:', userError);
+      }
+      
+      // Create post from album
+      const postData = {
+        user_id: currentUser.id,
+        pet_id: album.pet_id,
+        content: description.trim() || `Álbum compartido: ${title.trim()} 📸`,
+        image_url: album.images?.[0] || null,
+        album_images: album.images || [],
+        type: 'album',
+        album_id: album.id, // Reference to the album
+        author: {
+          name: userData?.display_name || currentUser.displayName || 'Usuario',
+          avatar: userData?.photo_url || currentUser.photoURL || 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=100'
+        },
+        pet: {
+          name: petData.name,
+          species: petData.species === 'dog' ? 'Perro' : 'Gato'
+        },
+        likes: [],
+        created_at: new Date().toISOString()
+      };
+      
+      const { error: postError } = await supabaseClient
+        .from('posts')
+        .insert(postData);
+      
+      if (postError) {
+        console.error('Error creating feed post:', postError);
+      } else {
+        console.log('Feed post created successfully');
+      }
+    } catch (error) {
+      console.error('Error creating feed post from album:', error);
+    }
+  };
+
+  const removeFeedPostFromAlbum = async () => {
+    try {
+      // Find and delete posts related to this album
+      const { error } = await supabaseClient
+        .from('posts')
+        .delete()
+        .eq('album_id', album.id)
+        .eq('type', 'album');
+      
+      if (error) {
+        console.error('Error removing feed post:', error);
+      } else {
+        console.log('Feed post removed successfully');
+      }
+    } catch (error) {
+      console.error('Error removing feed post from album:', error);
+    }
+  };
+
+  const updateExistingFeedPost = async () => {
+    try {
+      // Update existing post with new album info
+      const { error } = await supabaseClient
+        .from('posts')
+        .update({
+          content: description.trim() || `Álbum actualizado: ${title.trim()} 📸`,
+          album_images: album.images || [],
+          image_url: album.images?.[0] || null
+        })
+        .eq('album_id', album.id)
+        .eq('type', 'album');
+      
+      if (error) {
+        console.error('Error updating feed post:', error);
+      } else {
+        console.log('Feed post updated successfully');
+      }
+    } catch (error) {
+      console.error('Error updating feed post from album:', error);
+    }
+  };
   const handleDeleteAlbum = async () => {
     try {
+      // First remove any related posts from feed
+      await removeFeedPostFromAlbum();
+      
+      // Then delete the album
       const { error } = await supabaseClient
         .from('pet_albums')
         .delete()
