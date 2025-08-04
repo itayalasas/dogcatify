@@ -151,7 +151,10 @@ export default function PetDetail() {
   };
   
   const handleAddWeight = () => {
-    router.push(`/pets/health/weight/${id}`);
+    router.push({
+      pathname: `/pets/health/weight/${id}`,
+      params: { refresh: 'true' }
+    });
   };
 
   const handleAddPhoto = () => {

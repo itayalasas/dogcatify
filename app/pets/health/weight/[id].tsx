@@ -53,18 +53,19 @@ export default function PetWeight() {
   const [weightStatus, setWeightStatus] = useState<'underweight' | 'ideal' | 'overweight' | 'unknown'>('unknown');
 
   useEffect(() => {
-    const loadPetData = async () => {
-      await fetchPetDetails();
-      await fetchWeightRecords();
-      
-      // Después de cargar los datos, verificar si necesita crear registro inicial
-      setTimeout(async () => {
-        await createInitialWeightRecord();
-      }, 1000);
-    };
-    
-    loadPetData();
+    if (id && currentUser) {
+      fetchPetDetails();
+      fetchWeightRecords();
+    }
   }, [id]);
+
+  // Separate effect to create initial weight record after pet data is loaded
+  useEffect(() => {
+    if (pet && currentUser && weightRecords.length === 0) {
+      console.log('Pet loaded and no weight records found, creating initial record...');
+      createInitialWeightRecord();
+    }
+  }, [pet, weightRecords, currentUser]);
 
   useEffect(() => {
     // Calculate ideal weight range when pet data is available
@@ -81,28 +82,17 @@ export default function PetWeight() {
   }, [weightRecords, idealWeightRange]);
 
   const createInitialWeightRecord = async () => {
-    if (!pet || !pet.weight || !currentUser) return;
+    if (!pet || !pet.weight || !currentUser) {
+      console.log('Cannot create initial weight record:', {
+        hasPet: !!pet,
+        hasWeight: !!pet?.weight,
+        hasUser: !!currentUser
+      });
+      return;
+    }
     
     try {
       console.log('Creating initial weight record for pet:', pet.name, 'Weight:', pet.weight);
-      
-      // Verificar si ya existe algún registro de peso para esta mascota
-      const { data: existingRecords, error: checkError } = await supabaseClient
-        .from('pet_health')
-        .select('id')
-        .eq('pet_id', id)
-        .eq('type', 'weight');
-      
-      if (checkError) {
-        console.error('Error checking existing weight records:', checkError);
-        return;
-      }
-      
-      // Si ya existe cualquier registro de peso, no crear el inicial
-      if (existingRecords && existingRecords.length > 0) {
-        console.log('Weight records already exist, skipping initial creation');
-        return;
-      }
       
       // Crear un registro de peso inicial con la fecha de creación de la mascota
       const initialDate = pet.created_at ? new Date(pet.created_at) : new Date();
@@ -124,11 +114,16 @@ export default function PetWeight() {
       
       if (error) {
         console.error('Error creating initial weight record:', error);
+        return;
       } else {
         console.log('Initial weight record created successfully');
-        // Refrescar los registros inmediatamente
-        await fetchWeightRecords();
       }
+      
+      // Refrescar los registros después de crear el inicial
+      setTimeout(() => {
+        fetchWeightRecords();
+      }, 500);
+      
     } catch (error) {
       console.error('Error creating initial weight record:', error);
     }
@@ -163,6 +158,8 @@ export default function PetWeight() {
 
   const fetchWeightRecords = async () => {
     try {
+      console.log('Fetching weight records for pet:', id);
+      
       const { data, error } = await supabaseClient
         .from('pet_health')
         .select('*')
@@ -171,6 +168,8 @@ export default function PetWeight() {
         .order('created_at', { ascending: true });
       
       if (error) throw error;
+      
+      console.log('Weight records fetched:', data?.length || 0);
       
       const formattedRecords = data.map(record => ({
         id: record.id,
@@ -183,6 +182,7 @@ export default function PetWeight() {
         created_at: record.created_at
       }));
       
+      console.log('Formatted weight records:', formattedRecords);
       setWeightRecords(formattedRecords);
     } catch (error) {
       console.error('Error fetching weight records:', error);
@@ -317,8 +317,13 @@ export default function PetWeight() {
       Alert.alert('Éxito', 'Peso registrado correctamente');
       setShowAddForm(false);
       setNotes('');
-      fetchWeightRecords();
-      fetchPetDetails();
+      
+      // Refresh data after adding new weight
+      await Promise.all([
+        fetchWeightRecords(),
+        fetchPetDetails()
+      ]);
+      
     } catch (error) {
       console.error('Error saving weight:', error);
       Alert.alert('Error', 'No se pudo registrar el peso');
