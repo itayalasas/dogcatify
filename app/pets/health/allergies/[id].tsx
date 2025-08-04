@@ -23,9 +23,12 @@ export default function AddAllergy() {
   const [symptoms, setSymptoms] = useState('');
   const [severity, setSeverity] = useState('');
   const [treatment, setTreatment] = useState('');
+  const [selectedVeterinarian, setSelectedVeterinarian] = useState<any>(null);
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [showAddVetModal, setShowAddVetModal] = useState(false);
+  const [tempVetName, setTempVetName] = useState('');
 
   // Handle return parameters from selection screens
   useEffect(() => {
@@ -42,6 +45,18 @@ export default function AddAllergy() {
         console.log('Selected allergy:', allergy.name);
       } catch (error) {
         console.error('Error parsing selected allergy:', error);
+      }
+    }
+    
+    // Handle selected veterinarian
+    if (params.selectedVeterinarian) {
+      try {
+        const vet = JSON.parse(params.selectedVeterinarian as string);
+        setTreatment(vet.name); // For allergies, veterinarian info goes in treatment
+        setSelectedVeterinarian(vet);
+        console.log('Selected veterinarian:', vet.name);
+      } catch (error) {
+        console.error('Error parsing selected veterinarian:', error);
       }
     }
     
@@ -104,6 +119,31 @@ export default function AddAllergy() {
     });
   };
 
+  const handleSelectVeterinarian = () => {
+    router.push({
+      pathname: '/pets/health/select-veterinarian',
+      params: { 
+        petId: id,
+        returnPath: `/pets/health/allergies/${id}`,
+        currentValue: treatment,
+        // Preserve current form values
+        currentCondition: allergyName,
+        currentNotes: notes
+      }
+    });
+  };
+
+  const handleAddTemporaryVet = async () => {
+    if (!tempVetName.trim()) {
+      Alert.alert('Error', 'Por favor ingresa el nombre del veterinario');
+      return;
+    }
+    
+    setTreatment(tempVetName.trim());
+    setTempVetName('');
+    setShowAddVetModal(false);
+    Alert.alert('Veterinario agregado', `${tempVetName.trim()} ha sido agregado temporalmente`);
+  };
   const fetchAllergyDetails = async () => {
     try {
       const { data, error } = await supabaseClient
@@ -271,14 +311,37 @@ export default function AddAllergy() {
             onChangeText={setSeverity}
           />
 
-          <Input
-            label="Tratamiento"
-            placeholder="Medicamentos, dieta especial, etc."
-            value={treatment}
-            onChangeText={setTreatment}
-            multiline
-            numberOfLines={2}
-          />
+          {/* Treatment/Veterinarian - Navigable */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Tratamiento / Veterinario</Text>
+            <TouchableOpacity 
+              style={styles.selectableInput}
+              onPress={handleSelectVeterinarian}
+            >
+              <Text style={[
+                styles.selectableInputText,
+                !treatment && styles.placeholderText
+              ]}>
+                {treatment || "Seleccionar veterinario o escribir tratamiento..."}
+              </Text>
+              <ChevronDown size={20} color="#6B7280" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.addTempVetButton}
+              onPress={() => setShowAddVetModal(true)}
+            >
+              <Text style={styles.addTempVetText}>+ Agregar veterinario temporal</Text>
+            </TouchableOpacity>
+            
+            <Input
+              placeholder="O escribe el tratamiento manualmente..."
+              value={treatment}
+              onChangeText={setTreatment}
+              multiline
+              numberOfLines={2}
+            />
+          </View>
 
           <Input
             label="Notas adicionales"
@@ -297,6 +360,47 @@ export default function AddAllergy() {
           />
         </Card>
       </ScrollView>
+
+      {/* Add Temporary Veterinarian Modal */}
+      <Modal
+        visible={showAddVetModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAddVetModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Agregar Veterinario Temporal</Text>
+            <Text style={styles.modalSubtitle}>
+              Si el veterinario no está en la lista, puedes agregarlo temporalmente
+            </Text>
+            
+            <Input
+              label="Nombre del veterinario o clínica"
+              placeholder="Ej: Dr. García, Clínica San Martín"
+              value={tempVetName}
+              onChangeText={setTempVetName}
+            />
+            
+            <View style={styles.modalActions}>
+              <Button
+                title="Cancelar"
+                onPress={() => {
+                  setShowAddVetModal(false);
+                  setTempVetName('');
+                }}
+                variant="outline"
+                size="medium"
+              />
+              <Button
+                title="Agregar"
+                onPress={handleAddTemporaryVet}
+                size="medium"
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -385,5 +489,48 @@ const styles = StyleSheet.create({
   },
   placeholderText: {
     color: '#9CA3AF',
+  },
+  addTempVetButton: {
+    alignSelf: 'flex-start',
+    paddingVertical: 8,
+  },
+  addTempVetText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#3B82F6',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: '#111827',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
   },
 });

@@ -22,12 +22,16 @@ export default function AddVaccine() {
   const [vaccineDate, setVaccineDate] = useState(new Date());
   const [nextDueDate, setNextDueDate] = useState<Date | null>(null);
   const [veterinarian, setVeterinarian] = useState('');
+  const [selectedVaccine, setSelectedVaccine] = useState<any>(null);
+  const [selectedVeterinarian, setSelectedVeterinarian] = useState<any>(null);
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   
   const [showVaccineDatePicker, setShowVaccineDatePicker] = useState(false);
   const [showNextDueDatePicker, setShowNextDueDatePicker] = useState(false);
+  const [showAddVetModal, setShowAddVetModal] = useState(false);
+  const [tempVetName, setTempVetName] = useState('');
 
   // Handle return parameters from selection screens
   useEffect(() => {
@@ -36,9 +40,22 @@ export default function AddVaccine() {
       try {
         const vaccine = JSON.parse(params.selectedVaccine as string);
         setVaccineName(vaccine.name);
+        setSelectedVaccine(vaccine);
         console.log('Selected vaccine:', vaccine.name);
       } catch (error) {
         console.error('Error parsing selected vaccine:', error);
+      }
+    }
+    
+    // Handle selected veterinarian
+    if (params.selectedVeterinarian) {
+      try {
+        const vet = JSON.parse(params.selectedVeterinarian as string);
+        setVeterinarian(vet.name);
+        setSelectedVeterinarian(vet);
+        console.log('Selected veterinarian:', vet.name);
+      } catch (error) {
+        console.error('Error parsing selected veterinarian:', error);
       }
     }
     
@@ -60,6 +77,61 @@ export default function AddVaccine() {
     }
   }, [params.selectedVaccine, params.currentVeterinarian, params.currentNotes, params.currentNextDueDate]);
 
+  // Calculate next due date when vaccine date or selected vaccine changes
+  useEffect(() => {
+    if (selectedVaccine && vaccineDate) {
+      calculateNextDueDate();
+    }
+  }, [selectedVaccine, vaccineDate]);
+
+  const calculateNextDueDate = () => {
+    if (!selectedVaccine || !vaccineDate || !pet) return;
+    
+    const ageInWeeks = calculateAgeInWeeks(pet);
+    const nextDate = new Date(vaccineDate);
+    
+    // Logic based on vaccine type and pet age
+    if (selectedVaccine.frequency) {
+      const frequency = selectedVaccine.frequency.toLowerCase();
+      
+      if (frequency.includes('anual') || frequency.includes('yearly')) {
+        nextDate.setFullYear(nextDate.getFullYear() + 1);
+      } else if (frequency.includes('6 meses') || frequency.includes('6 months')) {
+        nextDate.setMonth(nextDate.getMonth() + 6);
+      } else if (frequency.includes('3-4 semanas') || frequency.includes('3-4 weeks')) {
+        nextDate.setDate(nextDate.getDate() + 28); // 4 weeks
+      } else if (frequency.includes('2-3 semanas') || frequency.includes('2-3 weeks')) {
+        nextDate.setDate(nextDate.getDate() + 21); // 3 weeks
+      } else if (frequency.includes('refuerzo')) {
+        // For boosters, check if it's puppy/kitten or adult
+        if (ageInWeeks < 16) {
+          // Puppy/kitten - next dose in 3-4 weeks
+          nextDate.setDate(nextDate.getDate() + 28);
+        } else {
+          // Adult - annual booster
+          nextDate.setFullYear(nextDate.getFullYear() + 1);
+        }
+      }
+      
+      setNextDueDate(nextDate);
+    }
+  };
+
+  const calculateAgeInWeeks = (petData: any) => {
+    if (!petData.age_display) return petData.age * 52; // Default to years
+    
+    const { value, unit } = petData.age_display;
+    
+    switch (unit) {
+      case 'days':
+        return value / 7;
+      case 'months':
+        return value * 4.33; // Average weeks per month
+      case 'years':
+      default:
+        return value * 52;
+    }
+  };
   useEffect(() => {
     fetchPetData();
     
@@ -100,6 +172,31 @@ export default function AddVaccine() {
     });
   };
 
+  const handleSelectVeterinarian = () => {
+    router.push({
+      pathname: '/pets/health/select-veterinarian',
+      params: { 
+        petId: id,
+        returnPath: `/pets/health/vaccines/${id}`,
+        currentValue: veterinarian,
+        // Preserve current form values
+        currentCondition: vaccineName,
+        currentNotes: notes
+      }
+    });
+  };
+
+  const handleAddTemporaryVet = async () => {
+    if (!tempVetName.trim()) {
+      Alert.alert('Error', 'Por favor ingresa el nombre del veterinario');
+      return;
+    }
+    
+    setVeterinarian(tempVetName.trim());
+    setTempVetName('');
+    setShowAddVetModal(false);
+    Alert.alert('Veterinario agregado', `${tempVetName.trim()} ha sido agregado temporalmente`);
+  };
   const fetchVaccineDetails = async () => {
     try {
       const { data, error } = await supabaseClient
@@ -331,12 +428,28 @@ export default function AddVaccine() {
             )}
           </View>
 
-          <Input
-            label="Veterinario"
-            placeholder="Nombre del veterinario o clínica"
-            value={veterinarian}
-            onChangeText={setVeterinarian}
-          />
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Veterinario</Text>
+            <TouchableOpacity 
+              style={styles.selectableInput}
+              onPress={handleSelectVeterinarian}
+            >
+              <Text style={[
+                styles.selectableInputText,
+                !veterinarian && styles.placeholderText
+              ]}>
+                {veterinarian || "Seleccionar veterinario..."}
+              </Text>
+              <ChevronDown size={20} color="#6B7280" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.addTempVetButton}
+              onPress={() => setShowAddVetModal(true)}
+            >
+              <Text style={styles.addTempVetText}>+ Agregar veterinario temporal</Text>
+            </TouchableOpacity>
+          </View>
 
           <Input
             label="Notas adicionales"
@@ -355,6 +468,47 @@ export default function AddVaccine() {
           />
         </Card>
       </ScrollView>
+
+      {/* Add Temporary Veterinarian Modal */}
+      <Modal
+        visible={showAddVetModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAddVetModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Agregar Veterinario Temporal</Text>
+            <Text style={styles.modalSubtitle}>
+              Si el veterinario no está en la lista, puedes agregarlo temporalmente
+            </Text>
+            
+            <Input
+              label="Nombre del veterinario o clínica"
+              placeholder="Ej: Dr. García, Clínica San Martín"
+              value={tempVetName}
+              onChangeText={setTempVetName}
+            />
+            
+            <View style={styles.modalActions}>
+              <Button
+                title="Cancelar"
+                onPress={() => {
+                  setShowAddVetModal(false);
+                  setTempVetName('');
+                }}
+                variant="outline"
+                size="medium"
+              />
+              <Button
+                title="Agregar"
+                onPress={handleAddTemporaryVet}
+                size="medium"
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -469,5 +623,79 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#111827',
     marginLeft: 10,
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 15,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+    marginBottom: 6,
+  },
+  selectableInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    minHeight: 50,
+    marginBottom: 8,
+  },
+  selectableInputText: {
+    fontSize: 15,
+    fontFamily: 'Inter-Regular',
+    color: '#111827',
+    flex: 1,
+  },
+  placeholderText: {
+    color: '#9CA3AF',
+  },
+  addTempVetButton: {
+    alignSelf: 'flex-start',
+    paddingVertical: 8,
+  },
+  addTempVetText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#3B82F6',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: '#111827',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
   },
 });
