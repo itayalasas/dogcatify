@@ -732,16 +732,20 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     padding: 20,
   },
   modalContent: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
     padding: 20,
+    paddingBottom: 40,
     width: '100%',
-    maxWidth: 400,
+    maxHeight: '80%',
   },
   modalTitle: {
     fontSize: 18,
@@ -754,7 +758,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   shareOptionLabel: {
     fontSize: 15,
@@ -781,9 +785,9 @@ const styles = StyleSheet.create({
     transform: [{ translateX: 22 }],
   },
   modalActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: 'column',
     gap: 12,
+    marginTop: 8,
   },
   confirmModalContent: {
     backgroundColor: '#FFFFFF',
