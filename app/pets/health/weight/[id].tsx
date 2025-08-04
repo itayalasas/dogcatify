@@ -61,7 +61,7 @@ export default function PetWeight() {
 
   // Separate effect to create initial weight record after pet data is loaded
   useEffect(() => {
-    if (pet && currentUser && weightRecords.length === 0) {
+    if (pet && currentUser && weightRecords.length === 0 && pet.weight) {
       console.log('Pet loaded and no weight records found, creating initial record...');
       createInitialWeightRecord();
     }
@@ -82,11 +82,12 @@ export default function PetWeight() {
   }, [weightRecords, idealWeightRange]);
 
   const createInitialWeightRecord = async () => {
-    if (!pet || !pet.weight || !currentUser) {
+    if (!pet || !pet.weight || !currentUser || weightRecords.length > 0) {
       console.log('Cannot create initial weight record:', {
         hasPet: !!pet,
         hasWeight: !!pet?.weight,
-        hasUser: !!currentUser
+        hasUser: !!currentUser,
+        existingRecords: weightRecords.length
       });
       return;
     }
@@ -102,8 +103,12 @@ export default function PetWeight() {
         user_id: currentUser.id,
         type: 'weight',
         weight: pet.weight,
-        weight_unit: pet.weight_display?.unit || pet.weightDisplay?.unit || 'kg',
-        date: formatDate(initialDate),
+        weight_unit: pet.weight_display?.unit || 'kg',
+        date: initialDate.toLocaleDateString('es-ES', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        }),
         notes: 'Peso inicial al registrar la mascota',
         created_at: new Date().toISOString()
       };

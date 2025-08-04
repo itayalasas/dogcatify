@@ -62,11 +62,14 @@ export default function PetDetail() {
 
   const fetchHealthRecords = async () => {
     try {
+      console.log('Fetching health records for pet:', id);
       const { data: healthRecords, error } = await supabaseClient
         .from('pet_health') 
         .select('*')
         .eq('pet_id', id)
         .order('created_at', { ascending: false });
+      
+      console.log('Health records fetched:', healthRecords?.length || 0);
       
       if (healthRecords && !error) {
         const processedRecords = healthRecords.map(record => ({
@@ -89,10 +92,63 @@ export default function PetDetail() {
         setIllnesses(processedRecords.filter(record => record.type === 'illness'));
         setAllergies(processedRecords.filter(record => record.type === 'allergy'));
         setDewormings(processedRecords.filter(record => record.type === 'deworming'));
-        setWeightRecords(processedRecords.filter(record => record.type === 'weight'));
+        
+        const weightRecordsFiltered = processedRecords.filter(record => record.type === 'weight');
+        console.log('Weight records filtered:', weightRecordsFiltered.length);
+        setWeightRecords(weightRecordsFiltered);
+        
+        // If no weight records exist but pet has weight, create initial record
+        if (weightRecordsFiltered.length === 0 && pet && pet.weight && currentUser) {
+          console.log('No weight records found, creating initial record...');
+          await createInitialWeightRecord();
+        }
       }
     } catch (error) {
       console.error('Error fetching health records:', error);
+    }
+  };
+  
+  const createInitialWeightRecord = async () => {
+    if (!pet || !pet.weight || !currentUser) {
+      console.log('Cannot create initial weight record - missing data');
+      return;
+    }
+    
+    try {
+      console.log('Creating initial weight record for:', pet.name, 'Weight:', pet.weight);
+      
+      const initialWeightData = {
+        pet_id: id,
+        user_id: currentUser.id,
+        type: 'weight',
+        weight: pet.weight,
+        weight_unit: pet.weight_display?.unit || 'kg',
+        date: new Date(pet.created_at).toLocaleDateString('es-ES', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        }),
+        notes: 'Peso inicial al registrar la mascota',
+        created_at: new Date().toISOString()
+      };
+      
+      console.log('Initial weight data:', initialWeightData);
+      
+      const { error } = await supabaseClient
+        .from('pet_health')
+        .insert(initialWeightData);
+      
+      if (error) {
+        console.error('Error creating initial weight record:', error);
+      } else {
+        console.log('Initial weight record created successfully');
+        // Refresh health records to show the new weight record
+        setTimeout(() => {
+          fetchHealthRecords();
+        }, 500);
+      }
+    } catch (error) {
+      console.error('Error in createInitialWeightRecord:', error);
     }
   };
 

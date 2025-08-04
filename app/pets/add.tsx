@@ -370,13 +370,48 @@ export default function AddPet() {
 
       console.log('Pet data:', petData);
       
-      // Insert pet directly using supabaseClient
-      const { error } = await supabaseClient
+      // Insert pet and get the created pet ID
+      const { data: createdPet, error } = await supabaseClient
         .from('pets')
-        .insert(petData);
+        .insert(petData)
+        .select('id')
+        .single();
       
-      if (!error) {
+      if (!error && createdPet) {
         console.log('Pet created successfully');
+        
+        // Create initial weight record
+        try {
+          console.log('Creating initial weight record...');
+          const initialWeightData = {
+            pet_id: createdPet.id,
+            user_id: currentUser.id,
+            type: 'weight',
+            weight: parseFloat(weight),
+            weight_unit: weightUnit,
+            date: new Date().toLocaleDateString('es-ES', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric'
+            }),
+            notes: 'Peso inicial al registrar la mascota',
+            created_at: new Date().toISOString()
+          };
+          
+          const { error: weightError } = await supabaseClient
+            .from('pet_health')
+            .insert(initialWeightData);
+          
+          if (weightError) {
+            console.error('Error creating initial weight record:', weightError);
+          } else {
+            console.log('Initial weight record created successfully');
+          }
+        } catch (weightError) {
+          console.error('Error creating initial weight record:', weightError);
+          // Don't fail pet creation if weight record fails
+        }
+        
         Alert.alert(
           'Mascota agregada',
           'Tu mascota ha sido agregada correctamente',
