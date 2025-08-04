@@ -442,7 +442,6 @@ export default function AddIllness() {
                     setShowConditionSuggestions(true);
                   }
                 }}
-                }}
               />
             </View>
             
