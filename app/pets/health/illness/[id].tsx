@@ -372,8 +372,6 @@ export default function AddIllness() {
             notes: notes.trim() || null
           })
           .eq('id', recordId);
-          {console.log('🔍 Render check - will render dropdown:', showConditionSuggestions && getFilteredConditionsBySpecies().length > 0)}
-          {console.log('🔍 Render check - conditions data:', getFilteredConditionsBySpecies().slice(0, 2))}
           
         error = updateError;
       } else {
@@ -451,7 +449,6 @@ export default function AddIllness() {
             {console.log('🔍 Render check - filtered conditions count:', getFilteredConditionsBySpecies().length)}
             
             {showConditionSuggestions && getFilteredConditionsBySpecies().length > 0 && (
-              console.log('🎨 Rendering suggestions dropdown with', getFilteredConditionsBySpecies().length, 'items'),
               <View style={styles.suggestionsContainer}>
                 <Text style={styles.suggestionsHeader}>
                   💡 Enfermedades sugeridas para {pet?.species === 'dog' ? 'perros' : 'gatos'}:
@@ -532,16 +529,12 @@ export default function AddIllness() {
             {showTreatmentSuggestions && filteredTreatments.length > 0 && (
               <View style={styles.suggestionsContainer}>
                 {filteredTreatments.slice(0, 5).map((treatment) => (
+                  <TouchableOpacity
                     key={treatment.id}
                     style={styles.suggestionItem}
                     onPress={() => handleTreatmentSelect(treatment)}
                   >
-              {(() => {
-                const conditions = getFilteredConditionsBySpecies().slice(0, 6);
-                console.log('🎨 About to render conditions:', conditions.length, conditions.map(c => c.name));
-                return conditions.map((condition, index) => {
-                  console.log('🎨 Rendering condition:', condition.name, 'ID:', condition.id);
-                  return (
+                    <View style={styles.suggestionContent}>
                       <Text style={styles.suggestionTitle}>{treatment.name}</Text>
                       <Text style={styles.suggestionCategory}>
                         💊 {treatment.type}
@@ -550,7 +543,7 @@ export default function AddIllness() {
                         <Text style={styles.suggestionDescription} numberOfLines={2}>
                           {treatment.description}
                         </Text>
-                      📂 {condition.category || 'Sin categoría'}
+                      )}
                       <View style={styles.treatmentInfo}>
                         {treatment.is_prescription_required && (
                           <View style={styles.prescriptionBadge}>
@@ -581,9 +574,7 @@ export default function AddIllness() {
             <View style={styles.searchInputContainer}>
               <Search size={20} color="#6B7280" style={styles.searchIcon} />
               <TextInput
-                  );
-                });
-              })()}
+                style={styles.searchInput}
                 placeholder="Nombre del veterinario o clínica"
                 value={veterinarianQuery}
                 onChangeText={(text) => {
