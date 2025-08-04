@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, TextInput } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Search, Building, Star, Phone, MapPin } from 'lucide-react-native';
+import { ArrowLeft, Search, Building, Star, Phone, MapPin, CircleCheck as CheckCircle } from 'lucide-react-native';
 import { Card } from '../../../components/ui/Card';
 import { supabaseClient } from '../../../lib/supabase';
 
@@ -27,13 +27,18 @@ export default function SelectVeterinarian() {
 
   const fetchVeterinarians = async () => {
     try {
+      console.log('Fetching veterinary partners...');
       const { data, error } = await supabaseClient
-        .from('veterinary_clinics')
+        .from('partners')
         .select('*')
+        .eq('business_type', 'veterinary')
+        .eq('is_verified', true)
         .eq('is_active', true)
-        .order('name', { ascending: true });
+        .order('business_name', { ascending: true });
 
       if (error) throw error;
+      
+      console.log('Veterinary partners found:', data?.length || 0);
       setVeterinarians(data || []);
       setFilteredVeterinarians(data || []);
     } catch (error) {
@@ -46,11 +51,9 @@ export default function SelectVeterinarian() {
   const filterVeterinarians = () => {
     if (searchQuery.trim()) {
       const filtered = veterinarians.filter(vet =>
-        vet.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        vet.business_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         vet.address?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        vet.specialties?.some((specialty: string) => 
-          specialty.toLowerCase().includes(searchQuery.toLowerCase())
-        )
+        vet.description?.toLowerCase().includes(searchQuery.toLowerCase())
       );
       setFilteredVeterinarians(filtered);
     } else {
@@ -60,7 +63,7 @@ export default function SelectVeterinarian() {
 
   const handleSelectVeterinarian = (veterinarian: any) => {
     // Navigate back with selected veterinarian
-    console.log('Navigating back with veterinarian:', veterinarian.name);
+    console.log('Navigating back with veterinarian:', veterinarian.business_name);
     router.push({
       pathname: returnPath,
       params: {
@@ -128,10 +131,11 @@ export default function SelectVeterinarian() {
                   onPress={() => handleSelectVeterinarian(veterinarian)}
                 >
                   <View style={styles.veterinarianHeader}>
-                    <Text style={styles.veterinarianName}>{veterinarian.name}</Text>
-                    {veterinarian.emergency_service && (
-                      <View style={styles.emergencyBadge}>
-                        <Text style={styles.emergencyText}>🚨 Emergencias</Text>
+                    <Text style={styles.veterinarianName}>{veterinarian.business_name}</Text>
+                    {veterinarian.is_verified && (
+                      <View style={styles.verifiedBadge}>
+                        <CheckCircle size={12} color="#10B981" />
+                        <Text style={styles.verifiedText}>Verificado</Text>
                       </View>
                     )}
                   </View>
@@ -150,34 +154,31 @@ export default function SelectVeterinarian() {
                     </View>
                   )}
 
-                  {veterinarian.rating > 0 && (
+                  {veterinarian.rating && veterinarian.rating > 0 && (
                     <View style={styles.ratingContainer}>
                       <View style={styles.starsContainer}>
                         {renderStars(veterinarian.rating)}
                       </View>
                       <Text style={styles.ratingText}>{veterinarian.rating.toFixed(1)}</Text>
+                      <Text style={styles.reviewsText}>({veterinarian.reviews_count || 0} reseñas)</Text>
                     </View>
                   )}
 
-                  {veterinarian.specialties && veterinarian.specialties.length > 0 && (
-                    <View style={styles.specialtiesContainer}>
-                      <Text style={styles.specialtiesTitle}>Especialidades:</Text>
-                      <View style={styles.specialtiesList}>
-                        {veterinarian.specialties.slice(0, 3).map((specialty: string, index: number) => (
-                          <View key={index} style={styles.specialtyBadge}>
-                            <Text style={styles.specialtyText}>{specialty}</Text>
-                          </View>
-                        ))}
-                        {veterinarian.specialties.length > 3 && (
-                          <View style={styles.specialtyBadge}>
-                            <Text style={styles.specialtyText}>
-                              +{veterinarian.specialties.length - 3} más
-                            </Text>
-                          </View>
-                        )}
-                      </View>
+                  {veterinarian.description && (
+                    <View style={styles.descriptionContainer}>
+                      <Text style={styles.descriptionTitle}>Descripción:</Text>
+                      <Text style={styles.descriptionText} numberOfLines={2}>
+                        {veterinarian.description}
+                      </Text>
                     </View>
                   )}
+                  
+                  <View style={styles.businessTypeContainer}>
+                    <View style={styles.businessTypeBadge}>
+                      <Text style={styles.businessTypeIcon}>🏥</Text>
+                      <Text style={styles.businessTypeText}>Veterinaria</Text>
+                    </View>
+                  </View>
                 </TouchableOpacity>
               </Card>
             ))}
@@ -294,15 +295,24 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   emergencyBadge: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: '#D1FAE5',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
   },
-  emergencyText: {
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  verifiedText: {
     fontSize: 12,
     fontFamily: 'Inter-Medium',
-    color: '#991B1B',
+    color: '#065F46',
+    marginLeft: 4,
   },
   addressContainer: {
     flexDirection: 'row',
@@ -340,32 +350,49 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
     color: '#111827',
+    marginRight: 4,
   },
-  specialtiesContainer: {
+  reviewsText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+  },
+  descriptionContainer: {
     backgroundColor: '#F8FAFC',
     padding: 12,
     borderRadius: 8,
-    borderLeftWidth: 3,
-    borderLeftColor: '#3B82F6',
+    marginBottom: 8,
   },
-  specialtiesTitle: {
+  descriptionTitle: {
     fontSize: 13,
     fontFamily: 'Inter-SemiBold',
     color: '#374151',
-    marginBottom: 8,
+    marginBottom: 4,
   },
-  specialtiesList: {
+  descriptionText: {
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    lineHeight: 18,
+  },
+  businessTypeContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
+    justifyContent: 'flex-start',
+    marginTop: 8,
   },
-  specialtyBadge: {
+  businessTypeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#EBF8FF',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
   },
-  specialtyText: {
+  businessTypeIcon: {
+    fontSize: 12,
+    marginRight: 4,
+  },
+  businessTypeText: {
     fontSize: 12,
     fontFamily: 'Inter-Medium',
     color: '#1E40AF',
