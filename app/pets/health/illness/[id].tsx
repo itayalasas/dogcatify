@@ -235,62 +235,43 @@ export default function AddIllness() {
   };
 
   const handleConditionInputChange = (text: string) => {
-    console.log('🔤 Input changed to:', text);
     setIllnessQuery(text);
     setIllnessName(text);
-    
-    // Show modal when there's text
-    if (text.trim().length > 0) {
-      setShowConditionModal(true);
-    } else {
-      setShowConditionModal(false);
-    }
-    
-    console.log('🎯 Setting showConditionModal to:', text.trim().length > 0);
-    console.log('📝 Current text length:', text.trim().length);
   };
 
-  const handleConditionSelect = (condition: any) => {
-    setSelectedCondition(condition);
-    setIllnessName(condition.name);
-    setIllnessQuery(condition.name);
-    setShowConditionModal(false);
-    
-    // Auto-fill notes with condition description if available
-    if (condition.description && !notes.trim()) {
-      setNotes(condition.description);
-    }
-    
-    // Load treatments for this condition
-    loadTreatmentsForCondition(condition.id);
+  const handleSelectCondition = () => {
+    router.push({
+      pathname: '/pets/health/select-condition',
+      params: { 
+        petId: id,
+        species: pet?.species || 'dog',
+        returnPath: `/pets/health/illness/${id}`,
+        currentValue: illnessName
+      }
+    });
   };
 
-  const handleTreatmentSelect = (treatment: any) => {
-    setTreatment(treatment.name);
-    setTreatmentQuery(treatment.name);
-    setShowTreatmentModal(false);
-    
-    // Auto-fill additional treatment info in notes
-    let treatmentInfo = '';
-    if (treatment.dosage_info) {
-      treatmentInfo += `Dosificación: ${treatment.dosage_info}\n`;
-    }
-    if (treatment.duration_info) {
-      treatmentInfo += `Duración: ${treatment.duration_info}\n`;
-    }
-    if (treatment.side_effects && treatment.side_effects.length > 0) {
-      treatmentInfo += `Efectos secundarios: ${treatment.side_effects.join(', ')}\n`;
-    }
-    
-    if (treatmentInfo) {
-      setNotes(prev => prev ? `${prev}\n\n${treatmentInfo}` : treatmentInfo);
-    }
+  const handleSelectTreatment = () => {
+    router.push({
+      pathname: '/pets/health/select-treatment',
+      params: { 
+        petId: id,
+        conditionId: selectedCondition?.id || '',
+        returnPath: `/pets/health/illness/${id}`,
+        currentValue: treatment
+      }
+    });
   };
 
-  const handleClinicSelect = (clinic: any) => {
-    setVeterinarian(clinic.name);
-    setVeterinarianQuery(clinic.name);
-    setShowClinicModal(false);
+  const handleSelectVeterinarian = () => {
+    router.push({
+      pathname: '/pets/health/select-veterinarian',
+      params: { 
+        petId: id,
+        returnPath: `/pets/health/illness/${id}`,
+        currentValue: veterinarian
+      }
+    });
   };
 
   const loadTreatmentsForCondition = async (conditionId: string) => {
@@ -539,171 +520,6 @@ export default function AddIllness() {
             numberOfLines={3}
           />
 
-          <Button
-            title={isEditing ? "Actualizar Enfermedad" : "Guardar Enfermedad"}
-            onPress={handleSubmit}
-            loading={loading}
-            size="large"
-          />
-        </Card>
-      </ScrollView>
-
-      {/* Conditions Modal */}
-      <Modal
-        visible={showConditionModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowConditionModal(false)}
-      >
-        <TouchableOpacity 
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowConditionModal(false)}
-        >
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-              💡 Enfermedades para {pet?.species === 'dog' ? 'perros' : 'gatos'}
-            </Text>
-            
-            <ScrollView style={styles.modalList} showsVerticalScrollIndicator={false}>
-              {getFilteredConditionsBySpecies().map((condition, index) => (
-                <TouchableOpacity
-                  key={condition.id || `condition-${index}`}
-                  style={styles.modalItem}
-                  onPress={() => handleConditionSelect(condition)}
-                >
-                  <Text style={styles.modalItemTitle}>{condition.name}</Text>
-                  <Text style={styles.modalItemCategory}>
-                    📂 {condition.category || 'Sin categoría'}
-                  </Text>
-                  {condition.description && (
-                    <Text style={styles.modalItemDescription} numberOfLines={2}>
-                      {condition.description}
-                    </Text>
-                  )}
-                  {condition.is_chronic && (
-                    <View style={styles.chronicBadge}>
-                      <Text style={styles.chronicBadgeText}>⏰ Crónica</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            
-            <TouchableOpacity 
-              style={styles.modalCloseButton}
-              onPress={() => setShowConditionModal(false)}
-            >
-              <Text style={styles.modalCloseText}>Cerrar</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* Treatments Modal */}
-      <Modal
-        visible={showTreatmentModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowTreatmentModal(false)}
-      >
-        <TouchableOpacity 
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowTreatmentModal(false)}
-        >
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>💊 Tratamientos sugeridos</Text>
-            
-            <ScrollView style={styles.modalList} showsVerticalScrollIndicator={false}>
-              {filteredTreatments.map((treatment, index) => (
-                <TouchableOpacity
-                  key={treatment.id || `treatment-${index}`}
-                  style={styles.modalItem}
-                  onPress={() => handleTreatmentSelect(treatment)}
-                >
-                  <Text style={styles.modalItemTitle}>{treatment.name}</Text>
-                  <Text style={styles.modalItemCategory}>
-                    💊 {treatment.type || 'Sin tipo'}
-                  </Text>
-                  {treatment.description && (
-                    <Text style={styles.modalItemDescription} numberOfLines={2}>
-                      {treatment.description}
-                    </Text>
-                  )}
-                  <View style={styles.treatmentInfo}>
-                    {treatment.is_prescription_required && (
-                      <View style={styles.prescriptionBadge}>
-                        <Text style={styles.prescriptionBadgeText}>📋 Receta</Text>
-                      </View>
-                    )}
-                    {treatment.cost_range && (
-                      <Text style={styles.costRange}>💰 {treatment.cost_range}</Text>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            
-            <TouchableOpacity 
-              style={styles.modalCloseButton}
-              onPress={() => setShowTreatmentModal(false)}
-            >
-              <Text style={styles.modalCloseText}>Cerrar</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* Clinics Modal */}
-      <Modal
-        visible={showClinicModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowClinicModal(false)}
-      >
-        <TouchableOpacity 
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowClinicModal(false)}
-        >
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>🏥 Clínicas veterinarias</Text>
-            
-            <ScrollView style={styles.modalList} showsVerticalScrollIndicator={false}>
-              {filteredClinics.map((clinic, index) => (
-                <TouchableOpacity
-                  key={clinic.id || `clinic-${index}`}
-                  style={styles.modalItem}
-                  onPress={() => handleClinicSelect(clinic)}
-                >
-                  <Text style={styles.modalItemTitle}>{clinic.name}</Text>
-                  {clinic.specialties && clinic.specialties.length > 0 && (
-                    <Text style={styles.modalItemCategory}>
-                      🏥 {clinic.specialties.slice(0, 2).join(', ')}
-                    </Text>
-                  )}
-                  {clinic.emergency_service && (
-                    <View style={styles.emergencyBadge}>
-                      <Text style={styles.emergencyBadgeText}>🚨 Emergencias</Text>
-                    </View>
-                  )}
-                  {clinic.rating > 0 && (
-                    <Text style={styles.clinicRating}>⭐ {clinic.rating.toFixed(1)}</Text>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            
-            <TouchableOpacity 
-              style={styles.modalCloseButton}
-              onPress={() => setShowClinicModal(false)}
-            >
-              <Text style={styles.modalCloseText}>Cerrar</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
     </SafeAreaView>
   );
 }

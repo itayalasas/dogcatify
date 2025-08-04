@@ -43,6 +43,9 @@ export default function RootLayout() {
                 <Stack.Screen name="pets/health/allergies/[id]" />
                 <Stack.Screen name="pets/health/deworming/[id]" />
                 <Stack.Screen name="pets/health/weight/[id]" />
+                <Stack.Screen name="pets/health/select-condition" />
+                <Stack.Screen name="pets/health/select-treatment" />
+                <Stack.Screen name="pets/health/select-veterinarian" />
                 <Stack.Screen name="services/[id]" />
                 <Stack.Screen name="services/partner/[id]" />
                 <Stack.Screen name="services/shelter/[id]" />
