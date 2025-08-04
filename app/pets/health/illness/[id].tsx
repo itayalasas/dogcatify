@@ -233,6 +233,19 @@ export default function AddIllness() {
     }
   };
 
+  const handleConditionInputChange = (text: string) => {
+    console.log('🔤 Input changed to:', text);
+    setIllnessQuery(text);
+    setIllnessName(text);
+    
+    // Force show suggestions if there's text and conditions available
+    if (text.trim() && medicalConditions.length > 0) {
+      setShowConditionSuggestions(true);
+    } else {
+      setShowConditionSuggestions(false);
+    }
+  };
+
   const handleConditionSelect = (condition: any) => {
     setSelectedCondition(condition);
     setIllnessName(condition.name);
