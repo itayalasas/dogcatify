@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, TextInput, Modal } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Calendar, Heart, Search, ChevronDown } from 'lucide-react-native';
 import { Input } from '../../../../components/ui/Input';
@@ -41,6 +41,9 @@ export default function AddIllness() {
   const [showConditionSuggestions, setShowConditionSuggestions] = useState(false);
   const [showTreatmentSuggestions, setShowTreatmentSuggestions] = useState(false);
   const [showClinicSuggestions, setShowClinicSuggestions] = useState(false);
+  const [showConditionModal, setShowConditionModal] = useState(false);
+  const [showTreatmentModal, setShowTreatmentModal] = useState(false);
+  const [showClinicModal, setShowClinicModal] = useState(false);
   const [selectedCondition, setSelectedCondition] = useState<any>(null);
   
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -236,10 +239,14 @@ export default function AddIllness() {
     setIllnessQuery(text);
     setIllnessName(text);
     
-    // Always show suggestions when there's text
-    setShowConditionSuggestions(text.trim().length > 0);
+    // Show modal when there's text
+    if (text.trim().length > 0) {
+      setShowConditionModal(true);
+    } else {
+      setShowConditionModal(false);
+    }
     
-    console.log('🎯 Setting showConditionSuggestions to:', text.trim().length > 0);
+    console.log('🎯 Setting showConditionModal to:', text.trim().length > 0);
     console.log('📝 Current text length:', text.trim().length);
   };
 
@@ -247,7 +254,7 @@ export default function AddIllness() {
     setSelectedCondition(condition);
     setIllnessName(condition.name);
     setIllnessQuery(condition.name);
-    setShowConditionSuggestions(false);
+    setShowConditionModal(false);
     
     // Auto-fill notes with condition description if available
     if (condition.description && !notes.trim()) {
@@ -261,7 +268,7 @@ export default function AddIllness() {
   const handleTreatmentSelect = (treatment: any) => {
     setTreatment(treatment.name);
     setTreatmentQuery(treatment.name);
-    setShowTreatmentSuggestions(false);
+    setShowTreatmentModal(false);
     
     // Auto-fill additional treatment info in notes
     let treatmentInfo = '';
@@ -283,7 +290,7 @@ export default function AddIllness() {
   const handleClinicSelect = (clinic: any) => {
     setVeterinarian(clinic.name);
     setVeterinarianQuery(clinic.name);
-    setShowClinicSuggestions(false);
+    setShowClinicModal(false);
   };
 
   const loadTreatmentsForCondition = async (conditionId: string) => {
@@ -435,67 +442,14 @@ export default function AddIllness() {
                 }
                 value={illnessQuery}
                 onChangeText={handleConditionInputChange}
-                onFocus={() => {
-                  console.log('🎯 Input focused, current query:', illnessQuery);
-                  console.log('🎯 Should show suggestions:', illnessQuery.trim().length > 0);
-                  if (illnessQuery.trim().length > 0) {
-                    setShowConditionSuggestions(true);
-                  }
-                }}
               />
+              <TouchableOpacity 
+                style={styles.dropdownButton}
+                onPress={() => setShowConditionModal(true)}
+              >
+                <ChevronDown size={20} color="#6B7280" />
+              </TouchableOpacity>
             </View>
-            
-            {console.log('🔍 Render check - showConditionSuggestions:', showConditionSuggestions)}
-            {console.log('🔍 Render check - filtered conditions count:', getFilteredConditionsBySpecies().length)}
-            
-            {showConditionSuggestions && getFilteredConditionsBySpecies().length > 0 && (
-              <View style={styles.suggestionsContainer}>
-                <Text style={styles.suggestionsHeader}>
-                  💡 Enfermedades sugeridas para {pet?.species === 'dog' ? 'perros' : 'gatos'}:
-                </Text>
-                {(() => {
-                  const conditions = getFilteredConditionsBySpecies().slice(0, 6);
-                  console.log('🎨 About to render conditions:', conditions.length, conditions.map(c => c.name));
-                  return conditions.map((condition, index) => {
-                    console.log('🎨 Rendering condition:', condition.name, 'ID:', condition.id);
-                    return (
-                      <TouchableOpacity
-                        key={condition.id || `condition-${index}`}
-                        style={styles.suggestionItem}
-                        onPress={() => {
-                          console.log('🎯 Condition selected:', condition.name);
-                          handleConditionSelect(condition);
-                        }}
-                      >
-                        <View style={styles.suggestionContent}>
-                          <Text style={styles.suggestionTitle}>{condition.name}</Text>
-                          <Text style={styles.suggestionCategory}>
-                            📂 {condition.category || 'Sin categoría'}
-                          </Text>
-                          {condition.description && (
-                            <Text style={styles.suggestionDescription} numberOfLines={2}>
-                              {condition.description}
-                            </Text>
-                          )}
-                          {condition.is_chronic && (
-                            <View style={styles.chronicBadge}>
-                              <Text style={styles.chronicBadgeText}>⏰ Crónica</Text>
-                            </View>
-                          )}
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  });
-                })()}
-                {getFilteredConditionsBySpecies().length > 6 && (
-                  <View style={styles.moreResultsContainer}>
-                    <Text style={styles.moreResultsText}>
-                      +{getFilteredConditionsBySpecies().length - 6} resultados más...
-                    </Text>
-                  </View>
-                )}
-              </View>
-            )}
           </View>
 
           {/* Diagnosis Date */}
@@ -532,63 +486,20 @@ export default function AddIllness() {
                 onChangeText={(text) => {
                   setTreatmentQuery(text);
                   setTreatment(text);
+                  if (text.trim().length > 0) {
+                    setShowTreatmentModal(true);
+                  } else {
+                    setShowTreatmentModal(false);
+                  }
                 }}
               />
+              <TouchableOpacity 
+                style={styles.dropdownButton}
+                onPress={() => setShowTreatmentModal(true)}
+              >
+                <ChevronDown size={20} color="#6B7280" />
+              </TouchableOpacity>
             </View>
-            
-            {showTreatmentSuggestions && filteredTreatments.length > 0 && (
-              <View style={styles.suggestionsContainer}>
-                <Text style={styles.suggestionsHeader}>
-                  💊 Tratamientos sugeridos:
-                </Text>
-                {(() => {
-                  const treatments = filteredTreatments.slice(0, 5);
-                  console.log('🎨 About to render treatments:', treatments.length, treatments.map(t => t.name));
-                  return treatments.map((treatment, index) => {
-                    console.log('🎨 Rendering treatment:', treatment.name, 'ID:', treatment.id);
-                    return (
-                      <TouchableOpacity
-                        key={treatment.id || `treatment-${index}`}
-                        style={styles.suggestionItem}
-                        onPress={() => {
-                          console.log('🎯 Treatment selected:', treatment.name);
-                          handleTreatmentSelect(treatment);
-                        }}
-                      >
-                        <View style={styles.suggestionContent}>
-                          <Text style={styles.suggestionTitle}>{treatment.name}</Text>
-                          <Text style={styles.suggestionCategory}>
-                            💊 {treatment.type || 'Sin tipo'}
-                          </Text>
-                          {treatment.description && (
-                            <Text style={styles.suggestionDescription} numberOfLines={2}>
-                              {treatment.description}
-                            </Text>
-                          )}
-                          <View style={styles.treatmentInfo}>
-                            {treatment.is_prescription_required && (
-                              <View style={styles.prescriptionBadge}>
-                                <Text style={styles.prescriptionBadgeText}>📋 Receta</Text>
-                              </View>
-                            )}
-                            {treatment.cost_range && (
-                              <Text style={styles.costRange}>💰 {treatment.cost_range}</Text>
-                            )}
-                          </View>
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  });
-                })()}
-                {filteredTreatments.length > 5 && (
-                  <View style={styles.moreResultsContainer}>
-                    <Text style={styles.moreResultsText}>
-                      +{filteredTreatments.length - 5} tratamientos más...
-                    </Text>
-                  </View>
-                )}
-              </View>
-            )}
           </View>
 
           {/* Veterinarian with Autocomplete */}
@@ -603,58 +514,20 @@ export default function AddIllness() {
                 onChangeText={(text) => {
                   setVeterinarianQuery(text);
                   setVeterinarian(text);
+                  if (text.trim().length > 0) {
+                    setShowClinicModal(true);
+                  } else {
+                    setShowClinicModal(false);
+                  }
                 }}
               />
+              <TouchableOpacity 
+                style={styles.dropdownButton}
+                onPress={() => setShowClinicModal(true)}
+              >
+                <ChevronDown size={20} color="#6B7280" />
+              </TouchableOpacity>
             </View>
-            
-            {showClinicSuggestions && filteredClinics.length > 0 && (
-              <View style={styles.suggestionsContainer}>
-                <Text style={styles.suggestionsHeader}>
-                  🏥 Clínicas veterinarias sugeridas:
-                </Text>
-                {(() => {
-                  const clinics = filteredClinics.slice(0, 4);
-                  console.log('🎨 About to render clinics:', clinics.length, clinics.map(c => c.name));
-                  return clinics.map((clinic, index) => {
-                    console.log('🎨 Rendering clinic:', clinic.name, 'ID:', clinic.id);
-                    return (
-                      <TouchableOpacity
-                        key={clinic.id || `clinic-${index}`}
-                        style={styles.suggestionItem}
-                        onPress={() => {
-                          console.log('🎯 Clinic selected:', clinic.name);
-                          handleClinicSelect(clinic);
-                        }}
-                      >
-                        <View style={styles.suggestionContent}>
-                          <Text style={styles.suggestionTitle}>{clinic.name}</Text>
-                          {clinic.specialties && clinic.specialties.length > 0 && (
-                            <Text style={styles.suggestionCategory}>
-                              🏥 {clinic.specialties.slice(0, 2).join(', ')}
-                            </Text>
-                          )}
-                          {clinic.emergency_service && (
-                            <View style={styles.emergencyBadge}>
-                              <Text style={styles.emergencyBadgeText}>🚨 Emergencias</Text>
-                            </View>
-                          )}
-                          {clinic.rating > 0 && (
-                            <Text style={styles.clinicRating}>⭐ {clinic.rating.toFixed(1)}</Text>
-                          )}
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  });
-                })()}
-                {filteredClinics.length > 4 && (
-                  <View style={styles.moreResultsContainer}>
-                    <Text style={styles.moreResultsText}>
-                      +{filteredClinics.length - 4} clínicas más...
-                    </Text>
-                  </View>
-                )}
-              </View>
-            )}
           </View>
 
           <Input
@@ -674,6 +547,163 @@ export default function AddIllness() {
           />
         </Card>
       </ScrollView>
+
+      {/* Conditions Modal */}
+      <Modal
+        visible={showConditionModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowConditionModal(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowConditionModal(false)}
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>
+              💡 Enfermedades para {pet?.species === 'dog' ? 'perros' : 'gatos'}
+            </Text>
+            
+            <ScrollView style={styles.modalList} showsVerticalScrollIndicator={false}>
+              {getFilteredConditionsBySpecies().map((condition, index) => (
+                <TouchableOpacity
+                  key={condition.id || `condition-${index}`}
+                  style={styles.modalItem}
+                  onPress={() => handleConditionSelect(condition)}
+                >
+                  <Text style={styles.modalItemTitle}>{condition.name}</Text>
+                  <Text style={styles.modalItemCategory}>
+                    📂 {condition.category || 'Sin categoría'}
+                  </Text>
+                  {condition.description && (
+                    <Text style={styles.modalItemDescription} numberOfLines={2}>
+                      {condition.description}
+                    </Text>
+                  )}
+                  {condition.is_chronic && (
+                    <View style={styles.chronicBadge}>
+                      <Text style={styles.chronicBadgeText}>⏰ Crónica</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            
+            <TouchableOpacity 
+              style={styles.modalCloseButton}
+              onPress={() => setShowConditionModal(false)}
+            >
+              <Text style={styles.modalCloseText}>Cerrar</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Treatments Modal */}
+      <Modal
+        visible={showTreatmentModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowTreatmentModal(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowTreatmentModal(false)}
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>💊 Tratamientos sugeridos</Text>
+            
+            <ScrollView style={styles.modalList} showsVerticalScrollIndicator={false}>
+              {filteredTreatments.map((treatment, index) => (
+                <TouchableOpacity
+                  key={treatment.id || `treatment-${index}`}
+                  style={styles.modalItem}
+                  onPress={() => handleTreatmentSelect(treatment)}
+                >
+                  <Text style={styles.modalItemTitle}>{treatment.name}</Text>
+                  <Text style={styles.modalItemCategory}>
+                    💊 {treatment.type || 'Sin tipo'}
+                  </Text>
+                  {treatment.description && (
+                    <Text style={styles.modalItemDescription} numberOfLines={2}>
+                      {treatment.description}
+                    </Text>
+                  )}
+                  <View style={styles.treatmentInfo}>
+                    {treatment.is_prescription_required && (
+                      <View style={styles.prescriptionBadge}>
+                        <Text style={styles.prescriptionBadgeText}>📋 Receta</Text>
+                      </View>
+                    )}
+                    {treatment.cost_range && (
+                      <Text style={styles.costRange}>💰 {treatment.cost_range}</Text>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            
+            <TouchableOpacity 
+              style={styles.modalCloseButton}
+              onPress={() => setShowTreatmentModal(false)}
+            >
+              <Text style={styles.modalCloseText}>Cerrar</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Clinics Modal */}
+      <Modal
+        visible={showClinicModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowClinicModal(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowClinicModal(false)}
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>🏥 Clínicas veterinarias</Text>
+            
+            <ScrollView style={styles.modalList} showsVerticalScrollIndicator={false}>
+              {filteredClinics.map((clinic, index) => (
+                <TouchableOpacity
+                  key={clinic.id || `clinic-${index}`}
+                  style={styles.modalItem}
+                  onPress={() => handleClinicSelect(clinic)}
+                >
+                  <Text style={styles.modalItemTitle}>{clinic.name}</Text>
+                  {clinic.specialties && clinic.specialties.length > 0 && (
+                    <Text style={styles.modalItemCategory}>
+                      🏥 {clinic.specialties.slice(0, 2).join(', ')}
+                    </Text>
+                  )}
+                  {clinic.emergency_service && (
+                    <View style={styles.emergencyBadge}>
+                      <Text style={styles.emergencyBadgeText}>🚨 Emergencias</Text>
+                    </View>
+                  )}
+                  {clinic.rating > 0 && (
+                    <Text style={styles.clinicRating}>⭐ {clinic.rating.toFixed(1)}</Text>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            
+            <TouchableOpacity 
+              style={styles.modalCloseButton}
+              onPress={() => setShowClinicModal(false)}
+            >
+              <Text style={styles.modalCloseText}>Cerrar</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -738,8 +768,6 @@ const styles = StyleSheet.create({
   },
   inputGroup: {
     marginBottom: 24,
-    position: 'relative', 
-    zIndex: 9999,
   },
   inputLabel: {
     fontSize: 15,
@@ -769,73 +797,81 @@ const styles = StyleSheet.create({
     left: 12,
     top: 12,
   },
-  suggestionsContainer: {
+  dropdownButton: {
     position: 'absolute',
-    top: '100%',
-    left: 0,
-    right: 0,
-    marginTop: 4,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 3,
-    borderColor: '#374151',
-    borderRadius: 12,
-    maxHeight: 250,
-    zIndex: 99999,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.5,
-    shadowRadius: 15,
-    elevation: 25,
-    overflow: 'hidden',
+    right: 12,
+    top: 12,
+    padding: 4,
   },
-  suggestionsHeader: {
+  
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    width: '90%',
+    maxHeight: '70%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  modalTitle: {
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
     color: '#111827',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#E5E7EB',
-    borderBottomWidth: 2,
-    borderBottomColor: '#9CA3AF',
+    marginBottom: 16,
+    textAlign: 'center',
   },
-  suggestionItem: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 2,
-    borderBottomColor: '#E5E7EB',
-    minHeight: 70,
-    justifyContent: 'center',
+  modalList: {
+    maxHeight: 400,
   },
-  suggestionContent: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
+  modalItem: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
-  suggestionTitle: {
+  modalItemTitle: {
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
     color: '#111827',
     marginBottom: 4,
-    lineHeight: 20,
-    backgroundColor: '#FFFFFF',
   },
-  suggestionCategory: {
+  modalItemCategory: {
     fontSize: 12,
     fontFamily: 'Inter-Medium',
     color: '#2563EB',
-    textTransform: 'capitalize',
     marginBottom: 4,
-    lineHeight: 16,
-    backgroundColor: '#FFFFFF',
   },
-  suggestionDescription: {
+  modalItemDescription: {
     fontSize: 13,
     fontFamily: 'Inter-Regular',
-    color: '#374151',
+    color: '#6B7280',
     lineHeight: 18,
     marginBottom: 8,
-    backgroundColor: '#FFFFFF',
   },
+  modalCloseButton: {
+    backgroundColor: '#3B82F6',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  modalCloseText: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#FFFFFF',
+  },
+  
+  // Badge styles
   chronicBadge: {
     backgroundColor: '#FEF3C7',
     paddingHorizontal: 8,
@@ -891,21 +927,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
     color: '#F59E0B',
     marginTop: 6,
-  },
-  moreResultsContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#F8FAFC',
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    alignItems: 'center',
-  },
-  moreResultsText: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-    color: '#6B7280',
-    fontStyle: 'italic',
-  },
   dateInputContainer: {
     marginBottom: 14,
   },
