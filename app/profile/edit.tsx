@@ -500,9 +500,13 @@ export default function EditProfile() {
           console.log('Image uploaded successfully:', photoURL);
         } catch (uploadError) {
           console.error('Error uploading image:', uploadError);
+          setLoading(false);
           Alert.alert('Error', 'No se pudo subir la imagen. ¿Deseas continuar sin cambiar la foto?', [
-            { text: 'Cancelar', style: 'cancel', onPress: () => setLoading(false) },
-            { text: 'Continuar', onPress: () => proceedWithoutImageUpload() }
+            { text: 'Cancelar', style: 'cancel' },
+            { text: 'Continuar', onPress: () => {
+              setLoading(true);
+              proceedWithoutImageUpload();
+            }}
           ]);
           return;
         }
@@ -511,8 +515,10 @@ export default function EditProfile() {
       await saveProfileData(photoURL);
     } catch (error) {
       console.error('Error in handleSaveProfile:', error);
-      setLoading(false);
       Alert.alert('Error', `No se pudo actualizar el perfil: ${error.message || error}`);
+    } finally {
+      // ALWAYS clear loading state
+      setLoading(false);
     }
   };
 
@@ -521,8 +527,9 @@ export default function EditProfile() {
       await saveProfileData(profileImage);
     } catch (error) {
       console.error('Error saving profile without image:', error);
-      setLoading(false);
       Alert.alert('Error', `No se pudo actualizar el perfil: ${error.message || error}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -563,42 +570,16 @@ export default function EditProfile() {
       }
       console.log('Supabase profile updated successfully');
 
-      console.log('Updating auth user metadata...');
-      // Update auth user metadata
-      try {
-        const { error: authError } = await supabaseClient.auth.updateUser({
-          data: {
-            display_name: displayName.trim(),
-            photo_url: photoURL || null,
-          }
-        });
-        
-        if (authError) {
-          console.error('Auth user update error:', authError);
-          // Don't throw error here as profile was already updated
-        } else {
-          console.log('Auth user updated successfully');
-        }
-      } catch (authError) {
-        console.error('Auth update failed:', authError);
-        // Continue anyway as main profile was updated
-      }
 
       console.log('Profile save completed successfully');
       
-      // Clear loading state FIRST
-      setLoading(false);
-      
-      // Small delay to ensure state update, then show success and navigate
-      setTimeout(() => {
-        Alert.alert('Éxito', 'Perfil actualizado correctamente', [
-          { text: 'OK', onPress: () => router.replace('/(tabs)/profile') }
-        ]);
-      }, 100);
+      // Success - navigate immediately
+      Alert.alert('Éxito', 'Perfil actualizado correctamente', [
+        { text: 'OK', onPress: () => router.replace('/(tabs)/profile') }
+      ]);
       
     } catch (error) {
       console.error('Error in saveProfileData:', error);
-      setLoading(false);
       throw error;
     }
   };
