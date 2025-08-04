@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, TextInput } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Calendar, Heart } from 'lucide-react-native';
+import { ArrowLeft, Calendar, Heart, Search, ChevronDown } from 'lucide-react-native';
 import { Input } from '../../../../components/ui/Input';
 import { Button } from '../../../../components/ui/Button';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -13,24 +13,157 @@ export default function AddIllness() {
   const { id, recordId, refresh } = useLocalSearchParams<{ id: string; recordId?: string; refresh?: string }>();
   const { currentUser } = useAuth();
   
+  // Pet data
+  const [pet, setPet] = useState<any>(null);
+  
+  // Form data
   const [illnessName, setIllnessName] = useState('');
+  const [illnessQuery, setIllnessQuery] = useState('');
   const [diagnosisDate, setDiagnosisDate] = useState(new Date());
   const [treatment, setTreatment] = useState('');
+  const [treatmentQuery, setTreatmentQuery] = useState('');
   const [veterinarian, setVeterinarian] = useState('');
+  const [veterinarianQuery, setVeterinarianQuery] = useState('');
   const [status, setStatus] = useState('active');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   
+  // Database data
+  const [medicalConditions, setMedicalConditions] = useState<any[]>([]);
+  const [filteredConditions, setFilteredConditions] = useState<any[]>([]);
+  const [treatments, setTreatments] = useState<any[]>([]);
+  const [filteredTreatments, setFilteredTreatments] = useState<any[]>([]);
+  const [veterinaryClinics, setVeterinaryClinics] = useState<any[]>([]);
+  const [filteredClinics, setFilteredClinics] = useState<any[]>([]);
+  
+  // UI state
+  const [showConditionSuggestions, setShowConditionSuggestions] = useState(false);
+  const [showTreatmentSuggestions, setShowTreatmentSuggestions] = useState(false);
+  const [showClinicSuggestions, setShowClinicSuggestions] = useState(false);
+  const [selectedCondition, setSelectedCondition] = useState<any>(null);
+  
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   useEffect(() => {
+    fetchPetData();
+    fetchMedicalData();
+    
     if (recordId) {
       setIsEditing(true);
       fetchIllnessDetails();
     }
   }, [recordId]);
 
+  useEffect(() => {
+    // Filter conditions based on search query
+    if (illnessQuery.trim()) {
+      const filtered = medicalConditions.filter(condition =>
+        condition.name.toLowerCase().includes(illnessQuery.toLowerCase()) ||
+        condition.description?.toLowerCase().includes(illnessQuery.toLowerCase())
+      );
+      setFilteredConditions(filtered);
+      setShowConditionSuggestions(true);
+    } else {
+      setFilteredConditions(medicalConditions);
+      setShowConditionSuggestions(false);
+    }
+  }, [illnessQuery, medicalConditions]);
+
+  useEffect(() => {
+    // Filter treatments based on search query and selected condition
+    if (treatmentQuery.trim()) {
+      let filtered = treatments;
+      
+      // If a condition is selected, filter treatments for that condition
+      if (selectedCondition) {
+        filtered = treatments.filter(treatment => 
+          treatment.condition_id === selectedCondition.id
+        );
+      }
+      
+      // Then filter by search query
+      filtered = filtered.filter(treatment =>
+        treatment.name.toLowerCase().includes(treatmentQuery.toLowerCase()) ||
+        treatment.description?.toLowerCase().includes(treatmentQuery.toLowerCase())
+      );
+      
+      setFilteredTreatments(filtered);
+      setShowTreatmentSuggestions(true);
+    } else {
+      setFilteredTreatments(treatments);
+      setShowTreatmentSuggestions(false);
+    }
+  }, [treatmentQuery, treatments, selectedCondition]);
+
+  useEffect(() => {
+    // Filter veterinary clinics based on search query
+    if (veterinarianQuery.trim()) {
+      const filtered = veterinaryClinics.filter(clinic =>
+        clinic.name.toLowerCase().includes(veterinarianQuery.toLowerCase()) ||
+        clinic.specialties?.some((specialty: string) => 
+          specialty.toLowerCase().includes(veterinarianQuery.toLowerCase())
+        )
+      );
+      setFilteredClinics(filtered);
+      setShowClinicSuggestions(true);
+    } else {
+      setFilteredClinics(veterinaryClinics);
+      setShowClinicSuggestions(false);
+    }
+  }, [veterinarianQuery, veterinaryClinics]);
+
+  const fetchPetData = async () => {
+    try {
+      const { data, error } = await supabaseClient
+        .from('pets')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (error) throw error;
+      setPet(data);
+    } catch (error) {
+      console.error('Error fetching pet data:', error);
+    }
+  };
+
+  const fetchMedicalData = async () => {
+    try {
+      // Fetch medical conditions
+      const { data: conditionsData, error: conditionsError } = await supabaseClient
+        .from('medical_conditions')
+        .select('*')
+        .eq('is_active', true)
+        .order('name', { ascending: true });
+      
+      if (conditionsError) throw conditionsError;
+      setMedicalConditions(conditionsData || []);
+      
+      // Fetch treatments
+      const { data: treatmentsData, error: treatmentsError } = await supabaseClient
+        .from('medical_treatments')
+        .select('*')
+        .eq('is_active', true)
+        .order('name', { ascending: true });
+      
+      if (treatmentsError) throw treatmentsError;
+      setTreatments(treatmentsData || []);
+      
+      // Fetch veterinary clinics
+      const { data: clinicsData, error: clinicsError } = await supabaseClient
+        .from('veterinary_clinics')
+        .select('*')
+        .eq('is_active', true)
+        .order('name', { ascending: true });
+      
+      if (clinicsError) throw clinicsError;
+      setVeterinaryClinics(clinicsData || []);
+      
+    } catch (error) {
+      console.error('Error fetching medical data:', error);
+    }
+  };
   const fetchIllnessDetails = async () => {
     try {
       const { data, error } = await supabaseClient
@@ -43,6 +176,7 @@ export default function AddIllness() {
       
       if (data) {
         setIllnessName(data.name || '');
+        setIllnessQuery(data.name || '');
         
         // Parse diagnosis date
         if (data.diagnosis_date) {
@@ -53,7 +187,9 @@ export default function AddIllness() {
         }
         
         setTreatment(data.treatment || '');
+        setTreatmentQuery(data.treatment || '');
         setVeterinarian(data.veterinarian || '');
+        setVeterinarianQuery(data.veterinarian || '');
         setStatus(data.status || 'active');
         setNotes(data.notes || '');
       }
@@ -63,6 +199,75 @@ export default function AddIllness() {
     }
   };
 
+  const handleConditionSelect = (condition: any) => {
+    setSelectedCondition(condition);
+    setIllnessName(condition.name);
+    setIllnessQuery(condition.name);
+    setShowConditionSuggestions(false);
+    
+    // Auto-fill notes with condition description if available
+    if (condition.description && !notes.trim()) {
+      setNotes(condition.description);
+    }
+    
+    // Load treatments for this condition
+    loadTreatmentsForCondition(condition.id);
+  };
+
+  const handleTreatmentSelect = (treatment: any) => {
+    setTreatment(treatment.name);
+    setTreatmentQuery(treatment.name);
+    setShowTreatmentSuggestions(false);
+    
+    // Auto-fill additional treatment info in notes
+    let treatmentInfo = '';
+    if (treatment.dosage_info) {
+      treatmentInfo += `Dosificación: ${treatment.dosage_info}\n`;
+    }
+    if (treatment.duration_info) {
+      treatmentInfo += `Duración: ${treatment.duration_info}\n`;
+    }
+    if (treatment.side_effects && treatment.side_effects.length > 0) {
+      treatmentInfo += `Efectos secundarios: ${treatment.side_effects.join(', ')}\n`;
+    }
+    
+    if (treatmentInfo) {
+      setNotes(prev => prev ? `${prev}\n\n${treatmentInfo}` : treatmentInfo);
+    }
+  };
+
+  const handleClinicSelect = (clinic: any) => {
+    setVeterinarian(clinic.name);
+    setVeterinarianQuery(clinic.name);
+    setShowClinicSuggestions(false);
+  };
+
+  const loadTreatmentsForCondition = async (conditionId: string) => {
+    try {
+      const { data, error } = await supabaseClient
+        .from('medical_treatments')
+        .select('*')
+        .eq('condition_id', conditionId)
+        .eq('is_active', true)
+        .order('name', { ascending: true });
+      
+      if (error) throw error;
+      
+      // Update treatments list with condition-specific treatments
+      const conditionTreatments = data || [];
+      setFilteredTreatments(conditionTreatments);
+    } catch (error) {
+      console.error('Error loading treatments for condition:', error);
+    }
+  };
+
+  const getFilteredConditionsBySpecies = () => {
+    if (!pet) return filteredConditions;
+    
+    return filteredConditions.filter(condition => 
+      condition.species === pet.species || condition.species === 'both'
+    );
+  };
   const formatDate = (date: Date) => {
     return date.toLocaleDateString();
   };
@@ -75,7 +280,7 @@ export default function AddIllness() {
   };
 
   const handleSubmit = async () => {
-    if (!illnessName.trim() || !diagnosisDate) {
+    if (!illnessName.trim()) {
       Alert.alert('Error', 'Por favor completa los campos obligatorios');
       return;
     }
@@ -154,13 +359,64 @@ export default function AddIllness() {
             <Heart size={40} color="#EF4444" />
           </View>
 
+          {pet && (
+            <View style={styles.petInfoContainer}>
+              <Text style={styles.petInfoText}>
+                {pet.species === 'dog' ? '🐕' : '🐱'} {pet.name} - {pet.breed}
+              </Text>
+              <Text style={styles.petInfoSubtext}>
+                Enfermedades específicas para {pet.species === 'dog' ? 'perros' : 'gatos'}
+              </Text>
+            </View>
+          )}
+
           {/* Illness Name */}
-          <Input
-            label="Nombre de la enfermedad *"
-            placeholder="Ej: Otitis, Dermatitis, Gastritis..."
-            value={illnessName}
-            onChangeText={setIllnessName}
-          />
+          <View style={styles.autocompleteContainer}>
+            <Text style={styles.inputLabel}>Nombre de la enfermedad *</Text>
+            <View style={styles.searchInputContainer}>
+              <Search size={20} color="#6B7280" style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder={pet?.species === 'dog' ? 
+                  "Ej: Parvovirus, Otitis, Dermatitis..." : 
+                  "Ej: Rinotraqueítis, Cistitis, Calicivirus..."
+                }
+                value={illnessQuery}
+                onChangeText={(text) => {
+                  setIllnessQuery(text);
+                  setIllnessName(text);
+                }}
+                onFocus={() => setShowConditionSuggestions(true)}
+              />
+            </View>
+            
+            {showConditionSuggestions && getFilteredConditionsBySpecies().length > 0 && (
+              <View style={styles.suggestionsContainer}>
+                {getFilteredConditionsBySpecies().slice(0, 6).map((condition) => (
+                  <TouchableOpacity
+                    key={condition.id}
+                    style={styles.suggestionItem}
+                    onPress={() => handleConditionSelect(condition)}
+                  >
+                    <View style={styles.suggestionContent}>
+                      <Text style={styles.suggestionTitle}>{condition.name}</Text>
+                      <Text style={styles.suggestionCategory}>{condition.category}</Text>
+                      {condition.description && (
+                        <Text style={styles.suggestionDescription} numberOfLines={2}>
+                          {condition.description}
+                        </Text>
+                      )}
+                      {condition.is_chronic && (
+                        <View style={styles.chronicBadge}>
+                          <Text style={styles.chronicBadgeText}>Crónica</Text>
+                        </View>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
 
           {/* Diagnosis Date */}
           <View style={styles.dateInputContainer}>
@@ -184,21 +440,102 @@ export default function AddIllness() {
             )}
           </View>
 
-          <Input
-            label="Tratamiento"
-            placeholder="Medicamentos, terapias, etc."
-            value={treatment}
-            onChangeText={setTreatment}
-            multiline
-            numberOfLines={2}
-          />
+          {/* Treatment with Autocomplete */}
+          <View style={styles.autocompleteContainer}>
+            <Text style={styles.inputLabel}>Tratamiento</Text>
+            <View style={styles.searchInputContainer}>
+              <Search size={20} color="#6B7280" style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Medicamentos, terapias, cirugías..."
+                value={treatmentQuery}
+                onChangeText={(text) => {
+                  setTreatmentQuery(text);
+                  setTreatment(text);
+                }}
+                onFocus={() => setShowTreatmentSuggestions(true)}
+              />
+            </View>
+            
+            {showTreatmentSuggestions && filteredTreatments.length > 0 && (
+              <View style={styles.suggestionsContainer}>
+                {filteredTreatments.slice(0, 5).map((treatment) => (
+                  <TouchableOpacity
+                    key={treatment.id}
+                    style={styles.suggestionItem}
+                    onPress={() => handleTreatmentSelect(treatment)}
+                  >
+                    <View style={styles.suggestionContent}>
+                      <Text style={styles.suggestionTitle}>{treatment.name}</Text>
+                      <Text style={styles.suggestionCategory}>{treatment.type}</Text>
+                      {treatment.description && (
+                        <Text style={styles.suggestionDescription} numberOfLines={2}>
+                          {treatment.description}
+                        </Text>
+                      )}
+                      <View style={styles.treatmentInfo}>
+                        {treatment.is_prescription_required && (
+                          <View style={styles.prescriptionBadge}>
+                            <Text style={styles.prescriptionBadgeText}>Receta requerida</Text>
+                          </View>
+                        )}
+                        {treatment.cost_range && (
+                          <Text style={styles.costRange}>Costo: {treatment.cost_range}</Text>
+                        )}
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
 
-          <Input
-            label="Veterinario"
-            placeholder="Nombre del veterinario o clínica"
-            value={veterinarian}
-            onChangeText={setVeterinarian}
-          />
+          {/* Veterinarian with Autocomplete */}
+          <View style={styles.autocompleteContainer}>
+            <Text style={styles.inputLabel}>Veterinario</Text>
+            <View style={styles.searchInputContainer}>
+              <Search size={20} color="#6B7280" style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Nombre del veterinario o clínica"
+                value={veterinarianQuery}
+                onChangeText={(text) => {
+                  setVeterinarianQuery(text);
+                  setVeterinarian(text);
+                }}
+                onFocus={() => setShowClinicSuggestions(true)}
+              />
+            </View>
+            
+            {showClinicSuggestions && filteredClinics.length > 0 && (
+              <View style={styles.suggestionsContainer}>
+                {filteredClinics.slice(0, 4).map((clinic) => (
+                  <TouchableOpacity
+                    key={clinic.id}
+                    style={styles.suggestionItem}
+                    onPress={() => handleClinicSelect(clinic)}
+                  >
+                    <View style={styles.suggestionContent}>
+                      <Text style={styles.suggestionTitle}>{clinic.name}</Text>
+                      {clinic.specialties && clinic.specialties.length > 0 && (
+                        <Text style={styles.suggestionCategory}>
+                          Especialidades: {clinic.specialties.slice(0, 2).join(', ')}
+                        </Text>
+                      )}
+                      {clinic.emergency_service && (
+                        <View style={styles.emergencyBadge}>
+                          <Text style={styles.emergencyBadgeText}>🚨 Emergencias</Text>
+                        </View>
+                      )}
+                      {clinic.rating > 0 && (
+                        <Text style={styles.clinicRating}>⭐ {clinic.rating.toFixed(1)}</Text>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
 
           <Input
             label="Notas adicionales"
@@ -257,6 +594,158 @@ const styles = StyleSheet.create({
   iconContainer: {
     alignItems: 'center',
     marginBottom: 24,
+  },
+  petInfoContainer: {
+    backgroundColor: '#F0F9FF',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  petInfoText: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#0369A1',
+    marginBottom: 4,
+  },
+  petInfoSubtext: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#0369A1',
+  },
+  autocompleteContainer: {
+    marginBottom: 20,
+    position: 'relative',
+    zIndex: 1000,
+  },
+  inputLabel: {
+    fontSize: 15,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+    marginBottom: 6,
+  },
+  searchInputContainer: {
+    position: 'relative',
+  },
+  searchInput: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingLeft: 45,
+    paddingVertical: 12,
+    fontSize: 15,
+    fontFamily: 'Inter-Regular',
+    color: '#111827',
+    minHeight: 44,
+  },
+  searchIcon: {
+    position: 'absolute',
+    left: 12,
+    top: 12,
+    zIndex: 1,
+  },
+  suggestionsContainer: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    marginTop: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 1001,
+    maxHeight: 300,
+  },
+  suggestionItem: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  suggestionContent: {
+    flex: 1,
+  },
+  suggestionTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#111827',
+    marginBottom: 2,
+  },
+  suggestionCategory: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#3B82F6',
+    marginBottom: 4,
+  },
+  suggestionDescription: {
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    lineHeight: 18,
+    marginBottom: 6,
+  },
+  chronicBadge: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  chronicBadgeText: {
+    fontSize: 10,
+    fontFamily: 'Inter-Medium',
+    color: '#92400E',
+  },
+  treatmentInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    flexWrap: 'wrap',
+  },
+  prescriptionBadge: {
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginRight: 8,
+  },
+  prescriptionBadgeText: {
+    fontSize: 10,
+    fontFamily: 'Inter-Medium',
+    color: '#991B1B',
+  },
+  costRange: {
+    fontSize: 11,
+    fontFamily: 'Inter-Regular',
+    color: '#059669',
+  },
+  emergencyBadge: {
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  emergencyBadgeText: {
+    fontSize: 10,
+    fontFamily: 'Inter-Medium',
+    color: '#991B1B',
+  },
+  clinicRating: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#F59E0B',
+    marginTop: 4,
   },
   dateInputContainer: {
     marginBottom: 14,
