@@ -105,7 +105,10 @@ tyle={styles.partnerButton}
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuOption}>
+          <TouchableOpacity 
+            style={styles.menuOption} 
+            onPress={() => router.push('/profile/help-support')}
+          >
             <View style={styles.menuOptionLeft}>
               <HelpCircle size={20} color="#6B7280" />
               <Text style={styles.menuOptionText}>{t('helpSupport')}</Text>
