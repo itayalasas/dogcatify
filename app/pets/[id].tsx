@@ -25,6 +25,7 @@ export default function PetDetail() {
   const [loading, setLoading] = useState(true);
   const [initialWeightCreated, setInitialWeightCreated] = useState(false);
   const [isCreatingInitialWeight, setIsCreatingInitialWeight] = useState(false);
+  const [medicalAlerts, setMedicalAlerts] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'basics' | 'health' | 'albums' | 'behavior' | 'appointments'>(
     initialTab as any || 'basics'
   );
@@ -33,6 +34,7 @@ export default function PetDetail() {
     fetchPetDetails();
     fetchHealthRecords();
     fetchAlbums();
+    fetchMedicalAlerts();
   }, [id]);
 
   // Separate effect to create initial weight record after data is loaded
@@ -221,6 +223,94 @@ export default function PetDetail() {
     } catch (error) {
       console.error('Error fetching albums:', error);
     }
+  };
+
+  const fetchMedicalAlerts = async () => {
+    try {
+      const { data, error } = await supabaseClient
+        .from('medical_alerts')
+        .select('*')
+        .eq('pet_id', id)
+        .eq('status', 'pending')
+        .order('due_date', { ascending: true });
+      
+      if (error) throw error;
+      setMedicalAlerts(data || []);
+    } catch (error) {
+      console.error('Error fetching medical alerts:', error);
+    }
+  };
+
+  const handleCompleteAlert = async (alertId: string) => {
+    try {
+      const { error } = await supabaseClient
+        .from('medical_alerts')
+        .update({
+          status: 'completed',
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', alertId);
+      
+      if (error) throw error;
+      
+      // Refresh alerts
+      fetchMedicalAlerts();
+    } catch (error) {
+      console.error('Error completing alert:', error);
+      Alert.alert('Error', 'No se pudo marcar la alerta como completada');
+    }
+  };
+
+  const handleDismissAlert = async (alertId: string) => {
+    try {
+      const { error } = await supabaseClient
+        .from('medical_alerts')
+        .update({
+          status: 'dismissed',
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', alertId);
+      
+      if (error) throw error;
+      
+      // Refresh alerts
+      fetchMedicalAlerts();
+    } catch (error) {
+      console.error('Error dismissing alert:', error);
+      Alert.alert('Error', 'No se pudo descartar la alerta');
+    }
+  };
+
+  const getAlertPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'urgent': return '#DC2626';
+      case 'high': return '#EF4444';
+      case 'medium': return '#F59E0B';
+      case 'low': return '#3B82F6';
+      default: return '#6B7280';
+    }
+  };
+
+  const getAlertIcon = (alertType: string) => {
+    switch (alertType) {
+      case 'vaccine': return <Syringe size={16} color="#3B82F6" />;
+      case 'deworming': return <Pill size={16} color="#10B981" />;
+      case 'checkup': return <Heart size={16} color="#EF4444" />;
+      default: return <Calendar size={16} color="#6B7280" />;
+    }
+  };
+
+  const formatAlertDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    const diffTime = date.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) return 'Vencida';
+    if (diffDays === 0) return 'Hoy';
+    if (diffDays === 1) return 'Mañana';
+    if (diffDays <= 7) return `En ${diffDays} días`;
+    return date.toLocaleDateString();
   };
 
   const handleAddVaccine = () => {
@@ -637,8 +727,64 @@ export default function PetDetail() {
   );
 
   const renderMedicalAlerts = () => {
-    // For now, return null - we'll implement this when the medical alerts system is ready
-    return null;
+    if (medicalAlerts.length === 0) return null;
+    
+    return (
+      <Card style={styles.alertsCard}>
+        <Text style={styles.alertsTitle}>🚨 Alertas Médicas</Text>
+        
+        {medicalAlerts.map((alert) => (
+          <View 
+            key={alert.id} 
+            style={[
+              styles.alertItem,
+              alert.priority === 'high' && styles.highPriorityAlert,
+              alert.priority === 'urgent' && styles.urgentAlert
+            ]}
+          >
+            <View style={styles.alertHeader}>
+              <View style={styles.alertTitleContainer}>
+                {getAlertIcon(alert.alert_type)}
+                <Text style={styles.alertTitle}>{alert.title}</Text>
+              </View>
+              <View style={styles.alertActions}>
+                <TouchableOpacity 
+                  style={styles.completeButton}
+                  onPress={() => handleCompleteAlert(alert.id)}
+                >
+                  <Text style={styles.completeButtonText}>✓</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.dismissButton}
+                  onPress={() => handleDismissAlert(alert.id)}
+                >
+                  <Text style={styles.dismissButtonText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+            
+            <Text style={styles.alertDescription}>{alert.description}</Text>
+            
+            <View style={styles.alertFooter}>
+              <Text style={styles.alertDueDate}>
+                📅 {formatAlertDate(alert.due_date)}
+              </Text>
+              <View style={[
+                styles.priorityBadge,
+                alert.priority === 'high' && styles.highPriorityBadge,
+                alert.priority === 'urgent' && styles.urgentPriorityBadge
+              ]}>
+                <Text style={styles.priorityText}>
+                  {alert.priority === 'urgent' ? 'URGENTE' :
+                   alert.priority === 'high' ? 'ALTA' :
+                   alert.priority === 'medium' ? 'MEDIA' : 'BAJA'}
+                </Text>
+              </View>
+            </View>
+          </View>
+        ))}
+      </Card>
+    );
   };
 
   const renderBreedInfo = () => {
@@ -1250,10 +1396,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
+  alertTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
   alertTitle: {
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
     color: '#111827',
+    marginLeft: 6,
     flex: 1,
   },
   alertActions: {

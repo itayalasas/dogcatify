@@ -8,6 +8,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { NotificationPermissionPrompt } from '../../components/NotificationPermissionPrompt';
 import { LocationPermissionPrompt } from '../../components/LocationPermissionPrompt';
+import { MedicalAlertsWidget } from '../../components/MedicalAlertsWidget';
 import { supabaseClient } from '../../lib/supabase';
 
 // Loading component with app logo
@@ -828,6 +829,8 @@ export default function Home() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
+        <MedicalAlertsWidget />
+        
         {loading ? (
           <View style={styles.loadingContainer}>
             <Text style={styles.loadingText}>Cargando feed...</Text>
