@@ -96,7 +96,6 @@ export default function AddDeworming() {
   const calculateNextDueDate = () => {
     if (!selectedDewormer || !applicationDate || !pet) return;
     
-    const ageInWeeks = calculateAgeInWeeks(pet);
     const nextDate = new Date(applicationDate);
     
     // Logic based on dewormer frequency and pet age
@@ -113,9 +112,18 @@ export default function AddDeworming() {
         nextDate.setDate(nextDate.getDate() + 14);
       } else if (frequency.includes('semanal') || frequency.includes('weekly')) {
         nextDate.setDate(nextDate.getDate() + 7);
+      } else {
+        // Default frequency based on age
+        const ageInWeeks = calculateAgeInWeeks(pet);
+        if (ageInWeeks < 16) {
+          nextDate.setDate(nextDate.getDate() + 14); // Every 2 weeks for puppies
+        } else {
+          nextDate.setMonth(nextDate.getMonth() + 3); // Every 3 months for adults
+        }
       }
     } else {
       // Default frequency based on age
+      const ageInWeeks = calculateAgeInWeeks(pet);
       if (ageInWeeks < 16) {
         // Puppies/kittens - every 2 weeks
         nextDate.setDate(nextDate.getDate() + 14);
@@ -132,9 +140,19 @@ export default function AddDeworming() {
   };
 
   const calculateAgeInWeeks = (petData: any) => {
-    if (!petData.age_display) return petData.age * 52; // Default to years
+    if (!petData.age_display && petData.age) {
+      return petData.age * 52; // Default to years
+    }
+    
+    if (!petData.age_display) {
+      return 52; // Default to 1 year if no age data
+    }
     
     const { value, unit } = petData.age_display;
+    
+    if (!value || !unit) {
+      return petData.age ? petData.age * 52 : 52;
+    }
     
     switch (unit) {
       case 'days':

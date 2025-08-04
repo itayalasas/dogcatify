@@ -96,7 +96,6 @@ export default function AddVaccine() {
   const calculateNextDueDate = () => {
     if (!selectedVaccine || !vaccineDate || !pet) return;
     
-    const ageInWeeks = calculateAgeInWeeks(pet);
     const nextDate = new Date(vaccineDate);
     
     // Logic based on vaccine type and pet age
@@ -112,6 +111,7 @@ export default function AddVaccine() {
       } else if (frequency.includes('2-3 semanas') || frequency.includes('2-3 weeks')) {
         nextDate.setDate(nextDate.getDate() + 21); // 3 weeks
       } else if (frequency.includes('refuerzo')) {
+        const ageInWeeks = calculateAgeInWeeks(pet);
         // For boosters, check if it's puppy/kitten or adult
         if (ageInWeeks < 16) {
           // Puppy/kitten - next dose in 3-4 weeks
@@ -120,16 +120,39 @@ export default function AddVaccine() {
           // Adult - annual booster
           nextDate.setFullYear(nextDate.getFullYear() + 1);
         }
+      } else {
+        // Default: annual for most vaccines
+        nextDate.setFullYear(nextDate.getFullYear() + 1);
       }
-      
-      setNextDueDate(nextDate);
+    } else {
+      // No frequency info - use age-based logic
+      const ageInWeeks = calculateAgeInWeeks(pet);
+      if (ageInWeeks < 16) {
+        // Puppy/kitten - next dose in 4 weeks
+        nextDate.setDate(nextDate.getDate() + 28);
+      } else {
+        // Adult - annual booster
+        nextDate.setFullYear(nextDate.getFullYear() + 1);
+      }
     }
+    
+    setNextDueDate(nextDate);
   };
 
   const calculateAgeInWeeks = (petData: any) => {
-    if (!petData.age_display) return petData.age * 52; // Default to years
+    if (!petData.age_display && petData.age) {
+      return petData.age * 52; // Default to years
+    }
+    
+    if (!petData.age_display) {
+      return 52; // Default to 1 year if no age data
+    }
     
     const { value, unit } = petData.age_display;
+    
+    if (!value || !unit) {
+      return petData.age ? petData.age * 52 : 52;
+    }
     
     switch (unit) {
       case 'days':
