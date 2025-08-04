@@ -344,18 +344,6 @@ export default function AddDeworming() {
         throw error;
       }
 
-      // Regenerate medical alerts after adding/updating deworming
-      try {
-        const { error: alertsError } = await supabaseClient
-          .rpc('generate_medical_alerts', { pet_id_param: id });
-        
-        if (alertsError) {
-          console.error('Error generating medical alerts:', alertsError);
-        }
-      } catch (alertsError) {
-        console.error('Error calling generate_medical_alerts:', alertsError);
-      }
-
       Alert.alert('Éxito', 'Desparasitación guardada correctamente', [
         { text: 'OK', onPress: () => router.push({
           pathname: `/pets/${id}`,
