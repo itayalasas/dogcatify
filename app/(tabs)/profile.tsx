@@ -523,6 +523,17 @@ export default function Profile() {
             </View>
             <ChevronRight size={16} color="#6B7280" />
           </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.menuOption} 
+            onPress={() => router.push('/profile/help-support')}
+          >
+            <View style={styles.menuOptionLeft}>
+              <HelpCircle size={20} color="#6B7280" />
+              <Text style={styles.menuOptionText}>{t('helpSupport')}</Text>
+            </View>
+            <ChevronRight size={16} color="#6B7280" />
+          </TouchableOpacity>
         </Card>
 
         {/* Advanced Settings */}
