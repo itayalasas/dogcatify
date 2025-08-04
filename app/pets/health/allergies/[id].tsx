@@ -165,7 +165,6 @@ export default function AddAllergy() {
       
       if (data) {
         setAllergyName(data.name || '');
-        setAllergyType(data.allergy_type || '');
         setSymptoms(data.symptoms || '');
         setSeverity(data.severity || '');
         setTreatment(data.treatment || '');
@@ -195,7 +194,6 @@ export default function AddAllergy() {
         user_id: currentUser.id,
         type: 'allergy',
         name: allergyName.trim(),
-        allergy_type: allergyType.trim() || null,
         symptoms: symptoms.trim(),
         severity: severity.trim() || null,
         treatment: treatment.trim() || null,
@@ -211,7 +209,6 @@ export default function AddAllergy() {
           .from('pet_health')
           .update({
             name: allergyName.trim(),
-            allergy_type: allergyType.trim() || null,
             symptoms: symptoms.trim(),
             severity: severity.trim() || null,
             treatment: treatment.trim() || null,
