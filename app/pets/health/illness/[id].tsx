@@ -72,10 +72,8 @@ export default function AddIllness() {
       );
       console.log('Filtered conditions:', filtered.length);
       setFilteredConditions(filtered);
-      setShowConditionSuggestions(true);
     } else {
       setFilteredConditions(medicalConditions);
-      setShowConditionSuggestions(false);
     }
   }, [illnessQuery, medicalConditions]);
 
@@ -238,12 +236,11 @@ export default function AddIllness() {
     setIllnessQuery(text);
     setIllnessName(text);
     
-    // Force show suggestions if there's text and conditions available
-    if (text.trim() && medicalConditions.length > 0) {
-      setShowConditionSuggestions(true);
-    } else {
-      setShowConditionSuggestions(false);
-    }
+    // Always show suggestions when there's text
+    setShowConditionSuggestions(text.trim().length > 0);
+    
+    console.log('🎯 Setting showConditionSuggestions to:', text.trim().length > 0);
+    console.log('📝 Current text length:', text.trim().length);
   };
 
   const handleConditionSelect = (condition: any) => {
@@ -438,13 +435,24 @@ export default function AddIllness() {
                 }
                 value={illnessQuery}
                 onChangeText={(text) => {
+                onFocus={() => {
+                  console.log('🎯 Input focused, current query:', illnessQuery);
+                  console.log('🎯 Should show suggestions:', illnessQuery.trim().length > 0);
+                  if (illnessQuery.trim().length > 0) {
+                    setShowConditionSuggestions(true);
+                  }
+                }}
                   setIllnessQuery(text);
                   setIllnessName(text);
                 }}
               />
             </View>
             
+            {console.log('🔍 Render check - showConditionSuggestions:', showConditionSuggestions)}
+            {console.log('🔍 Render check - filtered conditions count:', getFilteredConditionsBySpecies().length)}
+            
             {showConditionSuggestions && getFilteredConditionsBySpecies().length > 0 && (
+              console.log('🎨 Rendering suggestions dropdown with', getFilteredConditionsBySpecies().length, 'items'),
               <View style={styles.suggestionsContainer}>
                 <Text style={styles.suggestionsHeader}>
                   💡 Enfermedades sugeridas para {pet?.species === 'dog' ? 'perros' : 'gatos'}:
