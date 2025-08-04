@@ -51,6 +51,8 @@ export default function PetWeight() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [idealWeightRange, setIdealWeightRange] = useState<WeightRange | null>(null);
   const [weightStatus, setWeightStatus] = useState<'underweight' | 'ideal' | 'overweight' | 'unknown'>('unknown');
+  const [initialWeightCreated, setInitialWeightCreated] = useState(false);
+  const [isCreatingInitialWeight, setIsCreatingInitialWeight] = useState(false);
 
   useEffect(() => {
     if (id && currentUser) {
@@ -61,11 +63,11 @@ export default function PetWeight() {
 
   // Separate effect to create initial weight record after pet data is loaded
   useEffect(() => {
-    if (pet && currentUser && weightRecords.length === 0 && pet.weight) {
-      console.log('Pet loaded and no weight records found, creating initial record...');
+    if (pet && currentUser && weightRecords.length === 0 && pet.weight && !initialWeightCreated && !isCreatingInitialWeight) {
+      console.log('🔄 Creating initial weight record for:', pet.name);
       createInitialWeightRecord();
     }
-  }, [pet, weightRecords, currentUser]);
+  }, [pet, weightRecords, currentUser, initialWeightCreated, isCreatingInitialWeight]);
 
   useEffect(() => {
     // Calculate ideal weight range when pet data is available
@@ -82,18 +84,15 @@ export default function PetWeight() {
   }, [weightRecords, idealWeightRange]);
 
   const createInitialWeightRecord = async () => {
-    if (!pet || !pet.weight || !currentUser || weightRecords.length > 0) {
-      console.log('Cannot create initial weight record - missing data or records already exist', {
-        hasPet: !!pet,
-        hasWeight: !!pet?.weight,
-        hasUser: !!currentUser,
-        existingRecords: weightRecords.length
-      });
+    if (isCreatingInitialWeight || initialWeightCreated) {
+      console.log('⏭️ Skipping initial weight creation - already in progress or completed');
       return;
     }
     
-    // Double check - verify no existing weight records in database
+    setIsCreatingInitialWeight(true);
+    
     try {
+      console.log('🔍 Double-checking for existing weight records...');
       const { data: existingRecords, error: checkError } = await supabaseClient
         .from('pet_health')
         .select('id')
@@ -102,20 +101,18 @@ export default function PetWeight() {
       
       if (checkError) {
         console.error('Error checking existing weight records:', checkError);
+        setIsCreatingInitialWeight(false);
         return;
       }
       
       if (existingRecords && existingRecords.length > 0) {
-        console.log('Weight records already exist in database, skipping creation');
+        console.log('✅ Found existing weight records:', existingRecords.length, '- skipping creation');
+        setInitialWeightCreated(true);
+        setIsCreatingInitialWeight(false);
         return;
       }
-    } catch (error) {
-      console.error('Error in duplicate check:', error);
-      return;
-    }
-    
-    try {
-      console.log('Creating initial weight record for pet:', pet.name, 'Weight:', pet.weight);
+      
+      console.log('📝 No existing records found, creating initial weight record...');
       
       // Crear un registro de peso inicial con la fecha de creación de la mascota
       const initialDate = pet.created_at ? new Date(pet.created_at) : new Date();
@@ -137,22 +134,23 @@ export default function PetWeight() {
       
       console.log('Initial weight data to insert:', initialWeightData);
       
-      const { error } = await supabaseClient.from('pet_health').insert(initialWeightData);
-      
       if (error) {
         console.error('Error creating initial weight record:', error);
         return;
       } else {
-        console.log('Initial weight record created successfully');
+        console.log('✅ Initial weight record created successfully!');
+        setInitialWeightCreated(true);
+        
+        // Refresh records immediately
+        setTimeout(() => {
+          fetchWeightRecords();
+        }, 500);
       }
       
-      // Refrescar los registros después de crear el inicial
-      setTimeout(() => {
-        fetchWeightRecords();
-      }, 500);
-      
     } catch (error) {
-      console.error('Error creating initial weight record:', error);
+      console.error('❌ Error in createInitialWeightRecord:', error);
+    } finally {
+      setIsCreatingInitialWeight(false);
     }
   };
 

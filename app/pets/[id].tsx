@@ -23,6 +23,8 @@ export default function PetDetail() {
   const [weightRecords, setWeightRecords] = useState<any[]>([]);
   const [albums, setAlbums] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initialWeightCreated, setInitialWeightCreated] = useState(false);
+  const [isCreatingInitialWeight, setIsCreatingInitialWeight] = useState(false);
   const [activeTab, setActiveTab] = useState<'basics' | 'health' | 'albums' | 'behavior' | 'appointments'>(
     initialTab as any || 'basics'
   );
@@ -35,20 +37,11 @@ export default function PetDetail() {
 
   // Separate effect to create initial weight record after data is loaded
   useEffect(() => {
-    console.log('=== WEIGHT RECORD CHECK EFFECT ===');
-    console.log('Pet loaded:', !!pet);
-    console.log('Pet weight:', pet?.weight);
-    console.log('Weight records count:', weightRecords.length);
-    console.log('Current user:', !!currentUser);
-    
-    if (pet && pet.weight && currentUser && weightRecords.length === 0) {
-      console.log('✅ Conditions met for creating initial weight record');
+    if (pet && pet.weight && currentUser && weightRecords.length === 0 && !initialWeightCreated && !isCreatingInitialWeight) {
+      console.log('✅ Creating initial weight record for pet:', pet.name);
       createInitialWeightRecord();
-    } else {
-      console.log('❌ Conditions not met for creating initial weight record');
     }
-    console.log('=== END WEIGHT RECORD CHECK EFFECT ===');
-  }, [pet, weightRecords, currentUser]);
+  }, [pet, weightRecords, currentUser, initialWeightCreated, isCreatingInitialWeight]);
 
   useEffect(() => {
     // Refresh albums when returning from add album screen
@@ -278,13 +271,8 @@ export default function PetDetail() {
         Alert.alert('Permisos requeridos', 'Se necesitan permisos para acceder a la galería');
         return;
       }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
+    if (isCreatingInitialWeight || initialWeightCreated) {
+      console.log('Already creating or created initial weight record, skipping');
 
       if (!result.canceled && result.assets[0]) {
         // Upload the image
@@ -655,10 +643,12 @@ export default function PetDetail() {
       breedImageUrl = `${supabaseUrl}${breedImageUrl}`;
     }
     
-    return (
+    setIsCreatingInitialWeight(true);
+    
       <Card style={styles.infoCard}>
         <Text style={styles.breedInfoTitle}>Información de la Raza</Text>
         
+      console.log('🔍 Checking for existing weight records in database...');
         {breedImageUrl && (
           <Image 
             source={{ uri: breedImageUrl }} 
@@ -667,20 +657,18 @@ export default function PetDetail() {
           />
         )}
         
+        setIsCreatingInitialWeight(false);
         {breedInfoData.min_life_expectancy && breedInfoData.max_life_expectancy && (
           <Text style={styles.infoValue}>
             Esperanza de vida: {breedInfoData.min_life_expectancy}-{breedInfoData.max_life_expectancy} años
           </Text>
-        )}
+        console.log('✅ Weight records already exist in database:', existingRecords.length);
+        setInitialWeightCreated(true);
+        setIsCreatingInitialWeight(false);
         
         {breedInfoData.energy !== undefined && (
-          <Text style={styles.infoValue}>
-            Nivel de energía: {breedInfoData.energy}/5
-            {breedInfoData.energy >= 4 && (
-              <Text style={styles.breedHighlight}> (Alto - Necesitará mucho ejercicio)</Text>
-            )}
-          </Text>
-        )}
+      
+      console.log('📝 Creating initial weight record for:', pet.name, 'Weight:', pet.weight);
         
         {breedInfoData.trainability !== undefined && (
           <Text style={styles.infoValue}>
@@ -700,24 +688,25 @@ export default function PetDetail() {
           </Text>
         )}
         
-        {breedInfoData.barking !== undefined && (
-          <Text style={styles.infoValue}>
             Nivel de ladrido: {breedInfoData.barking}/5
             {breedInfoData.barking >= 4 && (
               <Text style={styles.breedHighlight}> (Alto - Puede ser ruidoso)</Text>
             )}
-          </Text>
+        setIsCreatingInitialWeight(false);
         )}
+        console.log('✅ Initial weight record created successfully');
+        setInitialWeightCreated(true);
         
+        // Refresh health records immediately
+        setTimeout(() => {
+          fetchHealthRecords();
+        }, 500);
         {breedInfoData.protectiveness !== undefined && (
           <Text style={styles.infoValue}>
-            Nivel de protección: {breedInfoData.protectiveness}/5
-            {breedInfoData.protectiveness >= 4 && (
-              <Text style={styles.breedHighlight}> (Alto - Puede ser territorial)</Text>
-            )}
-          </Text>
         )}
       </Card>
+    } finally {
+      setIsCreatingInitialWeight(false);
     );
   };
 
