@@ -453,30 +453,40 @@ export default function AddIllness() {
                 <Text style={styles.suggestionsHeader}>
                   💡 Enfermedades sugeridas para {pet?.species === 'dog' ? 'perros' : 'gatos'}:
                 </Text>
-                {getFilteredConditionsBySpecies().slice(0, 6).map((condition, index) => (
-                  <TouchableOpacity
-                    key={condition.id || `condition-${index}`}
-                    style={styles.suggestionItem}
-                    onPress={() => handleConditionSelect(condition)}
-                  >
-                    <View style={styles.suggestionContent}>
-                      <Text style={styles.suggestionTitle}>{condition.name}</Text>
-                      <Text style={styles.suggestionCategory}>
-                        📂 {condition.category}
-                      </Text>
-                      {condition.description && (
-                        <Text style={styles.suggestionDescription} numberOfLines={2}>
-                          {condition.description}
-                        </Text>
-                      )}
-                      {condition.is_chronic && (
-                        <View style={styles.chronicBadge}>
-                          <Text style={styles.chronicBadgeText}>⏰ Crónica</Text>
+                {(() => {
+                  const conditions = getFilteredConditionsBySpecies().slice(0, 6);
+                  console.log('🎨 About to render conditions:', conditions.length, conditions.map(c => c.name));
+                  return conditions.map((condition, index) => {
+                    console.log('🎨 Rendering condition:', condition.name, 'ID:', condition.id);
+                    return (
+                      <TouchableOpacity
+                        key={condition.id || `condition-${index}`}
+                        style={styles.suggestionItem}
+                        onPress={() => {
+                          console.log('🎯 Condition selected:', condition.name);
+                          handleConditionSelect(condition);
+                        }}
+                      >
+                        <View style={styles.suggestionContent}>
+                          <Text style={styles.suggestionTitle}>{condition.name}</Text>
+                          <Text style={styles.suggestionCategory}>
+                            📂 {condition.category || 'Sin categoría'}
+                          </Text>
+                          {condition.description && (
+                            <Text style={styles.suggestionDescription} numberOfLines={2}>
+                              {condition.description}
+                            </Text>
+                          )}
+                          {condition.is_chronic && (
+                            <View style={styles.chronicBadge}>
+                              <Text style={styles.chronicBadgeText}>⏰ Crónica</Text>
+                            </View>
+                          )}
                         </View>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                ))}
+                      </TouchableOpacity>
+                    );
+                  });
+                })()}
                 {getFilteredConditionsBySpecies().length > 6 && (
                   <View style={styles.moreResultsContainer}>
                     <Text style={styles.moreResultsText}>
@@ -528,35 +538,48 @@ export default function AddIllness() {
             
             {showTreatmentSuggestions && filteredTreatments.length > 0 && (
               <View style={styles.suggestionsContainer}>
-                {filteredTreatments.slice(0, 5).map((treatment) => (
-                  <TouchableOpacity
-                    key={treatment.id}
-                    style={styles.suggestionItem}
-                    onPress={() => handleTreatmentSelect(treatment)}
-                  >
-                    <View style={styles.suggestionContent}>
-                      <Text style={styles.suggestionTitle}>{treatment.name}</Text>
-                      <Text style={styles.suggestionCategory}>
-                        💊 {treatment.type}
-                      </Text>
-                      {treatment.description && (
-                        <Text style={styles.suggestionDescription} numberOfLines={2}>
-                          {treatment.description}
-                        </Text>
-                      )}
-                      <View style={styles.treatmentInfo}>
-                        {treatment.is_prescription_required && (
-                          <View style={styles.prescriptionBadge}>
-                            <Text style={styles.prescriptionBadgeText}>📋 Receta</Text>
+                <Text style={styles.suggestionsHeader}>
+                  💊 Tratamientos sugeridos:
+                </Text>
+                {(() => {
+                  const treatments = filteredTreatments.slice(0, 5);
+                  console.log('🎨 About to render treatments:', treatments.length, treatments.map(t => t.name));
+                  return treatments.map((treatment, index) => {
+                    console.log('🎨 Rendering treatment:', treatment.name, 'ID:', treatment.id);
+                    return (
+                      <TouchableOpacity
+                        key={treatment.id || `treatment-${index}`}
+                        style={styles.suggestionItem}
+                        onPress={() => {
+                          console.log('🎯 Treatment selected:', treatment.name);
+                          handleTreatmentSelect(treatment);
+                        }}
+                      >
+                        <View style={styles.suggestionContent}>
+                          <Text style={styles.suggestionTitle}>{treatment.name}</Text>
+                          <Text style={styles.suggestionCategory}>
+                            💊 {treatment.type || 'Sin tipo'}
+                          </Text>
+                          {treatment.description && (
+                            <Text style={styles.suggestionDescription} numberOfLines={2}>
+                              {treatment.description}
+                            </Text>
+                          )}
+                          <View style={styles.treatmentInfo}>
+                            {treatment.is_prescription_required && (
+                              <View style={styles.prescriptionBadge}>
+                                <Text style={styles.prescriptionBadgeText}>📋 Receta</Text>
+                              </View>
+                            )}
+                            {treatment.cost_range && (
+                              <Text style={styles.costRange}>💰 {treatment.cost_range}</Text>
+                            )}
                           </View>
-                        )}
-                        {treatment.cost_range && (
-                          <Text style={styles.costRange}>💰 {treatment.cost_range}</Text>
-                        )}
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                ))}
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  });
+                })()}
                 {filteredTreatments.length > 5 && (
                   <View style={styles.moreResultsContainer}>
                     <Text style={styles.moreResultsText}>
@@ -586,30 +609,43 @@ export default function AddIllness() {
             
             {showClinicSuggestions && filteredClinics.length > 0 && (
               <View style={styles.suggestionsContainer}>
-                {filteredClinics.slice(0, 4).map((clinic) => (
-                  <TouchableOpacity
-                    key={clinic.id}
-                    style={styles.suggestionItem}
-                    onPress={() => handleClinicSelect(clinic)}
-                  >
-                    <View style={styles.suggestionContent}>
-                      <Text style={styles.suggestionTitle}>{clinic.name}</Text>
-                      {clinic.specialties && clinic.specialties.length > 0 && (
-                        <Text style={styles.suggestionCategory}>
-                          🏥 {clinic.specialties.slice(0, 2).join(', ')}
-                        </Text>
-                      )}
-                      {clinic.emergency_service && (
-                        <View style={styles.emergencyBadge}>
-                          <Text style={styles.emergencyBadgeText}>🚨 Emergencias</Text>
+                <Text style={styles.suggestionsHeader}>
+                  🏥 Clínicas veterinarias sugeridas:
+                </Text>
+                {(() => {
+                  const clinics = filteredClinics.slice(0, 4);
+                  console.log('🎨 About to render clinics:', clinics.length, clinics.map(c => c.name));
+                  return clinics.map((clinic, index) => {
+                    console.log('🎨 Rendering clinic:', clinic.name, 'ID:', clinic.id);
+                    return (
+                      <TouchableOpacity
+                        key={clinic.id || `clinic-${index}`}
+                        style={styles.suggestionItem}
+                        onPress={() => {
+                          console.log('🎯 Clinic selected:', clinic.name);
+                          handleClinicSelect(clinic);
+                        }}
+                      >
+                        <View style={styles.suggestionContent}>
+                          <Text style={styles.suggestionTitle}>{clinic.name}</Text>
+                          {clinic.specialties && clinic.specialties.length > 0 && (
+                            <Text style={styles.suggestionCategory}>
+                              🏥 {clinic.specialties.slice(0, 2).join(', ')}
+                            </Text>
+                          )}
+                          {clinic.emergency_service && (
+                            <View style={styles.emergencyBadge}>
+                              <Text style={styles.emergencyBadgeText}>🚨 Emergencias</Text>
+                            </View>
+                          )}
+                          {clinic.rating > 0 && (
+                            <Text style={styles.clinicRating}>⭐ {clinic.rating.toFixed(1)}</Text>
+                          )}
                         </View>
-                      )}
-                      {clinic.rating > 0 && (
-                        <Text style={styles.clinicRating}>⭐ {clinic.rating.toFixed(1)}</Text>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                ))}
+                      </TouchableOpacity>
+                    );
+                  });
+                })()}
                 {filteredClinics.length > 4 && (
                   <View style={styles.moreResultsContainer}>
                     <Text style={styles.moreResultsText}>
