@@ -371,7 +371,7 @@ export default function AddIllness() {
           )}
 
           {/* Illness Name */}
-          <View style={styles.autocompleteContainer}>
+          <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Nombre de la enfermedad *</Text>
             <View style={styles.searchInputContainer}>
               <Search size={20} color="#6B7280" style={styles.searchIcon} />
@@ -386,7 +386,6 @@ export default function AddIllness() {
                   setIllnessQuery(text);
                   setIllnessName(text);
                 }}
-                onFocus={() => setShowConditionSuggestions(true)}
               />
             </View>
             
@@ -400,7 +399,9 @@ export default function AddIllness() {
                   >
                     <View style={styles.suggestionContent}>
                       <Text style={styles.suggestionTitle}>{condition.name}</Text>
-                      <Text style={styles.suggestionCategory}>{condition.category}</Text>
+                      <Text style={styles.suggestionCategory}>
+                        📂 {condition.category}
+                      </Text>
                       {condition.description && (
                         <Text style={styles.suggestionDescription} numberOfLines={2}>
                           {condition.description}
@@ -408,12 +409,19 @@ export default function AddIllness() {
                       )}
                       {condition.is_chronic && (
                         <View style={styles.chronicBadge}>
-                          <Text style={styles.chronicBadgeText}>Crónica</Text>
+                          <Text style={styles.chronicBadgeText}>⏰ Crónica</Text>
                         </View>
                       )}
                     </View>
                   </TouchableOpacity>
                 ))}
+                {getFilteredConditionsBySpecies().length > 6 && (
+                  <View style={styles.moreResultsContainer}>
+                    <Text style={styles.moreResultsText}>
+                      +{getFilteredConditionsBySpecies().length - 6} resultados más...
+                    </Text>
+                  </View>
+                )}
               </View>
             )}
           </View>
@@ -441,7 +449,7 @@ export default function AddIllness() {
           </View>
 
           {/* Treatment with Autocomplete */}
-          <View style={styles.autocompleteContainer}>
+          <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Tratamiento</Text>
             <View style={styles.searchInputContainer}>
               <Search size={20} color="#6B7280" style={styles.searchIcon} />
@@ -453,7 +461,6 @@ export default function AddIllness() {
                   setTreatmentQuery(text);
                   setTreatment(text);
                 }}
-                onFocus={() => setShowTreatmentSuggestions(true)}
               />
             </View>
             
@@ -467,7 +474,9 @@ export default function AddIllness() {
                   >
                     <View style={styles.suggestionContent}>
                       <Text style={styles.suggestionTitle}>{treatment.name}</Text>
-                      <Text style={styles.suggestionCategory}>{treatment.type}</Text>
+                      <Text style={styles.suggestionCategory}>
+                        💊 {treatment.type}
+                      </Text>
                       {treatment.description && (
                         <Text style={styles.suggestionDescription} numberOfLines={2}>
                           {treatment.description}
@@ -476,22 +485,29 @@ export default function AddIllness() {
                       <View style={styles.treatmentInfo}>
                         {treatment.is_prescription_required && (
                           <View style={styles.prescriptionBadge}>
-                            <Text style={styles.prescriptionBadgeText}>Receta requerida</Text>
+                            <Text style={styles.prescriptionBadgeText}>📋 Receta</Text>
                           </View>
                         )}
                         {treatment.cost_range && (
-                          <Text style={styles.costRange}>Costo: {treatment.cost_range}</Text>
+                          <Text style={styles.costRange}>💰 {treatment.cost_range}</Text>
                         )}
                       </View>
                     </View>
                   </TouchableOpacity>
                 ))}
+                {filteredTreatments.length > 5 && (
+                  <View style={styles.moreResultsContainer}>
+                    <Text style={styles.moreResultsText}>
+                      +{filteredTreatments.length - 5} tratamientos más...
+                    </Text>
+                  </View>
+                )}
               </View>
             )}
           </View>
 
           {/* Veterinarian with Autocomplete */}
-          <View style={styles.autocompleteContainer}>
+          <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Veterinario</Text>
             <View style={styles.searchInputContainer}>
               <Search size={20} color="#6B7280" style={styles.searchIcon} />
@@ -503,7 +519,6 @@ export default function AddIllness() {
                   setVeterinarianQuery(text);
                   setVeterinarian(text);
                 }}
-                onFocus={() => setShowClinicSuggestions(true)}
               />
             </View>
             
@@ -519,7 +534,7 @@ export default function AddIllness() {
                       <Text style={styles.suggestionTitle}>{clinic.name}</Text>
                       {clinic.specialties && clinic.specialties.length > 0 && (
                         <Text style={styles.suggestionCategory}>
-                          Especialidades: {clinic.specialties.slice(0, 2).join(', ')}
+                          🏥 {clinic.specialties.slice(0, 2).join(', ')}
                         </Text>
                       )}
                       {clinic.emergency_service && (
@@ -533,6 +548,13 @@ export default function AddIllness() {
                     </View>
                   </TouchableOpacity>
                 ))}
+                {filteredClinics.length > 4 && (
+                  <View style={styles.moreResultsContainer}>
+                    <Text style={styles.moreResultsText}>
+                      +{filteredClinics.length - 4} clínicas más...
+                    </Text>
+                  </View>
+                )}
               </View>
             )}
           </View>
@@ -614,9 +636,10 @@ const styles = StyleSheet.create({
     color: '#0369A1',
   },
   autocompleteContainer: {
-    marginBottom: 20,
-    position: 'relative',
-    zIndex: 1000,
+    marginBottom: 24,
+  },
+  inputGroup: {
+    marginBottom: 24,
   },
   inputLabel: {
     fontSize: 15,
@@ -639,36 +662,32 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#111827',
     minHeight: 44,
+    borderWidth: 1.5,
   },
   searchIcon: {
     position: 'absolute',
     left: 12,
     top: 12,
-    zIndex: 1,
   },
   suggestionsContainer: {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    right: 0,
+    marginTop: 8,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 12,
-    marginTop: 4,
+    maxHeight: 250,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 8,
-    zIndex: 1001,
-    maxHeight: 300,
   },
   suggestionItem: {
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
+    backgroundColor: '#FFFFFF',
   },
   suggestionContent: {
     flex: 1,
@@ -677,12 +696,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
     color: '#111827',
-    marginBottom: 2,
+    marginBottom: 4,
   },
   suggestionCategory: {
     fontSize: 12,
     fontFamily: 'Inter-Medium',
     color: '#3B82F6',
+    textTransform: 'capitalize',
     marginBottom: 4,
   },
   suggestionDescription: {
@@ -690,54 +710,55 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
     lineHeight: 18,
-    marginBottom: 6,
+    marginBottom: 8,
   },
   chronicBadge: {
     backgroundColor: '#FEF3C7',
     paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingVertical: 4,
     borderRadius: 12,
     alignSelf: 'flex-start',
-    marginTop: 4,
+    marginTop: 6,
   },
   chronicBadgeText: {
-    fontSize: 10,
+    fontSize: 11,
     fontFamily: 'Inter-Medium',
     color: '#92400E',
   },
   treatmentInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 6,
+    marginTop: 8,
     flexWrap: 'wrap',
+    gap: 8,
   },
   prescriptionBadge: {
     backgroundColor: '#FEE2E2',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 8,
-    marginRight: 8,
   },
   prescriptionBadgeText: {
-    fontSize: 10,
+    fontSize: 11,
     fontFamily: 'Inter-Medium',
     color: '#991B1B',
   },
   costRange: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: 'Inter-Regular',
     color: '#059669',
+    fontWeight: '500',
   },
   emergencyBadge: {
     backgroundColor: '#FEE2E2',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 8,
     alignSelf: 'flex-start',
-    marginTop: 4,
+    marginTop: 6,
   },
   emergencyBadgeText: {
-    fontSize: 10,
+    fontSize: 11,
     fontFamily: 'Inter-Medium',
     color: '#991B1B',
   },
@@ -745,7 +766,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'Inter-Medium',
     color: '#F59E0B',
-    marginTop: 4,
+    marginTop: 6,
+  },
+  moreResultsContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#F8FAFC',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    alignItems: 'center',
+  },
+  moreResultsText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+    fontStyle: 'italic',
   },
   dateInputContainer: {
     marginBottom: 14,
