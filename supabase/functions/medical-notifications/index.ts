@@ -7,6 +7,28 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
+interface MedicalAlert {
+  id: string;
+  pet_id: string;
+  alert_type: string;
+  title: string;
+  description: string;
+  due_date: string;
+  priority: string;
+  status: string;
+  notification_sent: boolean;
+  pets: {
+    name: string;
+    species: string;
+  };
+  profiles: {
+    display_name: string;
+    email: string;
+    push_token: string;
+    notification_preferences: any;
+  };
+}
+
 serve(async (req: Request) => {
   // Handle CORS preflight request
   if (req.method === 'OPTIONS') {
@@ -17,25 +39,46 @@ serve(async (req: Request) => {
   }
 
   try {
-    // Initialize Supabase client
+    // Initialize Supabase client with service role
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
 
     console.log('Starting medical notifications check...');
+
+    // Calculate date 7 days from now for notification threshold
+    const notificationDate = new Date();
+    notificationDate.setDate(notificationDate.getDate() + 7);
+    const notificationDateStr = notificationDate.toISOString().split('T')[0];
+
+    const today = new Date().toISOString().split('T')[0];
 
     // Get alerts that need notification (7 days before due date)
     const { data: alerts, error: alertsError } = await supabase
       .from('medical_alerts')
       .select(`
-        *,
-        pets!inner(name, species),
+        id,
+        pet_id,
+        alert_type,
+        title,
+        description,
+        due_date,
+        priority,
+        status,
+        notification_sent,
+        pets!inner(name, species, owner_id),
         profiles!inner(display_name, email, push_token, notification_preferences)
       `)
       .eq('status', 'pending')
       .eq('notification_sent', false)
-      .lte('due_date', new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
-      .gt('due_date', new Date().toISOString().split('T')[0]);
+      .lte('due_date', notificationDateStr)
+      .gt('due_date', today);
 
     if (alertsError) {
       console.error('Error fetching alerts:', alertsError);
@@ -46,7 +89,12 @@ serve(async (req: Request) => {
 
     if (!alerts || alerts.length === 0) {
       return new Response(
-        JSON.stringify({ message: 'No alerts to process', count: 0 }),
+        JSON.stringify({ 
+          success: true,
+          message: 'No alerts to process', 
+          count: 0,
+          timestamp: new Date().toISOString()
+        }),
         {
           status: 200,
           headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -55,12 +103,18 @@ serve(async (req: Request) => {
     }
 
     let notificationsSent = 0;
+    const errors: string[] = [];
 
     // Process each alert
     for (const alert of alerts) {
       try {
         const user = alert.profiles;
         const pet = alert.pets;
+        
+        if (!user || !pet) {
+          console.log(`Skipping alert ${alert.id} - missing user or pet data`);
+          continue;
+        }
         
         // Check if user has push notifications enabled
         const notificationPrefs = user.notification_preferences || {};
@@ -69,18 +123,23 @@ serve(async (req: Request) => {
           continue;
         }
 
+        // Calculate days until due
+        const dueDate = new Date(alert.due_date);
+        const now = new Date();
+        const daysUntilDue = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        
         // Prepare notification content
         const title = `Recordatorio médico para ${pet.name}`;
-        const body = alert.title;
-        const daysUntilDue = Math.ceil((new Date(alert.due_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+        let notificationBody = alert.description;
         
-        let notificationBody = body;
-        if (daysUntilDue <= 1) {
-          notificationBody = `¡Urgente! ${body}`;
+        if (daysUntilDue <= 0) {
+          notificationBody = `¡Urgente! ${alert.description}`;
+        } else if (daysUntilDue <= 1) {
+          notificationBody = `¡Mañana! ${alert.description}`;
         } else if (daysUntilDue <= 3) {
-          notificationBody = `En ${daysUntilDue} días: ${body}`;
+          notificationBody = `En ${daysUntilDue} días: ${alert.description}`;
         } else {
-          notificationBody = `Próximamente (${daysUntilDue} días): ${body}`;
+          notificationBody = `Próximamente (${daysUntilDue} días): ${alert.description}`;
         }
 
         // Send push notification
@@ -115,8 +174,11 @@ serve(async (req: Request) => {
         });
 
         if (response.ok) {
+          const result = await response.json();
+          console.log('Push notification result:', result);
+          
           // Mark notification as sent
-          await supabase
+          const { error: updateError } = await supabase
             .from('medical_alerts')
             .update({
               notification_sent: true,
@@ -124,35 +186,45 @@ serve(async (req: Request) => {
             })
             .eq('id', alert.id);
 
-          notificationsSent++;
-          console.log(`✅ Notification sent successfully for alert ${alert.id}`);
+          if (updateError) {
+            console.error(`Error updating alert ${alert.id}:`, updateError);
+            errors.push(`Failed to update alert ${alert.id}: ${updateError.message}`);
+          } else {
+            notificationsSent++;
+            console.log(`✅ Notification sent successfully for alert ${alert.id}`);
+          }
         } else {
           const errorText = await response.text();
           console.error(`❌ Failed to send notification for alert ${alert.id}:`, errorText);
+          errors.push(`Failed to send notification for alert ${alert.id}: ${errorText}`);
         }
 
       } catch (notificationError) {
         console.error(`Error processing alert ${alert.id}:`, notificationError);
+        errors.push(`Error processing alert ${alert.id}: ${notificationError.message}`);
         continue;
       }
     }
 
-    // Also check for overdue alerts and update status
+    // Update overdue alerts
     const { error: overdueError } = await supabase
       .from('medical_alerts')
       .update({ status: 'overdue' })
       .eq('status', 'pending')
-      .lt('due_date', new Date().toISOString().split('T')[0]);
+      .lt('due_date', today);
 
     if (overdueError) {
       console.error('Error updating overdue alerts:', overdueError);
+      errors.push(`Error updating overdue alerts: ${overdueError.message}`);
     }
 
     return new Response(
       JSON.stringify({
+        success: true,
         message: 'Medical notifications processed successfully',
         alertsProcessed: alerts.length,
         notificationsSent,
+        errors: errors.length > 0 ? errors : undefined,
         timestamp: new Date().toISOString()
       }),
       {
@@ -164,7 +236,12 @@ serve(async (req: Request) => {
   } catch (error) {
     console.error('Error in medical notifications function:', error);
     return new Response(
-      JSON.stringify({ error: 'Internal server error', details: error.message }),
+      JSON.stringify({ 
+        success: false,
+        error: 'Internal server error', 
+        details: error.message,
+        timestamp: new Date().toISOString()
+      }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
