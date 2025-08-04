@@ -6,10 +6,14 @@ import { Card } from '../../../components/ui/Card';
 import { supabaseClient } from '../../../lib/supabase';
 
 export default function SelectVeterinarian() {
-  const { petId, returnPath, currentValue } = useLocalSearchParams<{
+  const params = useLocalSearchParams();
+  const { petId, returnPath, currentValue } = params as {
     petId: string;
     returnPath: string;
     currentValue?: string;
+    currentCondition?: string;
+    currentTreatment?: string;
+    currentNotes?: string;
   }>();
 
   const [veterinarians, setVeterinarians] = useState<any[]>([]);
@@ -69,9 +73,9 @@ export default function SelectVeterinarian() {
       params: {
         selectedVeterinarian: JSON.stringify({ name: veterinarian.business_name }),
         // Preserve other form values from navigation params
-        ...(params.currentCondition && { selectedCondition: JSON.stringify({ name: params.currentCondition }) }),
-        ...(params.currentTreatment && { selectedTreatment: JSON.stringify({ name: params.currentTreatment }) }),
-        ...(params.currentNotes && { currentNotes: params.currentNotes })
+        ...(params.currentCondition && { selectedCondition: JSON.stringify({ name: params.currentCondition as string }) }),
+        ...(params.currentTreatment && { selectedTreatment: JSON.stringify({ name: params.currentTreatment as string }) }),
+        ...(params.currentNotes && { currentNotes: params.currentNotes as string })
       }
     });
   };
