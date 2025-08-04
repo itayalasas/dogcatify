@@ -55,13 +55,22 @@ export default function AddIllness() {
     }
   }, [recordId]);
 
+  // Add separate useEffect to ensure medical data is loaded
+  useEffect(() => {
+    console.log('=== MEDICAL DATA LOADING ===');
+    console.log('Loading medical conditions, treatments, and clinics...');
+    fetchMedicalData();
+  }, []);
   useEffect(() => {
     // Filter conditions based on search query
     if (illnessQuery.trim()) {
+      console.log('Filtering conditions with query:', illnessQuery);
+      console.log('Available conditions:', medicalConditions.length);
       const filtered = medicalConditions.filter(condition =>
         condition.name.toLowerCase().includes(illnessQuery.toLowerCase()) ||
         condition.description?.toLowerCase().includes(illnessQuery.toLowerCase())
       );
+      console.log('Filtered conditions:', filtered.length);
       setFilteredConditions(filtered);
       setShowConditionSuggestions(true);
     } else {
@@ -130,38 +139,63 @@ export default function AddIllness() {
 
   const fetchMedicalData = async () => {
     try {
+      console.log('🔄 Starting to fetch medical data...');
+      
       // Fetch medical conditions
+      console.log('📋 Fetching medical conditions...');
       const { data: conditionsData, error: conditionsError } = await supabaseClient
         .from('medical_conditions')
         .select('*')
         .eq('is_active', true)
         .order('name', { ascending: true });
       
-      if (conditionsError) throw conditionsError;
+      if (conditionsError) {
+        console.error('❌ Error fetching conditions:', conditionsError);
+        throw conditionsError;
+      }
+      console.log('✅ Medical conditions loaded:', conditionsData?.length || 0);
       setMedicalConditions(conditionsData || []);
       
       // Fetch treatments
+      console.log('💊 Fetching medical treatments...');
       const { data: treatmentsData, error: treatmentsError } = await supabaseClient
         .from('medical_treatments')
         .select('*')
         .eq('is_active', true)
         .order('name', { ascending: true });
       
-      if (treatmentsError) throw treatmentsError;
+      if (treatmentsError) {
+        console.error('❌ Error fetching treatments:', treatmentsError);
+        throw treatmentsError;
+      }
+      console.log('✅ Medical treatments loaded:', treatmentsData?.length || 0);
       setTreatments(treatmentsData || []);
       
       // Fetch veterinary clinics
+      console.log('🏥 Fetching veterinary clinics...');
       const { data: clinicsData, error: clinicsError } = await supabaseClient
         .from('veterinary_clinics')
         .select('*')
         .eq('is_active', true)
         .order('name', { ascending: true });
       
-      if (clinicsError) throw clinicsError;
+      if (clinicsError) {
+        console.error('❌ Error fetching clinics:', clinicsError);
+        throw clinicsError;
+      }
+      console.log('✅ Veterinary clinics loaded:', clinicsData?.length || 0);
       setVeterinaryClinics(clinicsData || []);
       
+      console.log('🎉 All medical data loaded successfully!');
     } catch (error) {
-      console.error('Error fetching medical data:', error);
+      console.error('❌ Error fetching medical data:', error);
+      
+      // Show user-friendly error
+      Alert.alert(
+        'Error cargando datos',
+        'No se pudieron cargar las enfermedades y tratamientos. Puedes escribir manualmente o intentar recargar la pantalla.',
+        [{ text: 'Entendido' }]
+      );
     }
   };
   const fetchIllnessDetails = async () => {
@@ -263,6 +297,9 @@ export default function AddIllness() {
 
   const getFilteredConditionsBySpecies = () => {
     if (!pet) return filteredConditions;
+    
+    console.log('🔍 Filtering conditions by species:', pet.species);
+    console.log('Available conditions before filter:', filteredConditions.length);
     
     return filteredConditions.filter(condition => 
       condition.species === pet.species || condition.species === 'both'
@@ -391,6 +428,9 @@ export default function AddIllness() {
             
             {showConditionSuggestions && getFilteredConditionsBySpecies().length > 0 && (
               <View style={styles.suggestionsContainer}>
+                <Text style={styles.suggestionsHeader}>
+                  💡 Enfermedades sugeridas para {pet?.species === 'dog' ? 'perros' : 'gatos'}:
+                </Text>
                 {getFilteredConditionsBySpecies().slice(0, 6).map((condition) => (
                   <TouchableOpacity
                     key={condition.id}
@@ -675,12 +715,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 12,
-    maxHeight: 250,
+    maxHeight: 300,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 8,
+  },
+  suggestionsHeader: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#374151',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#F8FAFC',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
   suggestionItem: {
     paddingHorizontal: 16,
