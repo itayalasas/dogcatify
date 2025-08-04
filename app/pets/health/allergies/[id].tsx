@@ -365,7 +365,7 @@ export default function AddAllergy() {
       <Modal
         visible={showAddVetModal}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setShowAddVetModal(false)}
       >
         <View style={styles.modalOverlay}>
@@ -390,12 +390,14 @@ export default function AddAllergy() {
                   setTempVetName('');
                 }}
                 variant="outline"
-                size="medium"
+                size="large"
+                style={styles.modalButton}
               />
               <Button
                 title="Agregar"
                 onPress={handleAddTemporaryVet}
-                size="medium"
+                size="large"
+                style={styles.modalButton}
               />
             </View>
           </View>
@@ -502,22 +504,25 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
     alignItems: 'center',
-    padding: 20,
+    paddingBottom: 0,
   },
   modalContent: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: 40,
     width: '100%',
-    maxWidth: 400,
+    maxHeight: '60%',
+    minHeight: 300,
   },
   modalTitle: {
     fontSize: 18,
     fontFamily: 'Inter-Bold',
     color: '#111827',
-    marginBottom: 8,
+    marginBottom: 12,
     textAlign: 'center',
   },
   modalSubtitle: {
@@ -525,12 +530,15 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
     lineHeight: 20,
   },
   modalActions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 16,
+    flexDirection: 'column',
+    gap: 16,
+    marginTop: 24,
+  },
+  modalButton: {
+    width: '100%',
   },
 });
