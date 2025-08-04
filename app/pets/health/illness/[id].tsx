@@ -460,21 +460,32 @@ export default function AddIllness() {
             )}
           </View>
 
-          {/* Treatment with Navigation */}
+          {/* Treatment with Autocomplete */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Tratamiento</Text>
-            <TouchableOpacity 
-              style={styles.selectableInput}
-              onPress={handleSelectTreatment}
-            >
-              <Text style={[
-                styles.selectableInputText,
-                !treatment && styles.placeholderText
-              ]}>
-                {treatment || "Medicamentos, terapias, cirugías..."}
-              </Text>
-              <ChevronDown size={20} color="#6B7280" />
-            </TouchableOpacity>
+            <View style={styles.searchInputContainer}>
+              <Search size={20} color="#6B7280" style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Medicamentos, terapias, cirugías..."
+                value={treatmentQuery}
+                onChangeText={(text) => {
+                  setTreatmentQuery(text);
+                  setTreatment(text);
+                  if (text.trim().length > 0) {
+                    setShowTreatmentModal(true);
+                  } else {
+                    setShowTreatmentModal(false);
+                  }
+                }}
+              />
+              <TouchableOpacity 
+                style={styles.dropdownButton}
+                onPress={() => setShowTreatmentModal(true)}
+              >
+                <ChevronDown size={20} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Veterinarian with Autocomplete */}
@@ -745,6 +756,27 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
     color: '#F59E0B',
     marginTop: 6,
+  },
+  selectableInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    minHeight: 50,
+  },
+  selectableInputText: {
+    fontSize: 15,
+    fontFamily: 'Inter-Regular',
+    color: '#111827',
+    flex: 1,
+  },
+  placeholderText: {
+    color: '#9CA3AF',
   },
   dateInputContainer: {
     marginBottom: 14,
