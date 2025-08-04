@@ -413,17 +413,22 @@ export default function AddIllness() {
           {/* Illness Name */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Nombre de la enfermedad *</Text>
-            <View style={styles.searchInputContainer}>
-              <Search size={20} color="#6B7280" style={styles.searchIcon} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder={pet?.species === 'dog' ? 
+            <TouchableOpacity 
+              style={styles.selectableInput}
+              onPress={handleSelectCondition}
+            >
+              <Text style={[
+                styles.selectableInputText,
+                !illnessName && styles.placeholderText
+              ]}>
+                {illnessName || (pet?.species === 'dog' ? 
                   "Ej: Parvovirus, Otitis, Dermatitis..." : 
                   "Ej: Rinotraqueítis, Cistitis, Calicivirus..."
-                }
-                value={illnessQuery}
-                onChangeText={handleConditionInputChange}
-              />
+                )}
+              </Text>
+              <ChevronDown size={20} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
               <TouchableOpacity 
                 style={styles.dropdownButton}
                 onPress={() => setShowConditionModal(true)}
