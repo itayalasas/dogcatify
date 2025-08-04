@@ -553,7 +553,7 @@ export default function AlbumDetail() {
         onRequestClose={() => setShowDeleteConfirm(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.confirmModalContent}>
+          <View style={styles.deleteConfirmModal}>
             <Text style={styles.confirmTitle}>Eliminar Imagen</Text>
             <Text style={styles.confirmText}>¿Estás seguro de que quieres eliminar esta imagen?</Text>
             
@@ -562,12 +562,14 @@ export default function AlbumDetail() {
                 title="Cancelar"
                 onPress={() => setShowDeleteConfirm(false)}
                 variant="outline"
-                size="medium"
+                size="small"
+                style={styles.confirmButton}
               />
               <Button
                 title="Eliminar"
                 onPress={handleDeleteImage}
-                size="medium"
+                size="small"
+                style={styles.confirmButton}
               />
             </View>
           </View>
@@ -808,9 +810,18 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   confirmActions: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: 12,
+  },
+  deleteConfirmModal: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    width: '80%',
+    maxWidth: 320,
+    alignSelf: 'center',
+  },
+  confirmButton: {
     width: '100%',
-    justifyContent: 'space-between',
   },
 });
