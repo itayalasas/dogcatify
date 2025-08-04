@@ -49,7 +49,6 @@ export default function PetDetail() {
     }
     console.log('=== END WEIGHT RECORD CHECK EFFECT ===');
   }, [pet, weightRecords, currentUser]);
-  }, [id]);
 
   useEffect(() => {
     // Refresh albums when returning from add album screen
@@ -57,6 +56,7 @@ export default function PetDetail() {
       fetchAlbums();
     }
   }, [refresh]);
+  
   const fetchPetDetails = async () => {
     try {
       const { data: petData, error } = await supabaseClient
