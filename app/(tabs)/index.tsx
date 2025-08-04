@@ -548,6 +548,7 @@ export default function Home() {
 
   const onRefresh = async () => {
     setRefreshing(true);
+    setFollowStatesLoaded(false); // Reset follow states en refresh
     await fetchFeedData();
     setRefreshing(false);
   };
