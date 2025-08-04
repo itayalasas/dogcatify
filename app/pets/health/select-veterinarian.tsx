@@ -67,7 +67,7 @@ export default function SelectVeterinarian() {
     router.push({
       pathname: returnPath,
       params: {
-        selectedVeterinarian: JSON.stringify(veterinarian),
+        selectedVeterinarian: JSON.stringify({ name: veterinarian.business_name }),
         // Clear other selections to avoid conflicts
         selectedCondition: undefined,
         selectedTreatment: undefined
