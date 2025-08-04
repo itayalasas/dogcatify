@@ -347,6 +347,116 @@ export default function PetDetail() {
   const handleViewAppointments = () => {
     router.push(`/pets/appointments/${id}`);
   };
+
+  const handleGenerateMedicalHistory = async () => {
+    if (!currentUser || !pet) {
+      Alert.alert('Error', 'Información insuficiente para generar la historia clínica');
+      return;
+    }
+
+    Alert.alert(
+      'Generar Historia Clínica',
+      '¿Qué deseas hacer?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { 
+          text: 'Generar PDF', 
+          onPress: () => generatePDF()
+        },
+        { 
+          text: 'Generar QR para Veterinario', 
+          onPress: () => generateQRForVet()
+        }
+      ]
+    );
+  };
+
+  const generatePDF = async () => {
+    try {
+      Alert.alert('Generando PDF', 'Por favor espera...');
+      
+      const { generateMedicalHistoryPDF } = await import('../../utils/medicalHistoryPDF');
+      const pdfBlob = await generateMedicalHistoryPDF(pet.id, currentUser!.id);
+      
+      // For web, create download link
+      if (Platform.OS === 'web') {
+        const url = URL.createObjectURL(pdfBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `historia-clinica-${pet.name}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        Alert.alert('PDF Generado', 'La historia clínica se ha descargado correctamente');
+      } else {
+        // For mobile, show sharing options
+        Alert.alert(
+          'PDF Generado',
+          'La historia clínica ha sido generada. ¿Deseas compartirla?',
+          [
+            { text: 'Cerrar' },
+            { text: 'Compartir', onPress: () => sharePDF(pdfBlob) }
+          ]
+        );
+      }
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      Alert.alert('Error', 'No se pudo generar el PDF de la historia clínica');
+    }
+  };
+
+  const generateQRForVet = async () => {
+    try {
+      Alert.alert('Generando QR', 'Creando enlace para veterinario...');
+      
+      const { generateMedicalHistoryWithQR } = await import('../../utils/medicalHistoryPDF');
+      const { pdfBlob, shareUrl } = await generateMedicalHistoryWithQR(pet.id, currentUser!.id);
+      
+      const { generateSharingPackage } = await import('../../utils/qrGenerator');
+      const { qrCodeUrl, shortUrl } = await generateSharingPackage(pet.id, pet.name, shareUrl);
+      
+      // Navigate to QR sharing screen
+      router.push({
+        pathname: '/pets/share-medical-history',
+        params: {
+          petId: pet.id,
+          petName: pet.name,
+          qrCodeUrl,
+          shareUrl,
+          shortUrl
+        }
+      });
+    } catch (error) {
+      console.error('Error generating QR for vet:', error);
+      Alert.alert('Error', 'No se pudo generar el QR para veterinario');
+    }
+  };
+
+  const sharePDF = async (pdfBlob: Blob) => {
+    try {
+      if (Platform.OS === 'web') {
+        // Web sharing
+        if (navigator.share) {
+          const file = new File([pdfBlob], `historia-clinica-${pet.name}.pdf`, { type: 'application/pdf' });
+          await navigator.share({
+            title: `Historia Clínica de ${pet.name}`,
+            text: `Historia clínica veterinaria de ${pet.name}`,
+            files: [file]
+          });
+        } else {
+          Alert.alert('Compartir no disponible', 'Tu navegador no soporta la función de compartir');
+        }
+      } else {
+        // Mobile sharing would require additional setup
+        Alert.alert('Compartir', 'Funcionalidad de compartir en desarrollo para móviles');
+      }
+    } catch (error) {
+      console.error('Error sharing PDF:', error);
+      Alert.alert('Error', 'No se pudo compartir el PDF');
+    }
+  };
   
   const handleBookAppointment = () => {
     router.push('/(tabs)/services');
@@ -965,6 +1075,20 @@ export default function PetDetail() {
         {activeTab === 'basics' && (
           <>
             {renderBasicsTab()}
+            
+            {/* Medical History Actions */}
+            <Card style={styles.medicalHistoryCard}>
+              <Text style={styles.medicalHistoryTitle}>📋 Historia Clínica</Text>
+              <Text style={styles.medicalHistoryDescription}>
+                Genera un PDF completo con toda la información médica de {pet.name} o crea un QR para compartir con veterinarios.
+              </Text>
+              <Button
+                title="Generar Historia Clínica"
+                onPress={handleGenerateMedicalHistory}
+                size="large"
+              />
+            </Card>
+            
             {renderBreedInfo()}
           </>
         )}
@@ -1471,5 +1595,24 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontFamily: 'Inter-Bold',
     color: '#FFFFFF',
+  },
+  medicalHistoryCard: {
+    marginBottom: 16,
+    backgroundColor: '#F0F9FF',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  medicalHistoryTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#0369A1',
+    marginBottom: 8,
+  },
+  medicalHistoryDescription: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#0369A1',
+    marginBottom: 16,
+    lineHeight: 20,
   },
 });
