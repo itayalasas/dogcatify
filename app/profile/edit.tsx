@@ -11,7 +11,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { supabaseClient } from '../../lib/supabase';
 
 export default function EditProfile() {
-  const { currentUser } = useAuth();
+  const { currentUser, updateCurrentUser } = useAuth();
   const { t } = useLanguage();
   
   // Form state
@@ -570,6 +570,18 @@ export default function EditProfile() {
       }
       console.log('Supabase profile updated successfully');
 
+      // Update the current user in the auth context immediately
+      const updatedUser = {
+        ...currentUser!,
+        displayName: displayName.trim(),
+        photoURL: photoURL || currentUser!.photoURL,
+        phone: phone.trim() || currentUser!.phone,
+        location: address.trim() || currentUser!.location,
+        bio: bio.trim() || currentUser!.bio,
+      };
+      
+      console.log('Updating current user in context...');
+      updateCurrentUser(updatedUser);
 
       console.log('Profile save completed successfully');
       

@@ -34,7 +34,7 @@ export default function Profile() {
       fetchUserStats();
       fetchPartnerProfile();
     }
-  }, [currentUser]);
+  }, [currentUser?.id, currentUser?.displayName, currentUser?.photoURL]);
 
   // Set up real-time subscription for profile updates
   useEffect(() => {
