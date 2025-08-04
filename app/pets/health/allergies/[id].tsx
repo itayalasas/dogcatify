@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Calendar, TriangleAlert as AlertTriangle } from 'lucide-react-native';
+import { ArrowLeft, Calendar, TriangleAlert as AlertTriangle, ChevronDown } from 'lucide-react-native';
 import { Input } from '../../../../components/ui/Input';
 import { Button } from '../../../../components/ui/Button';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -11,7 +11,13 @@ import { useAuth } from '../../../../contexts/AuthContext';
 
 export default function AddAllergy() {
   const { id, recordId, refresh } = useLocalSearchParams<{ id: string; recordId?: string; refresh?: string }>();
+  const params = useLocalSearchParams();
   const { currentUser } = useAuth();
+  
+  // Pet data
+  const [pet, setPet] = useState<any>(null);
+  
+  // Form data
   const [allergyName, setAllergyName] = useState('');
   const [allergyType, setAllergyType] = useState('');
   const [symptoms, setSymptoms] = useState('');
@@ -21,12 +27,82 @@ export default function AddAllergy() {
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
+  // Handle return parameters from selection screens
   useEffect(() => {
+    // Handle selected allergy
+    if (params.selectedAllergy) {
+      try {
+        const allergy = JSON.parse(params.selectedAllergy as string);
+        setAllergyName(allergy.name);
+        setAllergyType(allergy.category);
+        // Pre-fill symptoms if available
+        if (allergy.common_symptoms && allergy.common_symptoms.length > 0) {
+          setSymptoms(allergy.common_symptoms.join(', '));
+        }
+        console.log('Selected allergy:', allergy.name);
+      } catch (error) {
+        console.error('Error parsing selected allergy:', error);
+      }
+    }
+    
+    // Handle preserved values
+    if (params.currentSymptoms && typeof params.currentSymptoms === 'string') {
+      setSymptoms(params.currentSymptoms);
+    }
+    
+    if (params.currentSeverity && typeof params.currentSeverity === 'string') {
+      setSeverity(params.currentSeverity);
+    }
+    
+    if (params.currentTreatment && typeof params.currentTreatment === 'string') {
+      setTreatment(params.currentTreatment);
+    }
+    
+    if (params.currentNotes && typeof params.currentNotes === 'string') {
+      setNotes(params.currentNotes);
+    }
+  }, [params.selectedAllergy, params.currentSymptoms, params.currentSeverity, params.currentTreatment, params.currentNotes]);
+
+  useEffect(() => {
+    fetchPetData();
+    
     if (recordId) {
       setIsEditing(true);
       fetchAllergyDetails();
     }
   }, [recordId]);
+
+  const fetchPetData = async () => {
+    try {
+      const { data, error } = await supabaseClient
+        .from('pets')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (error) throw error;
+      setPet(data);
+    } catch (error) {
+      console.error('Error fetching pet data:', error);
+    }
+  };
+
+  const handleSelectAllergy = () => {
+    router.push({
+      pathname: '/pets/health/select-allergy',
+      params: { 
+        petId: id,
+        species: pet?.species || 'dog',
+        returnPath: `/pets/health/allergies/${id}`,
+        currentValue: allergyName,
+        // Preserve current form values
+        currentSymptoms: symptoms,
+        currentSeverity: severity,
+        currentTreatment: treatment,
+        currentNotes: notes
+      }
+    });
+  };
 
   const fetchAllergyDetails = async () => {
     try {
@@ -141,12 +217,36 @@ export default function AddAllergy() {
             <AlertTriangle size={40} color="#F59E0B" />
           </View>
 
-          <Input
-            label="Alérgeno *"
-            placeholder="Ej: Polen, ácaros, pollo, salmón..."
-            value={allergyName}
-            onChangeText={setAllergyName}
-          />
+          {pet && (
+            <View style={styles.petInfoContainer}>
+              <Text style={styles.petInfoText}>
+                {pet.species === 'dog' ? '🐕' : '🐱'} {pet.name} - {pet.breed}
+              </Text>
+              <Text style={styles.petInfoSubtext}>
+                Alergias comunes en {pet.species === 'dog' ? 'perros' : 'gatos'}
+              </Text>
+            </View>
+          )}
+
+          {/* Allergy Name - Navigable */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Alérgeno *</Text>
+            <TouchableOpacity 
+              style={styles.selectableInput}
+              onPress={handleSelectAllergy}
+            >
+              <Text style={[
+                styles.selectableInputText,
+                !allergyName && styles.placeholderText
+              ]}>
+                {allergyName || (pet?.species === 'dog' ? 
+                  "Seleccionar alergia para perros..." : 
+                  "Seleccionar alergia para gatos..."
+                )}
+              </Text>
+              <ChevronDown size={20} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
 
           <Input
             label="Tipo de alergia"
@@ -237,5 +337,53 @@ const styles = StyleSheet.create({
   iconContainer: {
     alignItems: 'center',
     marginBottom: 24,
+  },
+  petInfoContainer: {
+    backgroundColor: '#F0F9FF',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  petInfoText: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#0369A1',
+    marginBottom: 4,
+  },
+  petInfoSubtext: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#0369A1',
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 15,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+    marginBottom: 6,
+  },
+  selectableInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    minHeight: 50,
+  },
+  selectableInputText: {
+    fontSize: 15,
+    fontFamily: 'Inter-Regular',
+    color: '#111827',
+    flex: 1,
+  },
+  placeholderText: {
+    color: '#9CA3AF',
   },
 });

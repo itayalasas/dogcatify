@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Calendar, Syringe } from 'lucide-react-native';
+import { ArrowLeft, Calendar, Syringe, ChevronDown } from 'lucide-react-native';
 import { Input } from '../../../../components/ui/Input';
 import { Button } from '../../../../components/ui/Button';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -11,8 +11,13 @@ import { useAuth } from '../../../../contexts/AuthContext';
 
 export default function AddVaccine() {
   const { id, recordId, refresh } = useLocalSearchParams<{ id: string; recordId?: string; refresh?: string }>();
+  const params = useLocalSearchParams();
   const { currentUser } = useAuth();
   
+  // Pet data
+  const [pet, setPet] = useState<any>(null);
+  
+  // Form data
   const [vaccineName, setVaccineName] = useState('');
   const [vaccineDate, setVaccineDate] = useState(new Date());
   const [nextDueDate, setNextDueDate] = useState<Date | null>(null);
@@ -24,12 +29,76 @@ export default function AddVaccine() {
   const [showVaccineDatePicker, setShowVaccineDatePicker] = useState(false);
   const [showNextDueDatePicker, setShowNextDueDatePicker] = useState(false);
 
+  // Handle return parameters from selection screens
   useEffect(() => {
+    // Handle selected vaccine
+    if (params.selectedVaccine) {
+      try {
+        const vaccine = JSON.parse(params.selectedVaccine as string);
+        setVaccineName(vaccine.name);
+        console.log('Selected vaccine:', vaccine.name);
+      } catch (error) {
+        console.error('Error parsing selected vaccine:', error);
+      }
+    }
+    
+    // Handle preserved values
+    if (params.currentVeterinarian && typeof params.currentVeterinarian === 'string') {
+      setVeterinarian(params.currentVeterinarian);
+    }
+    
+    if (params.currentNotes && typeof params.currentNotes === 'string') {
+      setNotes(params.currentNotes);
+    }
+    
+    if (params.currentNextDueDate && typeof params.currentNextDueDate === 'string') {
+      try {
+        setNextDueDate(new Date(params.currentNextDueDate));
+      } catch (error) {
+        console.error('Error parsing next due date:', error);
+      }
+    }
+  }, [params.selectedVaccine, params.currentVeterinarian, params.currentNotes, params.currentNextDueDate]);
+
+  useEffect(() => {
+    fetchPetData();
+    
     if (recordId) {
       setIsEditing(true);
       fetchVaccineDetails();
     }
   }, [recordId]);
+
+  const fetchPetData = async () => {
+    try {
+      const { data, error } = await supabaseClient
+        .from('pets')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (error) throw error;
+      setPet(data);
+    } catch (error) {
+      console.error('Error fetching pet data:', error);
+    }
+  };
+
+  const handleSelectVaccine = () => {
+    router.push({
+      pathname: '/pets/health/select-vaccine',
+      params: { 
+        petId: id,
+        species: pet?.species || 'dog',
+        returnPath: `/pets/health/vaccines/${id}`,
+        currentValue: vaccineName,
+        // Preserve current form values
+        currentVeterinarian: veterinarian,
+        currentNotes: notes,
+        currentNextDueDate: nextDueDate?.toISOString()
+      }
+    });
+  };
 
   const fetchVaccineDetails = async () => {
     try {
@@ -175,13 +244,36 @@ export default function AddVaccine() {
             <Syringe size={40} color="#3B82F6" />
           </View>
 
-          {/* Vaccine Name */}
-          <Input
-            label="Nombre de la vacuna *"
-            placeholder="Ej: Rabia, Parvovirus, Triple felina..."
-            value={vaccineName}
-            onChangeText={setVaccineName}
-          />
+          {pet && (
+            <View style={styles.petInfoContainer}>
+              <Text style={styles.petInfoText}>
+                {pet.species === 'dog' ? '🐕' : '🐱'} {pet.name} - {pet.breed}
+              </Text>
+              <Text style={styles.petInfoSubtext}>
+                Vacunas específicas para {pet.species === 'dog' ? 'perros' : 'gatos'}
+              </Text>
+            </View>
+          )}
+
+          {/* Vaccine Name - Navigable */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Nombre de la vacuna *</Text>
+            <TouchableOpacity 
+              style={styles.selectableInput}
+              onPress={handleSelectVaccine}
+            >
+              <Text style={[
+                styles.selectableInputText,
+                !vaccineName && styles.placeholderText
+              ]}>
+                {vaccineName || (pet?.species === 'dog' ? 
+                  "Seleccionar vacuna para perros..." : 
+                  "Seleccionar vacuna para gatos..."
+                )}
+              </Text>
+              <ChevronDown size={20} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
 
           {/* Vaccine Date */}
           <View style={styles.dateInputContainer}>
@@ -291,6 +383,54 @@ const styles = StyleSheet.create({
   iconContainer: {
     alignItems: 'center',
     marginBottom: 24,
+  },
+  petInfoContainer: {
+    backgroundColor: '#F0F9FF',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  petInfoText: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#0369A1',
+    marginBottom: 4,
+  },
+  petInfoSubtext: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#0369A1',
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 15,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+    marginBottom: 6,
+  },
+  selectableInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    minHeight: 50,
+  },
+  selectableInputText: {
+    fontSize: 15,
+    fontFamily: 'Inter-Regular',
+    color: '#111827',
+    flex: 1,
+  },
+  placeholderText: {
+    color: '#9CA3AF',
   },
   dateInputContainer: {
     marginBottom: 14,
