@@ -808,6 +808,9 @@ export default function PetDetail() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Medical Alerts - Show in all tabs */}
+        {renderMedicalAlerts()}
+        
         {activeTab === 'basics' && (
           <>
             {renderBasicsTab()}
@@ -1208,5 +1211,108 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 16,
     paddingHorizontal: 16,
+  },
+  alertsCard: {
+    marginBottom: 16,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+  },
+  alertsTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: '#92400E',
+    marginBottom: 12,
+  },
+  alertItem: {
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#F59E0B',
+  },
+  highPriorityAlert: {
+    borderLeftColor: '#EF4444',
+  },
+  urgentAlert: {
+    borderLeftColor: '#DC2626',
+    backgroundColor: '#FEF2F2',
+  },
+  alertHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  alertTitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#111827',
+    flex: 1,
+  },
+  alertActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  completeButton: {
+    backgroundColor: '#10B981',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  completeButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontFamily: 'Inter-Bold',
+  },
+  dismissButton: {
+    backgroundColor: '#6B7280',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dismissButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontFamily: 'Inter-Bold',
+  },
+  alertDescription: {
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+    marginBottom: 8,
+    lineHeight: 18,
+  },
+  alertFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  alertDueDate: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+  },
+  priorityBadge: {
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  highPriorityBadge: {
+    backgroundColor: '#EF4444',
+  },
+  urgentPriorityBadge: {
+    backgroundColor: '#DC2626',
+  },
+  priorityText: {
+    fontSize: 10,
+    fontFamily: 'Inter-Bold',
+    color: '#FFFFFF',
   },
 });
