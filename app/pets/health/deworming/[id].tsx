@@ -344,6 +344,42 @@ export default function AddDeworming() {
         throw error;
       }
 
+      // Try to generate medical alert for next deworming
+      if (nextDueDate) {
+        try {
+          const alertDate = new Date(nextDueDate);
+          alertDate.setDate(alertDate.getDate() - 3); // 3 days before for deworming
+          
+          if (alertDate > new Date()) {
+            const { error: alertError } = await supabaseClient
+              .from('medical_alerts')
+              .insert({
+                pet_id: id,
+                user_id: currentUser.id,
+                alert_type: 'deworming',
+                title: 'Desparasitación pendiente',
+                description: `Es hora de desparasitar a ${pet?.name}`,
+                due_date: alertDate.toISOString().split('T')[0],
+                priority: 'medium',
+                status: 'pending',
+                metadata: {
+                  product_name: productName.trim(),
+                  last_application: formatDate(applicationDate),
+                  veterinarian: veterinarian.trim() || null
+                }
+              });
+            
+            if (alertError) {
+              console.warn('Could not create medical alert:', alertError);
+            } else {
+              console.log('Medical alert created for next deworming');
+            }
+          }
+        } catch (alertError) {
+          console.warn('Error creating medical alert:', alertError);
+        }
+      }
+
       Alert.alert('Éxito', 'Desparasitación guardada correctamente', [
         { text: 'OK', onPress: () => router.push({
           pathname: `/pets/${id}`,

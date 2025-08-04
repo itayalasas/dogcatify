@@ -260,6 +260,40 @@ export default function AddIllness() {
         throw error;
       }
 
+      // Generate checkup alert for chronic conditions
+      if (status === 'active' && !isEditing) {
+        try {
+          const checkupDate = new Date();
+          checkupDate.setMonth(checkupDate.getMonth() + 3); // 3 months from now
+          
+          const { error: alertError } = await supabaseClient
+            .from('medical_alerts')
+            .insert({
+              pet_id: id,
+              user_id: currentUser.id,
+              alert_type: 'checkup',
+              title: `Revisión médica: ${illnessName.trim()}`,
+              description: `Revisión de seguimiento para ${illnessName.trim()} de ${pet?.name}`,
+              due_date: checkupDate.toISOString().split('T')[0],
+              priority: 'medium',
+              status: 'pending',
+              metadata: {
+                condition_name: illnessName.trim(),
+                diagnosis_date: formatDate(diagnosisDate),
+                veterinarian: veterinarian.trim() || null
+              }
+            });
+          
+          if (alertError) {
+            console.warn('Could not create medical alert:', alertError);
+          } else {
+            console.log('Medical alert created for illness checkup');
+          }
+        } catch (alertError) {
+          console.warn('Error creating medical alert:', alertError);
+        }
+      }
+
       Alert.alert('Éxito', isEditing ? 'Enfermedad actualizada correctamente' : 'Enfermedad registrada correctamente', [
         { text: 'OK', onPress: handleBackNavigation }
       ]);
