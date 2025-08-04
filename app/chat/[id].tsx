@@ -44,7 +44,7 @@ export default function ChatScreen() {
     petName?: string; 
   }>();
   const { currentUser } = useAuth();
-  const { sendNotificationToUser } = useNotifications();
+  const { sendChatNotification } = useNotifications();
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -151,24 +151,26 @@ export default function ChatScreen() {
             if (msg.sender_id === currentUser?.id) {
               senderName = currentUser.displayName || 'Tú';
             } else {
-              // Get sender name from profiles or partners
-              const { data: profileData } = await supabaseClient
+              // Get sender name from profiles
+              const { data: senderData } = await supabaseClient
                 .from('profiles')
                 .select('display_name')
                 .eq('id', msg.sender_id)
                 .single();
               
-              if (profileData?.display_name) {
-                senderName = profileData.display_name;
+              if (senderData?.display_name) {
+                senderName = senderData.display_name;
               } else {
-                // Try partners table
+                // Try to get from partners if it's a partner
                 const { data: partnerData } = await supabaseClient
                   .from('partners')
                   .select('business_name')
-                  .eq('id', msg.sender_id)
+                  .eq('user_id', msg.sender_id)
                   .single();
                 
-                senderName = partnerData?.business_name || 'Usuario';
+                if (partnerData?.business_name) {
+                  senderName = partnerData.business_name;
+                }
               }
             }
           } catch (error) {
@@ -183,35 +185,56 @@ export default function ChatScreen() {
       );
 
       setMessages(messagesWithSenderNames);
-      setLoading(false);
       
-      // Scroll to bottom after loading messages
-      setTimeout(() => {
-        scrollToBottom();
-      }, 100);
+      // Mark messages as read if they're not from current user
+      const unreadMessages = messagesWithSenderNames.filter(
+        msg => !msg.is_read && msg.sender_id !== currentUser?.id
+      );
+      
+      if (unreadMessages.length > 0) {
+        markMessagesAsRead(unreadMessages.map(msg => msg.id));
+      }
       
     } catch (error) {
       console.error('Error loading messages:', error);
+    } finally {
       setLoading(false);
     }
   };
 
-  const sendMessage = async () => {
-    if (!newMessage.trim() || !currentUser || !conversationId) {
-      return;
+  const markMessagesAsRead = async (messageIds: string[]) => {
+    try {
+      const { error } = await supabaseClient
+        .from('chat_messages')
+        .update({ is_read: true })
+        .in('id', messageIds);
+      
+      if (error) {
+        console.error('Error marking messages as read:', error);
+      }
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
     }
+  };
+
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !currentUser || !conversationId) return;
 
     try {
       console.log('Sending message:', newMessage.trim());
       
+      const messageData = {
+        conversation_id: conversationId,
+        sender_id: currentUser.id,
+        message: newMessage.trim(),
+        message_type: 'text',
+        is_read: false,
+        created_at: new Date().toISOString()
+      };
+
       const { error } = await supabaseClient
         .from('chat_messages')
-        .insert({
-          conversation_id: conversationId,
-          sender_id: currentUser.id,
-          message: newMessage.trim(),
-          is_read: false
-        });
+        .insert([messageData]);
 
       if (error) {
         console.error('Error sending message:', error);
@@ -219,20 +242,16 @@ export default function ChatScreen() {
       }
 
       console.log('Message sent successfully');
-      
+
       // Send push notification to recipient
-      if (recipientId) {
+      if (recipientId && recipientName) {
         try {
-          await sendNotificationToUser(
+          await sendChatNotification(
             recipientId,
-            `Nuevo mensaje de ${currentUser.displayName || 'Usuario'}`,
+            currentUser.displayName || 'Usuario',
+            petName || 'mascota',
             newMessage.trim(),
-            {
-              type: 'chat_message',
-              conversationId: conversationId,
-              petName: petName || 'mascota',
-              senderName: currentUser.displayName || 'Usuario'
-            }
+            conversationId
           );
           console.log('Push notification sent');
         } catch (notificationError) {
@@ -510,6 +529,6 @@ const styles = StyleSheet.create({
     minHeight: 44,
   },
   sendButtonDisabled: {
-    backgroundColor: '#D1D5DB'
+    backgroundColor: '#D1D5DB',
   },
 });
