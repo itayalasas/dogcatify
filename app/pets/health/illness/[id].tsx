@@ -520,6 +520,14 @@ export default function AddIllness() {
             numberOfLines={3}
           />
 
+          <Button
+            title={isEditing ? 'Actualizar Enfermedad' : 'Registrar Enfermedad'}
+            onPress={handleSubmit}
+            loading={loading}
+            style={{ marginTop: 24 }}
+          />
+        </Card>
+      </ScrollView>
     </SafeAreaView>
   );
 }
