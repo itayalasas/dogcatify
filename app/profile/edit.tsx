@@ -555,7 +555,7 @@ export default function EditProfile() {
       
       // Show success message and navigate back
       Alert.alert('Éxito', 'Perfil actualizado correctamente', [
-        { text: 'OK', onPress: () => router.back() }
+        { text: 'OK', onPress: () => router.replace('/(tabs)/profile') }
       ]);
       
     } catch (error) {
