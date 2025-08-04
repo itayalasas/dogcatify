@@ -60,10 +60,14 @@ export default function SelectVeterinarian() {
 
   const handleSelectVeterinarian = (veterinarian: any) => {
     // Navigate back with selected veterinarian
+    console.log('Navigating back with veterinarian:', veterinarian.name);
     router.push({
       pathname: returnPath,
       params: {
-        selectedVeterinarian: JSON.stringify(veterinarian)
+        selectedVeterinarian: JSON.stringify(veterinarian),
+        // Clear other selections to avoid conflicts
+        selectedCondition: undefined,
+        selectedTreatment: undefined
       }
     });
   };

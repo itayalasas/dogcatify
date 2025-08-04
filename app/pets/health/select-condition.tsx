@@ -60,10 +60,14 @@ export default function SelectCondition() {
 
   const handleSelectCondition = (condition: any) => {
     // Navigate back with selected condition
+    console.log('Navigating back with condition:', condition.name);
     router.push({
       pathname: returnPath,
       params: {
-        selectedCondition: JSON.stringify(condition)
+        selectedCondition: JSON.stringify(condition),
+        // Clear other selections to avoid conflicts
+        selectedTreatment: undefined,
+        selectedVeterinarian: undefined
       }
     });
   };

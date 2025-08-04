@@ -11,6 +11,7 @@ import { useAuth } from '../../../../contexts/AuthContext';
 
 export default function AddIllness() {
   const { id, recordId, refresh } = useLocalSearchParams<{ id: string; recordId?: string; refresh?: string }>();
+  const params = useLocalSearchParams();
   const { currentUser } = useAuth();
   
   // Pet data
@@ -29,6 +30,38 @@ export default function AddIllness() {
   // UI state
   const [showDatePicker, setShowDatePicker] = useState(false);
 
+  // Handle return parameters from selection screens
+  useEffect(() => {
+    if (params.selectedCondition) {
+      try {
+        const condition = JSON.parse(params.selectedCondition as string);
+        setIllnessName(condition.name);
+        console.log('Selected condition:', condition.name);
+      } catch (error) {
+        console.error('Error parsing selected condition:', error);
+      }
+    }
+    
+    if (params.selectedTreatment) {
+      try {
+        const treatmentData = JSON.parse(params.selectedTreatment as string);
+        setTreatment(treatmentData.name);
+        console.log('Selected treatment:', treatmentData.name);
+      } catch (error) {
+        console.error('Error parsing selected treatment:', error);
+      }
+    }
+    
+    if (params.selectedVeterinarian) {
+      try {
+        const vetData = JSON.parse(params.selectedVeterinarian as string);
+        setVeterinarian(vetData.name);
+        console.log('Selected veterinarian:', vetData.name);
+      } catch (error) {
+        console.error('Error parsing selected veterinarian:', error);
+      }
+    }
+  }, [params.selectedCondition, params.selectedTreatment, params.selectedVeterinarian]);
   useEffect(() => {
     fetchPetData();
     

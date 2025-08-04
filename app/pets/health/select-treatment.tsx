@@ -65,10 +65,14 @@ export default function SelectTreatment() {
 
   const handleSelectTreatment = (treatment: any) => {
     // Navigate back with selected treatment
+    console.log('Navigating back with treatment:', treatment.name);
     router.push({
       pathname: returnPath,
       params: {
-        selectedTreatment: JSON.stringify(treatment)
+        selectedTreatment: JSON.stringify(treatment),
+        // Clear other selections to avoid conflicts
+        selectedCondition: undefined,
+        selectedVeterinarian: undefined
       }
     });
   };
