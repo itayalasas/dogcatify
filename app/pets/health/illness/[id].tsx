@@ -434,7 +434,7 @@ export default function AddIllness() {
                   "Ej: Rinotraqueítis, Cistitis, Calicivirus..."
                 }
                 value={illnessQuery}
-                onChangeText={(text) => {
+                onChangeText={handleConditionInputChange}
                 onFocus={() => {
                   console.log('🎯 Input focused, current query:', illnessQuery);
                   console.log('🎯 Should show suggestions:', illnessQuery.trim().length > 0);
@@ -442,8 +442,6 @@ export default function AddIllness() {
                     setShowConditionSuggestions(true);
                   }
                 }}
-                  setIllnessQuery(text);
-                  setIllnessName(text);
                 }}
               />
             </View>
