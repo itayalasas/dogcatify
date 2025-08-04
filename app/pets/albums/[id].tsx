@@ -562,13 +562,12 @@ export default function AlbumDetail() {
                 title="Cancelar"
                 onPress={() => setShowDeleteConfirm(false)}
                 variant="outline"
-                size="small"
+                size="medium"
               />
               <Button
                 title="Eliminar"
                 onPress={handleDeleteImage}
-                variant="primary"
-                size="small"
+                size="medium"
               />
             </View>
           </View>
@@ -788,25 +787,28 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 20,
-    width: '80%',
+    width: '90%',
+    maxWidth: 400,
+    alignSelf: 'center',
   },
   confirmTitle: {
     fontSize: 18,
     fontFamily: 'Inter-Bold',
     color: '#111827',
-    marginBottom: 8,
+    marginBottom: 12,
     textAlign: 'center',
   },
   confirmText: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
-    marginBottom: 20,
+    marginBottom: 24,
     textAlign: 'center',
+    lineHeight: 20,
   },
   confirmActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: 'column',
     gap: 12,
+    width: '100%',
   },
 });
