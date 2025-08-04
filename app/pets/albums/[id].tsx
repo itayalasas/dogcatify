@@ -211,7 +211,71 @@ export default function AlbumDetail() {
         ? 'Todas las fotos se agregaron correctamente'
         : `Se agregaron ${imageUrls.length} de ${selectedImages.length} fotos`;
       
-      Alert.alert('Éxito', successMessage);
+      // If album is shared, create a new post in the feed
+      if (album.is_shared && imageUrls.length > 0) {
+        console.log('Album is shared, creating new post for added photos...');
+        
+        try {
+          // Get pet data
+          const { data: petData, error: petError } = await supabaseClient
+            .from('pets')
+            .select('*')
+            .eq('id', album.pet_id)
+            .single();
+          
+          if (petData && !petError) {
+            // Get current user data for author info
+            const { data: userData, error: userError } = await supabaseClient
+              .from('profiles')
+              .select('display_name, photo_url')
+              .eq('id', currentUser.id)
+              .single();
+            
+            // Create new post with the added photos
+            const postData = {
+              user_id: currentUser.id,
+              pet_id: album.pet_id,
+              content: `Nuevas fotos agregadas al álbum "${album.title}" 📸`,
+              image_url: imageUrls[0],
+              album_images: imageUrls,
+              type: 'album',
+              author: {
+                name: userData?.display_name || currentUser.displayName || 'Usuario',
+                avatar: userData?.photo_url || currentUser.photoURL || 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=100'
+              },
+              pet: {
+                name: petData.name,
+                species: petData.species === 'dog' ? 'Perro' : 'Gato'
+              },
+              likes: [],
+              created_at: new Date().toISOString()
+            };
+            
+            const { error: postError } = await supabaseClient
+              .from('posts')
+              .insert(postData);
+            
+            if (postError) {
+              console.error('Error creating feed post:', postError);
+              Alert.alert(
+                'Éxito',
+                `${successMessage}\n\nNota: Las fotos se guardaron pero no se pudieron compartir automáticamente en el feed.`
+              );
+            } else {
+              console.log('Feed post created successfully');
+              Alert.alert(
+                'Éxito',
+                `${successMessage}\n\n📸 Las nuevas fotos también se compartieron en el feed.`
+              );
+            }
+          }
+        } catch (feedError) {
+          console.error('Error creating feed post:', feedError);
+          Alert.alert('Éxito', successMessage);
+        }
+      } else {
+        Alert.alert('Éxito', successMessage);
+      }
     } catch (error) {
       console.error('Error adding photos:', error);
       

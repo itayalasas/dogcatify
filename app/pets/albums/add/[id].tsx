@@ -346,40 +346,65 @@ export default function AddPhoto() {
           
         if (petData && !petError) {
           console.log('Pet data found, creating post...');
-          // Crear post directamente aquí en lugar de usar una función separada
+          
+          // Get current user data for author info
+          const { data: userData, error: userError } = await supabaseClient
+            .from('profiles')
+            .select('display_name, photo_url')
+            .eq('id', currentUser.id)
+            .single();
+          
+          if (userError) {
+            console.error('Error fetching user data:', userError);
+          }
+          
+          // Create post with complete author information
+          const postData = {
+            user_id: currentUser.id,
+            pet_id: id,
+            content: photoDescription || `Nuevas fotos de ${petData.name} 📸`,
+            image_url: imageUrls[0],
+            album_images: imageUrls,
+            type: 'album',
+            author: {
+              name: userData?.display_name || currentUser.displayName || 'Usuario',
+              avatar: userData?.photo_url || currentUser.photoURL || 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=100'
+            },
+            pet: {
+              name: petData.name,
+              species: petData.species === 'dog' ? 'Perro' : 'Gato'
+            },
+            likes: [],
+            created_at: new Date().toISOString()
+          };
+          
+          console.log('Creating post with data:', postData);
+          
           const postResult = await supabaseClient
             .from('posts')
-            .insert({
-              user_id: currentUser.id,
-              pet_id: id,
-              content: photoDescription || `Nuevas fotos de ${petData.name} 📸`,
-              image_url: imageUrls[0],
-              album_images: imageUrls,
-              type: 'album',
-              author: {
-                name: currentUser.displayName || 'Usuario',
-                avatar: currentUser.photoURL || 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=100'
-              },
-              pet: {
-                name: petData.name,
-                species: petData.species === 'dog' ? 'Perro' : 'Gato'
-              }
-            });
+            .insert(postData);
             
           if (postResult.error) {
             console.error('Error creating post:', postResult.error);
-            // No lanzar error para no interrumpir el flujo principal
+            Alert.alert(
+              'Advertencia',
+              'Las fotos se guardaron correctamente, pero no se pudo compartir en el feed. ¿Deseas intentar compartir manualmente más tarde?',
+              [{ text: 'Entendido' }]
+            );
           } else {
             console.log('Post created successfully');
+            Alert.alert(
+              '¡Éxito!',
+              `${successMessage}\n\n📸 Las fotos también se compartieron en el feed para que otros usuarios puedan verlas.`,
+              [{ text: 'Perfecto' }]
+            );
           }
         }
+      } else {
+        // Si no se comparte, solo mostrar mensaje de éxito normal
+        Alert.alert('¡Éxito!', successMessage);
       }
 
-      const successMessage = imageUrls.length === selectedImages.length 
-        ? 'Todas las fotos se han guardado correctamente'
-        : `Se guardaron ${imageUrls.length} de ${selectedImages.length} fotos seleccionadas`;
-      
-      Alert.alert('¡Éxito!', successMessage);
       router.push({
         pathname: `/pets/${id}`,
         params: { refresh: 'true', activeTab: 'albums' }
