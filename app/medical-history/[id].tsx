@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, SafeAreaView, Image, Platform, Alert } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { Download, ArrowLeft, Calendar, Scale, Syringe, Heart, AlertTriangle, Pill } from 'lucide-react-native';
+import { Download, ArrowLeft, Calendar, Scale, Syringe, Heart, TriangleAlert as AlertTriangle, Pill } from 'lucide-react-native';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { supabaseClient } from '../../lib/supabase';
