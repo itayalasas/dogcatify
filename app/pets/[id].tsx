@@ -636,6 +636,11 @@ export default function PetDetail() {
     </View>
   );
 
+  const renderMedicalAlerts = () => {
+    // For now, return null - we'll implement this when the medical alerts system is ready
+    return null;
+  };
+
   const renderBreedInfo = () => {
     if (!pet.breed_info && (!pet.breedInfo || Object.keys(pet.breedInfo).length === 0)) return null;
     
