@@ -403,12 +403,11 @@ export default function AlbumDetail() {
 
   const removeFeedPostFromAlbum = async () => {
     try {
-      // Find and delete posts related to this album
+      // Delete posts related to this album using album_id
       const { error } = await supabaseClient
         .from('posts')
         .delete()
-        .eq('album_id', album.id)
-        .eq('type', 'album');
+        .eq('album_id', album.id);
       
       if (error) {
         console.error('Error removing feed post:', error);
@@ -430,8 +429,7 @@ export default function AlbumDetail() {
           album_images: album.images || [],
           image_url: album.images?.[0] || null
         })
-        .eq('album_id', album.id)
-        .eq('type', 'album');
+        .eq('album_id', album.id);
       
       if (error) {
         console.error('Error updating feed post:', error);

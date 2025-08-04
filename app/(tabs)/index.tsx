@@ -289,33 +289,18 @@ export default function Home() {
 
   const removeAlbumPostsFromFeed = async (albumId: string) => {
     try {
-      // Find and delete posts related to this album
-      const { data: albumPosts, error } = await supabaseClient
+      // Delete posts related to this album using album_id
+      const { error } = await supabaseClient
         .from('posts')
-        .select('id')
-        .eq('type', 'album')
-        .contains('album_images', [albumId]); // This might need adjustment based on how album posts are stored
+        .delete()
+        .eq('album_id', albumId);
       
       if (error) {
-        console.error('Error finding album posts:', error);
-        return;
-      }
-      
-      if (albumPosts && albumPosts.length > 0) {
-        // Delete the posts
-        const { error: deleteError } = await supabaseClient
-          .from('posts')
-          .delete()
-          .in('id', albumPosts.map(post => post.id));
-        
-        if (deleteError) {
-          console.error('Error deleting album posts:', deleteError);
-        } else {
-          console.log('Album posts removed from feed');
-          // Remove from local state
-          const postIds = albumPosts.map(post => post.id);
-          setPosts(prevPosts => prevPosts.filter(post => !postIds.includes(post.id)));
-        }
+        console.error('Error deleting album posts:', error);
+      } else {
+        console.log('Album posts removed from feed');
+        // Remove from local state
+        setPosts(prevPosts => prevPosts.filter(post => post.album_id !== albumId));
       }
     } catch (error) {
       console.error('Error removing album posts from feed:', error);
