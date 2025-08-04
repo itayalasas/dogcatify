@@ -68,9 +68,10 @@ export default function SelectVeterinarian() {
       pathname: returnPath,
       params: {
         selectedVeterinarian: JSON.stringify({ name: veterinarian.business_name }),
-        // Clear other selections to avoid conflicts
-        selectedCondition: undefined,
-        selectedTreatment: undefined
+        // Preserve other form values from navigation params
+        ...(params.currentCondition && { selectedCondition: JSON.stringify({ name: params.currentCondition }) }),
+        ...(params.currentTreatment && { selectedTreatment: JSON.stringify({ name: params.currentTreatment }) }),
+        ...(params.currentNotes && { currentNotes: params.currentNotes })
       }
     });
   };

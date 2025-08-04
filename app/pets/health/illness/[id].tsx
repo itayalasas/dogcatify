@@ -32,6 +32,7 @@ export default function AddIllness() {
 
   // Handle return parameters from selection screens
   useEffect(() => {
+    // Handle selected condition
     if (params.selectedCondition) {
       try {
         const condition = JSON.parse(params.selectedCondition as string);
@@ -42,6 +43,7 @@ export default function AddIllness() {
       }
     }
     
+    // Handle selected treatment
     if (params.selectedTreatment) {
       try {
         const treatmentData = JSON.parse(params.selectedTreatment as string);
@@ -52,6 +54,7 @@ export default function AddIllness() {
       }
     }
     
+    // Handle selected veterinarian
     if (params.selectedVeterinarian) {
       try {
         const vetData = JSON.parse(params.selectedVeterinarian as string);
@@ -60,6 +63,12 @@ export default function AddIllness() {
       } catch (error) {
         console.error('Error parsing selected veterinarian:', error);
       }
+    }
+    
+    // Handle preserved notes
+    if (params.currentNotes && typeof params.currentNotes === 'string') {
+      setNotes(params.currentNotes);
+      console.log('Restored notes:', params.currentNotes);
     }
   }, [params.selectedCondition, params.selectedTreatment, params.selectedVeterinarian]);
   useEffect(() => {
@@ -125,7 +134,11 @@ export default function AddIllness() {
         petId: id,
         species: pet?.species || 'dog',
         returnPath: `/pets/health/illness/${id}`,
-        currentValue: illnessName
+        currentValue: illnessName,
+        // Preserve current form values
+        currentTreatment: treatment,
+        currentVeterinarian: veterinarian,
+        currentNotes: notes
       }
     });
   };
@@ -136,7 +149,11 @@ export default function AddIllness() {
       params: { 
         petId: id,
         returnPath: `/pets/health/illness/${id}`,
-        currentValue: treatment
+        currentValue: treatment,
+        // Preserve current form values
+        currentCondition: illnessName,
+        currentVeterinarian: veterinarian,
+        currentNotes: notes
       }
     });
   };
@@ -147,7 +164,11 @@ export default function AddIllness() {
       params: { 
         petId: id,
         returnPath: `/pets/health/illness/${id}`,
-        currentValue: veterinarian
+        currentValue: veterinarian,
+        // Preserve current form values
+        currentCondition: illnessName,
+        currentTreatment: treatment,
+        currentNotes: notes
       }
     });
   };

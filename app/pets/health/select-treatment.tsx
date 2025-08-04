@@ -70,9 +70,10 @@ export default function SelectTreatment() {
       pathname: returnPath,
       params: {
         selectedTreatment: JSON.stringify(treatment),
-        // Clear other selections to avoid conflicts
-        selectedCondition: undefined,
-        selectedVeterinarian: undefined
+        // Preserve other form values from navigation params
+        ...(params.currentCondition && { selectedCondition: JSON.stringify({ name: params.currentCondition }) }),
+        ...(params.currentVeterinarian && { selectedVeterinarian: JSON.stringify({ name: params.currentVeterinarian }) }),
+        ...(params.currentNotes && { currentNotes: params.currentNotes })
       }
     });
   };
