@@ -738,6 +738,8 @@ const styles = StyleSheet.create({
   },
   inputGroup: {
     marginBottom: 24,
+    position: 'relative',
+    zIndex: 1,
   },
   inputLabel: {
     fontSize: 15,
@@ -774,6 +776,11 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     borderRadius: 12,
     maxHeight: 300,
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    zIndex: 9999,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -796,6 +803,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
     backgroundColor: '#FFFFFF',
+    minHeight: 60,
   },
   suggestionContent: {
     flex: 1,
@@ -805,6 +813,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     color: '#111827',
     marginBottom: 4,
+    lineHeight: 20,
   },
   suggestionCategory: {
     fontSize: 12,
@@ -812,6 +821,7 @@ const styles = StyleSheet.create({
     color: '#3B82F6',
     textTransform: 'capitalize',
     marginBottom: 4,
+    lineHeight: 16,
   },
   suggestionDescription: {
     fontSize: 13,
