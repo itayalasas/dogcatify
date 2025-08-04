@@ -591,10 +591,6 @@ export default function EditProfile() {
       
       // Small delay to ensure state update, then show success and navigate
       setTimeout(() => {
-        console.log('Image uploaded successfully:', photoURL);
-      }
-
-      console.log('Updating Supabase profile...');
         Alert.alert('Éxito', 'Perfil actualizado correctamente', [
           { text: 'OK', onPress: () => router.replace('/(tabs)/profile') }
         ]);
