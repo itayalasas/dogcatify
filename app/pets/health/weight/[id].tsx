@@ -163,6 +163,7 @@ export default function PetWeight() {
 
   const fetchWeightRecords = async () => {
     try {
+      console.log('=== FETCH WEIGHT RECORDS DEBUG ===');
       console.log('Fetching weight records for pet:', id);
       
       const { data, error } = await supabaseClient
@@ -172,9 +173,15 @@ export default function PetWeight() {
         .eq('type', 'weight')
         .order('created_at', { ascending: true });
       
-      if (error) throw error;
+      console.log('Query result:', data);
+      console.log('Query error:', error);
       
-      console.log('Weight records fetched:', data?.length || 0);
+      if (error) {
+        console.error('❌ Error fetching weight records:', error);
+        throw error;
+      }
+      
+      console.log('✅ Weight records fetched:', data?.length || 0);
       
       const formattedRecords = data.map(record => ({
         id: record.id,
@@ -189,6 +196,7 @@ export default function PetWeight() {
       
       console.log('Formatted weight records:', formattedRecords);
       setWeightRecords(formattedRecords);
+      console.log('=== END FETCH WEIGHT RECORDS DEBUG ===');
     } catch (error) {
       console.error('Error fetching weight records:', error);
     }

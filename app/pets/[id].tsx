@@ -33,6 +33,24 @@ export default function PetDetail() {
     fetchAlbums();
   }, [id]);
 
+  // Separate effect to create initial weight record after data is loaded
+  useEffect(() => {
+    console.log('=== WEIGHT RECORD CHECK EFFECT ===');
+    console.log('Pet loaded:', !!pet);
+    console.log('Pet weight:', pet?.weight);
+    console.log('Weight records count:', weightRecords.length);
+    console.log('Current user:', !!currentUser);
+    
+    if (pet && pet.weight && currentUser && weightRecords.length === 0) {
+      console.log('✅ Conditions met for creating initial weight record');
+      createInitialWeightRecord();
+    } else {
+      console.log('❌ Conditions not met for creating initial weight record');
+    }
+    console.log('=== END WEIGHT RECORD CHECK EFFECT ===');
+  }, [pet, weightRecords, currentUser]);
+  }, [id]);
+
   useEffect(() => {
     // Refresh albums when returning from add album screen
     if (refresh === 'true') {
