@@ -40,9 +40,13 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   // Auto-register push token when user is authenticated
   useEffect(() => {
-    if (currentUser && !expoPushToken) {
+    // Don't auto-register in Expo Go
+    const isExpoGo = Constants.appOwnership === 'expo';
+    if (currentUser && !expoPushToken && !isExpoGo) {
       console.log('User authenticated, auto-registering push notifications...');
       registerForPushNotifications();
+    } else if (isExpoGo) {
+      console.log('Skipping auto-registration in Expo Go - notifications not supported');
     }
   }, [currentUser]);
   useEffect(() => {
