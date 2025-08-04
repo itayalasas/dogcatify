@@ -127,8 +127,30 @@ export default function PetDetail() {
   };
   
   const createInitialWeightRecord = async () => {
-    if (!pet || !pet.weight || !currentUser) {
+    if (!pet || !pet.weight || !currentUser || weightRecords.length > 0) {
       console.log('Cannot create initial weight record - missing data');
+      return;
+    }
+    
+    // Double check - verify no existing weight records in database
+    try {
+      const { data: existingRecords, error: checkError } = await supabaseClient
+        .from('pet_health')
+        .select('id')
+        .eq('pet_id', id)
+        .eq('type', 'weight');
+      
+      if (checkError) {
+        console.error('Error checking existing weight records:', checkError);
+        return;
+      }
+      
+      if (existingRecords && existingRecords.length > 0) {
+        console.log('Weight records already exist in database, skipping creation');
+        return;
+      }
+    } catch (error) {
+      console.error('Error in duplicate check:', error);
       return;
     }
     
