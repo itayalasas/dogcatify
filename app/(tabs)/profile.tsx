@@ -514,15 +514,7 @@ export default function Profile() {
               </Text>
               <ChevronRight size={16} color="#6B7280" />
             </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuOption}>
-            <View style={styles.menuOptionLeft}>
-              <HelpCircle size={20} color="#6B7280" />
-              <Text style={styles.menuOptionText}>{t('helpSupport')}</Text>
-            </View>
-            <ChevronRight size={16} color="#6B7280" />
-          </TouchableOpacity>
+          </TouchableOpacity>        
 
           <TouchableOpacity 
             style={styles.menuOption} 
