@@ -408,7 +408,7 @@ export class MedicalHistoryPDF {
     }
   }
 
-  public async generateAndShare(petId: string, ownerId: string): Promise<{ htmlContent: string; shareUrl: string }> {
+  public async generateAndShare(petId: string, ownerId: string): Promise<{ htmlContent: string; shareUrl: string; directHtmlUrl: string }> {
     try {
       // Generate HTML content
       const htmlContent = await this.generateMedicalHistory(petId, ownerId);
@@ -416,11 +416,12 @@ export class MedicalHistoryPDF {
       // Upload HTML to storage for sharing
       const filename = `medical-history/${petId}/${Date.now()}.html`;
       
-      // Convert HTML string to blob for upload
+      // Upload HTML with correct content type
       const { data, error } = await supabaseClient.storage
         .from('dogcatify')
-        .upload(filename, htmlContent, {
+        .upload(filename, new Blob([htmlContent], { type: 'text/html' }), {
           contentType: 'text/html',
+          upsert: false,
           cacheControl: '3600',
         });
 
@@ -431,11 +432,15 @@ export class MedicalHistoryPDF {
         .from('dogcatify')
         .getPublicUrl(filename);
 
-      // Create shareable URL for veterinarians using environment variable
+      // Create shareable URL for veterinarians
       const appDomain = process.env.EXPO_PUBLIC_APP_DOMAIN || process.env.EXPO_PUBLIC_APP_URL || 'https://app-dogcatify.netlify.app';
-      const shareUrl = `${appDomain}/medical-history/${petId}?html=${encodeURIComponent(publicUrl)}`;
+      const appShareUrl = `${appDomain}/medical-history/${petId}?html=${encodeURIComponent(publicUrl)}`;
 
-      return { htmlContent, shareUrl };
+      return { 
+        htmlContent, 
+        shareUrl: appShareUrl,
+        directHtmlUrl: publicUrl
+      };
     } catch (error) {
       console.error('Error generating and sharing medical history:', error);
       throw error;
@@ -449,7 +454,7 @@ export const generateMedicalHistoryHTML = async (petId: string, ownerId: string)
   return await generator.generateMedicalHistory(petId, ownerId);
 };
 
-export const generateMedicalHistoryWithQR = async (petId: string, ownerId: string): Promise<{ htmlContent: string; shareUrl: string }> => {
+export const generateMedicalHistoryWithQR = async (petId: string, ownerId: string): Promise<{ htmlContent: string; shareUrl: string; directHtmlUrl: string }> => {
   const generator = new MedicalHistoryPDF();
   return await generator.generateAndShare(petId, ownerId);
 };

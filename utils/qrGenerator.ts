@@ -36,14 +36,14 @@ export const generateVeterinaryQRCode = async (
  * Create shareable medical history URL for veterinarians
  */
 export const createVeterinaryShareUrl = (petId: string, htmlUrl?: string): string => {
-  const appDomain = process.env.EXPO_PUBLIC_APP_DOMAIN || process.env.EXPO_PUBLIC_APP_URL || 'https://app-dogcatify.netlify.app';
-  let shareUrl = `${appDomain}/medical-history/${petId}`;
-  
   if (htmlUrl) {
-    shareUrl += `?html=${encodeURIComponent(htmlUrl)}`;
+    // Return the direct HTML URL from Supabase Storage
+    return htmlUrl;
   }
   
-  return shareUrl;
+  // Fallback to app route
+  const appDomain = process.env.EXPO_PUBLIC_APP_DOMAIN || process.env.EXPO_PUBLIC_APP_URL || 'https://app-dogcatify.netlify.app';
+  return `${appDomain}/medical-history/${petId}`;
 };
 
 /**
