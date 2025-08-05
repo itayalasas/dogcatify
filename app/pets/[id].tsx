@@ -407,7 +407,7 @@ export default function PetDetail() {
       }
       
       // Create URL with token parameter
-      const baseUrl = process.env.EXPO_PUBLIC_APP_URL || 'https://app-dogcatify.netlify.app';
+      const baseUrl = process.env.EXPO_PUBLIC_APP_DOMAIN || process.env.EXPO_PUBLIC_APP_URL || 'https://app-dogcatify.netlify.app';
       const shareUrl = `${baseUrl}/medical-history/${pet.id}?token=${tokenResult.token}`;
       const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(shareUrl)}&format=png&margin=20&ecc=M&color=2D6A6F&bgcolor=FFFFFF`;
       const shortUrl = `dogcatify.com/vet/${tokenResult.token.slice(-8)}`;
