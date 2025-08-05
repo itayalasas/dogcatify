@@ -373,37 +373,46 @@ export default function PetDetail() {
 
   const generatePDF = async () => {
     try {
-      Alert.alert('Generando PDF', 'Por favor espera...');
-      
-      const { generateMedicalHistoryPDF } = await import('../../utils/medicalHistoryPDF');
-      const pdfBlob = await generateMedicalHistoryPDF(pet.id, currentUser!.id);
-      
-      // For web, create download link
       if (Platform.OS === 'web') {
-        const url = URL.createObjectURL(pdfBlob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `historia-clinica-${pet.name}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        // For web, generate HTML and open in new window for printing
+        Alert.alert('Generando historia clínica', 'Por favor espera...');
         
-        Alert.alert('PDF Generado', 'La historia clínica se ha descargado correctamente');
+        const { generateMedicalHistoryHTML } = await import('../../utils/medicalHistoryPDF');
+        const htmlContent = await generateMedicalHistoryHTML(pet.id, currentUser!.id);
+        
+        // Open in new window for printing/saving as PDF
+        const newWindow = window.open('', '_blank');
+        if (newWindow) {
+          newWindow.document.write(htmlContent);
+          newWindow.document.close();
+          
+          // Auto-trigger print dialog
+          setTimeout(() => {
+            newWindow.print();
+          }, 1000);
+        }
+        
+        Alert.alert('Historia clínica generada', 'Se ha abierto una nueva ventana. Puedes imprimir o guardar como PDF desde el navegador.');
       } else {
-        // For mobile, show sharing options
-        Alert.alert(
-          'PDF Generado',
-          'La historia clínica ha sido generada. ¿Deseas compartirla?',
-          [
-            { text: 'Cerrar' },
-            { text: 'Compartir', onPress: () => sharePDF(pdfBlob) }
-          ]
-        );
+        // For mobile, show sharing options with HTML content
+        Alert.alert('Generando historia clínica', 'Por favor espera...');
+        
+        const { generateMedicalHistoryHTML } = await import('../../utils/medicalHistoryPDF');
+        const htmlContent = await generateMedicalHistoryHTML(pet.id, currentUser!.id);
+        
+        // Navigate to a preview screen where user can share or view
+        router.push({
+          pathname: '/pets/medical-history-preview',
+          params: {
+            petId: pet.id,
+            petName: pet.name,
+            htmlContent: encodeURIComponent(htmlContent)
+          }
+        });
       }
     } catch (error) {
-      console.error('Error generating PDF:', error);
-      Alert.alert('Error', 'No se pudo generar el PDF de la historia clínica');
+      console.error('Error generating medical history:', error);
+      Alert.alert('Error', 'No se pudo generar la historia clínica');
     }
   };
 
@@ -412,7 +421,7 @@ export default function PetDetail() {
       Alert.alert('Generando QR', 'Creando enlace para veterinario...');
       
       const { generateMedicalHistoryWithQR } = await import('../../utils/medicalHistoryPDF');
-      const { pdfBlob, shareUrl } = await generateMedicalHistoryWithQR(pet.id, currentUser!.id);
+      const { htmlContent, shareUrl } = await generateMedicalHistoryWithQR(pet.id, currentUser!.id);
       
       const { generateSharingPackage } = await import('../../utils/qrGenerator');
       const { qrCodeUrl, shortUrl } = await generateSharingPackage(pet.id, pet.name, shareUrl);
@@ -431,30 +440,6 @@ export default function PetDetail() {
     } catch (error) {
       console.error('Error generating QR for vet:', error);
       Alert.alert('Error', 'No se pudo generar el QR para veterinario');
-    }
-  };
-
-  const sharePDF = async (pdfBlob: Blob) => {
-    try {
-      if (Platform.OS === 'web') {
-        // Web sharing
-        if (navigator.share) {
-          const file = new File([pdfBlob], `historia-clinica-${pet.name}.pdf`, { type: 'application/pdf' });
-          await navigator.share({
-            title: `Historia Clínica de ${pet.name}`,
-            text: `Historia clínica veterinaria de ${pet.name}`,
-            files: [file]
-          });
-        } else {
-          Alert.alert('Compartir no disponible', 'Tu navegador no soporta la función de compartir');
-        }
-      } else {
-        // Mobile sharing would require additional setup
-        Alert.alert('Compartir', 'Funcionalidad de compartir en desarrollo para móviles');
-      }
-    } catch (error) {
-      console.error('Error sharing PDF:', error);
-      Alert.alert('Error', 'No se pudo compartir el PDF');
     }
   };
   
