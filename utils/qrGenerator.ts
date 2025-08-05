@@ -35,9 +35,15 @@ export const generateVeterinaryQRCode = async (
 /**
  * Create shareable medical history URL for veterinarians using Edge Function
  */
-export const createVeterinaryShareUrl = (petId: string): string => {
-  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-  return `${supabaseUrl}/functions/v1/medical-history/${petId}`;
+export const createVeterinaryShareUrl = (petId: string, token?: string): string => {
+  const appDomain = process.env.EXPO_PUBLIC_APP_DOMAIN || 
+                   process.env.EXPO_PUBLIC_APP_URL || 
+                   'https://app-dogcatify.netlify.app';
+  
+  if (token) {
+    return `${appDomain}/medical-history/${petId}?token=${token}`;
+  }
+  return `${appDomain}/medical-history/${petId}`;
 };
 
 /**
@@ -45,15 +51,16 @@ export const createVeterinaryShareUrl = (petId: string): string => {
  */
 export const generateSharingPackage = async (
   petId: string, 
-  petName: string
+  petName: string,
+  token?: string
 ): Promise<{
   shareUrl: string;
   qrCodeUrl: string;
   shortUrl: string;
 }> => {
   try {
-    // Use Edge Function URL for direct HTML serving
-    const shareUrl = createVeterinaryShareUrl(petId);
+    // Use app domain URL that will call Edge Function internally
+    const shareUrl = createVeterinaryShareUrl(petId, token);
     const qrCodeUrl = await generateVeterinaryQRCode(shareUrl, petName);
     
     // Create a shorter, more readable URL for display

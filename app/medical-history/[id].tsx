@@ -29,6 +29,50 @@ export default function MedicalHistoryView() {
     }
   }, [id, token, html]);
 
+  // Add effect to call Edge Function for data when needed
+  useEffect(() => {
+    // If we're in a web context and need to fetch data via Edge Function
+    if (Platform.OS === 'web' && id && !pet && !loading) {
+      console.log('Web context detected, calling Edge Function for data...');
+      fetchDataViaEdgeFunction();
+    }
+  }, [id, pet, loading]);
+
+  const fetchDataViaEdgeFunction = async () => {
+    try {
+      console.log('Calling Edge Function to get medical data...');
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+      const edgeFunctionUrl = `${supabaseUrl}/functions/v1/medical-history/${id}${token ? `?token=${token}` : ''}`;
+      
+      console.log('Edge Function URL:', edgeFunctionUrl);
+      
+      const response = await fetch(edgeFunctionUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+      
+      console.log('Edge Function response status:', response.status);
+      
+      if (response.ok) {
+        const htmlContent = await response.text();
+        console.log('Edge Function returned HTML, length:', htmlContent.length);
+        
+        // Parse the HTML to extract data (for debugging)
+        if (htmlContent.includes('DEBUG INFO:')) {
+          const debugMatch = htmlContent.match(/Records found: (\d+)/);
+          if (debugMatch) {
+            console.log('Edge Function found records:', debugMatch[1]);
+          }
+        }
+      } else {
+        console.error('Edge Function error:', response.status, await response.text());
+      }
+    } catch (error) {
+      console.error('Error calling Edge Function:', error);
+    }
+  };
   const verifyTokenAndFetchData = async () => {
     try {
       console.log('Verifying token:', token?.substring(0, 8) + '...');
