@@ -42,14 +42,11 @@ serve(async (req: Request) => {
       });
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-        detectSessionInUrl: false,
-        storage: undefined
-      }
-    });
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    console.log('Supabase client initialized with service role');
+    console.log('Service key available:', !!supabaseServiceKey);
+    console.log('URL configured:', !!supabaseUrl);</parameter>
 
     // If token is provided, verify it first
     if (token) {
@@ -219,6 +216,25 @@ serve(async (req: Request) => {
 
     // Fetch medical records
     console.log('Fetching medical records for pet_id:', petId);
+    console.log('Using service role key for unrestricted access...');
+    
+    // First, let's check if the pet_health table is accessible
+    const { count: totalHealthRecords, error: countError } = await supabase
+      .from('pet_health')
+      .select('*', { count: 'exact', head: true })
+      .eq('pet_id', petId);
+    
+    console.log('Total health records count check:', {
+      count: totalHealthRecords,
+      error: countError?.message,
+      petId: petId
+    });
+    
+    if (countError) {
+      console.error('Error accessing pet_health table:', countError);
+      console.error('Error details:', JSON.stringify(countError, null, 2));
+    }
+    
     const { data: medicalRecords, error: recordsError } = await supabase
       .from('pet_health')
       .select('*')
@@ -228,23 +244,42 @@ serve(async (req: Request) => {
     console.log('Medical records result:', { 
       count: medicalRecords?.length || 0, 
       error: recordsError?.message,
+      errorCode: recordsError?.code,
+      errorDetails: recordsError?.details,
+      errorHint: recordsError?.hint,
       recordTypes: medicalRecords?.map(r => r.type) || [],
       vaccines: medicalRecords?.filter(r => r.type === 'vaccine').length || 0,
       illnesses: medicalRecords?.filter(r => r.type === 'illness').length || 0,
       allergies: medicalRecords?.filter(r => r.type === 'allergy').length || 0,
       dewormings: medicalRecords?.filter(r => r.type === 'deworming').length || 0,
       weights: medicalRecords?.filter(r => r.type === 'weight').length || 0,
-      sampleVaccine: medicalRecords?.find(r => r.type === 'vaccine') || null,
-      sampleIllness: medicalRecords?.find(r => r.type === 'illness') || null,
-      sampleAllergy: medicalRecords?.find(r => r.type === 'allergy') || null,
-      sampleDeworming: medicalRecords?.find(r => r.type === 'deworming') || null,
-      sampleWeight: medicalRecords?.find(r => r.type === 'weight') || null
+      allRecords: medicalRecords || []
     });
 
     if (recordsError) {
       console.error('Error fetching medical records:', recordsError);
-      // Don't fail completely if medical records can't be fetched
-      console.log('Continuing without medical records due to error');
+      console.error('Full error object:', JSON.stringify(recordsError, null, 2));
+      
+      // Try alternative query without ordering to see if that's the issue
+      console.log('Trying alternative query without ordering...');
+      const { data: altRecords, error: altError } = await supabase
+        .from('pet_health')
+        .select('*')
+        .eq('pet_id', petId);
+      
+      console.log('Alternative query result:', {
+        count: altRecords?.length || 0,
+        error: altError?.message,
+        records: altRecords || []
+      });
+      
+      if (!altError && altRecords) {
+        console.log('Using alternative query results');
+        // Use alternative results if they work
+        medicalRecords = altRecords;
+      } else {
+        console.log('Both queries failed, continuing without medical records');
+      }
     } else {
       console.log('Medical records fetched successfully:', {
         totalRecords: medicalRecords?.length || 0,
@@ -256,9 +291,40 @@ serve(async (req: Request) => {
           weight: medicalRecords?.filter(r => r.type === 'weight').length || 0
         }
       });
+      
+      // Log sample records for debugging
+      if (medicalRecords && medicalRecords.length > 0) {
+        console.log('Sample records for debugging:');
+        medicalRecords.slice(0, 3).forEach((record, index) => {
+          console.log(`Record ${index + 1}:`, {
+            id: record.id,
+            type: record.type,
+            name: record.name,
+            product_name: record.product_name,
+            application_date: record.application_date,
+            diagnosis_date: record.diagnosis_date,
+            date: record.date,
+            veterinarian: record.veterinarian,
+            treatment: record.treatment,
+            symptoms: record.symptoms,
+            severity: record.severity,
+            weight: record.weight,
+            weight_unit: record.weight_unit,
+            notes: record.notes,
+            status: record.status
+          });
+        });
+      }
     }
 
     const records = medicalRecords || [];
+
+    console.log('Final records array for HTML generation:', {
+      totalRecords: records.length,
+      recordIds: records.map(r => r.id),
+      recordTypes: records.map(r => r.type),
+      recordNames: records.map(r => r.name || r.product_name)
+    });
 
     console.log('Generating HTML for pet:', petData.name);
 
@@ -346,10 +412,14 @@ serve(async (req: Request) => {
       weightRecords: weightRecords.length
     });
     
+    console.log('Raw records data:', records);
+    
     if (vaccines.length > 0) {
       console.log('Sample vaccine:', {
+        id: vaccines[0].id,
         name: vaccines[0].name,
         application_date: vaccines[0].application_date,
+        date: vaccines[0].date,
         veterinarian: vaccines[0].veterinarian,
         notes: vaccines[0].notes
       });
@@ -357,8 +427,10 @@ serve(async (req: Request) => {
     
     if (illnesses.length > 0) {
       console.log('Sample illness:', {
+        id: illnesses[0].id,
         name: illnesses[0].name,
         diagnosis_date: illnesses[0].diagnosis_date,
+        date: illnesses[0].date,
         symptoms: illnesses[0].symptoms,
         treatment: illnesses[0].treatment,
         status: illnesses[0].status
@@ -367,6 +439,7 @@ serve(async (req: Request) => {
     
     if (allergies.length > 0) {
       console.log('Sample allergy:', {
+        id: allergies[0].id,
         name: allergies[0].name,
         symptoms: allergies[0].symptoms,
         severity: allergies[0].severity,
@@ -376,15 +449,18 @@ serve(async (req: Request) => {
     
     if (dewormings.length > 0) {
       console.log('Sample deworming:', {
+        id: dewormings[0].id,
         name: dewormings[0].name,
         product_name: dewormings[0].product_name,
         application_date: dewormings[0].application_date,
+        date: dewormings[0].date,
         veterinarian: dewormings[0].veterinarian
       });
     }
     
     if (weightRecords.length > 0) {
       console.log('Sample weight:', {
+        id: weightRecords[0].id,
         weight: weightRecords[0].weight,
         weight_unit: weightRecords[0].weight_unit,
         date: weightRecords[0].date,
