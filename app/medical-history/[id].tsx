@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, Modal, TextInput, Platform } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { Calendar, Plus, Syringe, Heart, AlertTriangle, Pill, Scale, User, Save, X } from 'lucide-react-native';
+import { Calendar, Plus, Syringe, Heart, TriangleAlert as AlertTriangle, Pill, Scale, User, Save, X } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
