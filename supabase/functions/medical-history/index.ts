@@ -229,11 +229,22 @@ serve(async (req: Request) => {
       count: medicalRecords?.length || 0, 
       error: recordsError?.message,
       recordTypes: medicalRecords?.map(r => r.type) || [],
-      sampleRecord: medicalRecords?.[0] || null
+      vaccines: medicalRecords?.filter(r => r.type === 'vaccine').length || 0,
+      illnesses: medicalRecords?.filter(r => r.type === 'illness').length || 0,
+      allergies: medicalRecords?.filter(r => r.type === 'allergy').length || 0,
+      dewormings: medicalRecords?.filter(r => r.type === 'deworming').length || 0,
+      weights: medicalRecords?.filter(r => r.type === 'weight').length || 0,
+      sampleVaccine: medicalRecords?.find(r => r.type === 'vaccine') || null,
+      sampleIllness: medicalRecords?.find(r => r.type === 'illness') || null,
+      sampleAllergy: medicalRecords?.find(r => r.type === 'allergy') || null,
+      sampleDeworming: medicalRecords?.find(r => r.type === 'deworming') || null,
+      sampleWeight: medicalRecords?.find(r => r.type === 'weight') || null
     });
 
     if (recordsError) {
       console.error('Error fetching medical records:', recordsError);
+      // Don't fail completely if medical records can't be fetched
+      console.log('Continuing without medical records due to error');
     } else {
       console.log('Medical records fetched successfully:', {
         totalRecords: medicalRecords?.length || 0,
@@ -325,19 +336,62 @@ serve(async (req: Request) => {
     const dewormings = records.filter(r => r.type === 'deworming');
     const weightRecords = records.filter(r => r.type === 'weight');
 
-    console.log('Records grouped by type:', {
+    console.log('=== MEDICAL RECORDS GROUPING DEBUG ===');
+    console.log('Total records fetched:', records.length);
+    console.log('Records by type:', {
       vaccines: vaccines.length,
       illnesses: illnesses.length,
       allergies: allergies.length,
       dewormings: dewormings.length,
-      weightRecords: weightRecords.length,
-      totalRecords: records.length,
-      sampleVaccine: vaccines[0] || null,
-      sampleIllness: illnesses[0] || null,
-      sampleAllergy: allergies[0] || null,
-      sampleDeworming: dewormings[0] || null,
-      sampleWeight: weightRecords[0] || null
+      weightRecords: weightRecords.length
     });
+    
+    if (vaccines.length > 0) {
+      console.log('Sample vaccine:', {
+        name: vaccines[0].name,
+        application_date: vaccines[0].application_date,
+        veterinarian: vaccines[0].veterinarian,
+        notes: vaccines[0].notes
+      });
+    }
+    
+    if (illnesses.length > 0) {
+      console.log('Sample illness:', {
+        name: illnesses[0].name,
+        diagnosis_date: illnesses[0].diagnosis_date,
+        symptoms: illnesses[0].symptoms,
+        treatment: illnesses[0].treatment,
+        status: illnesses[0].status
+      });
+    }
+    
+    if (allergies.length > 0) {
+      console.log('Sample allergy:', {
+        name: allergies[0].name,
+        symptoms: allergies[0].symptoms,
+        severity: allergies[0].severity,
+        treatment: allergies[0].treatment
+      });
+    }
+    
+    if (dewormings.length > 0) {
+      console.log('Sample deworming:', {
+        name: dewormings[0].name,
+        product_name: dewormings[0].product_name,
+        application_date: dewormings[0].application_date,
+        veterinarian: dewormings[0].veterinarian
+      });
+    }
+    
+    if (weightRecords.length > 0) {
+      console.log('Sample weight:', {
+        weight: weightRecords[0].weight,
+        weight_unit: weightRecords[0].weight_unit,
+        date: weightRecords[0].date,
+        notes: weightRecords[0].notes
+      });
+    }
+    console.log('=== END MEDICAL RECORDS GROUPING DEBUG ===');
 
 
     // Generate HTML content
@@ -732,7 +786,7 @@ serve(async (req: Request) => {
                     </div>
                     `).join('') : `
                     <div class="empty-section">
-                        <p>No hay vacunas registradas</p>
+                        <p>No hay vacunas registradas para esta mascota</p>
                     </div>
                     `}
                 </div>
@@ -780,7 +834,7 @@ serve(async (req: Request) => {
                     </div>
                     `).join('') : `
                     <div class="empty-section">
-                        <p>No hay enfermedades registradas</p>
+                        <p>No hay enfermedades registradas para esta mascota</p>
                     </div>
                     `}
                 </div>
