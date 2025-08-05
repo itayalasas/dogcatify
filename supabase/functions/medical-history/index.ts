@@ -43,25 +43,27 @@ serve(async (req: Request) => {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
-        detectSessionInUrl: false
-      },
-      global: {
-        headers: {
-          'Authorization': `Bearer ${supabaseServiceKey}`
-        }
+        detectSessionInUrl: false,
+        storage: undefined
       }
     });
 
     console.log('Fetching medical history for pet:', petId);
 
     // Fetch pet data
+    console.log('Fetching pet data with service role...');
     const { data: petData, error: petError } = await supabase
       .from('pets')
       .select('*')
       .eq('id', petId)
       .single();
 
-    console.log('Pet data result:', { found: !!petData, error: petError?.message });
+    console.log('Pet data result:', { 
+      found: !!petData, 
+      error: petError?.message,
+      petName: petData?.name,
+      ownerId: petData?.owner_id
+    });
 
     if (petError || !petData) {
       console.error('Pet not found:', petError);
@@ -72,13 +74,19 @@ serve(async (req: Request) => {
     }
 
     // Fetch owner data
+    console.log('Fetching owner data for owner_id:', petData.owner_id);
     const { data: ownerData, error: ownerError } = await supabase
       .from('profiles')
       .select('display_name, email, phone')
       .eq('id', petData.owner_id)
       .single();
 
-    console.log('Owner data result:', { found: !!ownerData, error: ownerError?.message });
+    console.log('Owner data result:', { 
+      found: !!ownerData, 
+      error: ownerError?.message,
+      ownerName: ownerData?.display_name,
+      ownerEmail: ownerData?.email
+    });
 
     if (ownerError || !ownerData) {
       console.error('Owner not found:', ownerError);
@@ -89,13 +97,18 @@ serve(async (req: Request) => {
     }
 
     // Fetch medical records
+    console.log('Fetching medical records for pet_id:', petId);
     const { data: medicalRecords, error: recordsError } = await supabase
       .from('pet_health')
       .select('*')
       .eq('pet_id', petId)
       .order('created_at', { ascending: false });
 
-    console.log('Medical records result:', { count: medicalRecords?.length || 0, error: recordsError?.message });
+    console.log('Medical records result:', { 
+      count: medicalRecords?.length || 0, 
+      error: recordsError?.message,
+      recordTypes: medicalRecords?.map(r => r.type) || []
+    });
 
     if (recordsError) {
       console.error('Error fetching medical records:', recordsError);
@@ -179,13 +192,27 @@ serve(async (req: Request) => {
     const dewormings = records.filter(r => r.type === 'deworming');
     const weightRecords = records.filter(r => r.type === 'weight');
 
-    console.log('Records grouped:', {
+    console.log('Records grouped and filtered:', {
       vaccines: vaccines.length,
       illnesses: illnesses.length,
       allergies: allergies.length,
       dewormings: dewormings.length,
-      weightRecords: weightRecords.length
+      weightRecords: weightRecords.length,
+      totalRecords: records.length,
+      sampleRecord: records[0] || 'none'
     });
+
+    // Debug: Log first few records to see structure
+    if (records.length > 0) {
+      console.log('Sample records structure:', records.slice(0, 3).map(r => ({
+        id: r.id,
+        type: r.type,
+        name: r.name,
+        hasApplicationDate: !!r.application_date,
+        hasDiagnosisDate: !!r.diagnosis_date,
+        hasWeight: !!r.weight
+      })));
+    }
 
     // Generate HTML content
     const htmlContent = `
