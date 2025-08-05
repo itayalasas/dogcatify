@@ -6,15 +6,40 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 
 export default function ShareMedicalHistory() {
-  const { petId, petName, qrCodeUrl, shareUrl, shortUrl } = useLocalSearchParams<{
+  const { petId, petName, qrCodeUrl, shareUrl, shortUrl, expiresAt } = useLocalSearchParams<{
     petId: string;
     petName: string;
     qrCodeUrl: string;
     shareUrl: string;
     shortUrl: string;
+    expiresAt?: string;
   }>();
 
   const [copying, setCopying] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState<string>('');
+
+  useEffect(() => {
+    if (expiresAt) {
+      const updateTimeRemaining = () => {
+        const now = new Date();
+        const expiry = new Date(expiresAt);
+        const diff = expiry.getTime() - now.getTime();
+        
+        if (diff <= 0) {
+          setTimeRemaining('Expirado');
+        } else {
+          const hours = Math.floor(diff / (1000 * 60 * 60));
+          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+          setTimeRemaining(`${hours}h ${minutes}m restantes`);
+        }
+      };
+      
+      updateTimeRemaining();
+      const interval = setInterval(updateTimeRemaining, 60000); // Update every minute
+      
+      return () => clearInterval(interval);
+    }
+  }, [expiresAt]);
 
   const handleCopyUrl = async () => {
     setCopying(true);
@@ -109,8 +134,18 @@ Saludos cordiales.`;
         {/* QR Code */}
         <Card style={styles.qrCard}>
           <Text style={styles.qrTitle}>📱 Código QR para Veterinario</Text>
+          {timeRemaining && (
+            <View style={styles.expirationContainer}>
+              <Text style={[
+                styles.expirationText,
+                timeRemaining === 'Expirado' && styles.expiredText
+              ]}>
+                🕒 {timeRemaining}
+              </Text>
+            </View>
+          )}
           <Text style={styles.qrDescription}>
-            El veterinario puede escanear este código para acceder instantáneamente a la historia clínica
+            El veterinario puede escanear este código para acceder a la historia clínica. El enlace expira en 2 horas por seguridad.
           </Text>
           
           <View style={styles.qrContainer}>
@@ -278,6 +313,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
     color: '#3B82F6',
+  },
+  expirationContainer: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+  },
+  expirationText: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#92400E',
+    textAlign: 'center',
+  },
+  expiredText: {
+    color: '#DC2626',
   },
   sharingCard: {
     marginBottom: 16,

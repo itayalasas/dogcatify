@@ -9,19 +9,50 @@ import { supabaseClient } from '../../lib/supabase';
 const { width } = Dimensions.get('window');
 
 export default function MedicalHistoryView() {
-  const { id, pdf, html } = useLocalSearchParams<{ id: string; pdf?: string; html?: string }>();
+  const { id, token, pdf, html } = useLocalSearchParams<{ id: string; token?: string; pdf?: string; html?: string }>();
   const [pet, setPet] = useState<any>(null);
   const [owner, setOwner] = useState<any>(null);
   const [medicalRecords, setMedicalRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [tokenExpired, setTokenExpired] = useState(false);
 
   useEffect(() => {
     if (id) {
-      // Always fetch from database and render locally for consistent experience
-      fetchMedicalHistory();
+      if (token) {
+        // Verify token first if provided
+        verifyTokenAndFetchData();
+      } else {
+        // Direct access (from app) - fetch normally
+        fetchMedicalHistory();
+      }
     }
-  }, [id, html]);
+  }, [id, token, html]);
+
+  const verifyTokenAndFetchData = async () => {
+    try {
+      const { verifyMedicalHistoryToken } = await import('../../utils/medicalHistoryTokens');
+      const verification = await verifyMedicalHistoryToken(token!);
+      
+      if (!verification.success) {
+        if (verification.isExpired) {
+          setTokenExpired(true);
+          setError('El enlace ha expirado. Solicita un nuevo enlace al propietario de la mascota.');
+        } else {
+          setError('Enlace inválido. Verifica que el enlace sea correcto.');
+        }
+        setLoading(false);
+        return;
+      }
+      
+      // Token is valid, fetch medical history
+      await fetchMedicalHistory();
+    } catch (error) {
+      console.error('Error verifying token:', error);
+      setError('Error verificando el enlace de acceso');
+      setLoading(false);
+    }
+  };
 
   const fetchMedicalHistory = async () => {
     try {
@@ -189,9 +220,35 @@ export default function MedicalHistoryView() {
   if (error || !pet) {
     return (
       <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <View style={styles.headerContent}>
+            <Text style={styles.title}>🐾 Historia Clínica Veterinaria</Text>
+            {tokenExpired && (
+              <Text style={styles.expiredSubtitle}>Enlace Expirado</Text>
+            )}
+          </View>
+        </View>
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{error || 'Historia clínica no encontrada'}</Text>
-          <Button title="Volver" onPress={() => router.back()} />
+          {tokenExpired ? (
+            <View style={styles.expiredContainer}>
+              <Text style={styles.expiredIcon}>🕒</Text>
+              <Text style={styles.expiredTitle}>Enlace Expirado</Text>
+              <Text style={styles.expiredText}>
+                Este enlace ha expirado por seguridad. Los enlaces de historia clínica son válidos por 2 horas.
+              </Text>
+              <Text style={styles.expiredInstructions}>
+                Para acceder nuevamente:
+                {'\n'}• Solicita al propietario que genere un nuevo enlace
+                {'\n'}• El propietario puede crear un nuevo QR desde la app
+                {'\n'}• Los nuevos enlaces son válidos por 2 horas
+              </Text>
+            </View>
+          ) : (
+            <>
+              <Text style={styles.errorText}>{error || 'Historia clínica no encontrada'}</Text>
+              <Button title="Volver" onPress={() => router.back()} />
+            </>
+          )}
         </View>
       </SafeAreaView>
     );
@@ -668,6 +725,47 @@ const styles = StyleSheet.create({
     color: '#EF4444',
     marginBottom: 16,
     textAlign: 'center',
+  },
+  expiredSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#EF4444',
+    textAlign: 'center',
+  },
+  expiredContainer: {
+    alignItems: 'center',
+    padding: 40,
+  },
+  expiredIcon: {
+    fontSize: 64,
+    marginBottom: 16,
+  },
+  expiredTitle: {
+    fontSize: 24,
+    fontFamily: 'Inter-Bold',
+    color: '#EF4444',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  expiredText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 24,
+  },
+  expiredInstructions: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+    textAlign: 'left',
+    lineHeight: 22,
+    backgroundColor: '#F8FAFC',
+    padding: 16,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#3B82F6',
   },
   petCard: {
     marginBottom: 16,
