@@ -27,7 +27,7 @@ serve(async (req: Request) => {
       });
     }
 
-    // Initialize Supabase client
+    // Initialize Supabase client with service role
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
@@ -687,46 +687,6 @@ serve(async (req: Request) => {
 </body>
 </html>
     `;
-
-    // Helper functions for the template
-    function formatAge(pet: any): string {
-      if (pet.age_display) {
-        const { value, unit } = pet.age_display;
-        switch (unit) {
-          case 'days': return `${value} ${value === 1 ? 'día' : 'días'}`;
-          case 'months': return `${value} ${value === 1 ? 'mes' : 'meses'}`;
-          case 'years': return `${value} ${value === 1 ? 'año' : 'años'}`;
-          default: return `${value} ${unit}`;
-        }
-      }
-      return `${pet.age} ${pet.age === 1 ? 'año' : 'años'}`;
-    }
-
-    function formatWeight(pet: any): string {
-      if (pet.weight_display) {
-        return `${pet.weight_display.value} ${pet.weight_display.unit}`;
-      }
-      return `${pet.weight} kg`;
-    }
-
-    function formatDate(dateString: string): string {
-      if (!dateString) return 'No especificada';
-      
-      if (dateString.includes('/')) {
-        return dateString;
-      }
-      
-      try {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('es-ES', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric'
-        });
-      } catch {
-        return dateString;
-      }
-    }
 
     return new Response(htmlContent, {
       status: 200,
