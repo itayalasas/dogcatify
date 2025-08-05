@@ -8,6 +8,10 @@ const corsHeaders = {
 };
 
 serve(async (req: Request) => {
+  console.log('=== MEDICAL HISTORY FUNCTION START ===');
+  console.log('Request method:', req.method);
+  console.log('Request URL:', req.url);
+  
   // Handle CORS preflight request
   if (req.method === 'OPTIONS') {
     return new Response(null, {
@@ -21,18 +25,26 @@ serve(async (req: Request) => {
     const petId = url.pathname.split('/').pop();
     const token = url.searchParams.get('token');
     
+    console.log('Extracted parameters:', { petId, hasToken: !!token });
+    
     if (!petId) {
+      console.error('No pet ID provided');
       return new Response('Pet ID is required', {
         status: 400,
         headers: { 'Content-Type': 'text/plain', ...corsHeaders },
       });
     }
 
-    console.log('Medical history request:', { petId, hasToken: !!token });
-
-    // Initialize Supabase client with service role for unrestricted access
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    // Initialize Supabase client with service role
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    console.log('Environment check:', {
+      hasUrl: !!supabaseUrl,
+      hasServiceKey: !!supabaseServiceKey,
+      urlPreview: supabaseUrl ? supabaseUrl.substring(0, 30) + '...' : 'missing',
+      keyPreview: supabaseServiceKey ? supabaseServiceKey.substring(0, 20) + '...' : 'missing'
+    });
     
     if (!supabaseUrl || !supabaseServiceKey) {
       console.error('Missing Supabase environment variables');
@@ -42,15 +54,18 @@ serve(async (req: Request) => {
       });
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
     
-    console.log('Supabase client initialized with service role');
-    console.log('Service key available:', !!supabaseServiceKey);
-    console.log('URL configured:', !!supabaseUrl);</parameter>
+    console.log('Supabase client created with service role');
 
     // If token is provided, verify it first
     if (token) {
-      console.log('Verifying access token...');
+      console.log('Verifying access token:', token.substring(0, 10) + '...');
       
       const { data: tokenData, error: tokenError } = await supabase
         .from('medical_history_tokens')
@@ -58,15 +73,15 @@ serve(async (req: Request) => {
         .eq('token', token)
         .single();
 
-      console.log('Token verification result:', { 
+      console.log('Token verification:', { 
         found: !!tokenData, 
         error: tokenError?.message,
-        petId: tokenData?.pet_id,
+        petIdMatch: tokenData?.pet_id === petId,
         expiresAt: tokenData?.expires_at
       });
 
       if (tokenError || !tokenData) {
-        console.error('Invalid token:', tokenError);
+        console.error('Invalid token');
         return new Response(`
           <!DOCTYPE html>
           <html>
@@ -74,7 +89,6 @@ serve(async (req: Request) => {
           <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
             <h1>🚫 Enlace Inválido</h1>
             <p>El enlace proporcionado no es válido o ha sido revocado.</p>
-            <p>Solicita un nuevo enlace al propietario de la mascota.</p>
           </body>
           </html>
         `, {
@@ -92,56 +106,16 @@ serve(async (req: Request) => {
         return new Response(`
           <!DOCTYPE html>
           <html>
-          <head>
-            <title>Enlace Expirado</title>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-              body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background-color: #f9fafb; }
-              .container { max-width: 500px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-              .icon { font-size: 64px; margin-bottom: 20px; }
-              h1 { color: #ef4444; margin-bottom: 16px; }
-              p { color: #6b7280; line-height: 1.6; margin-bottom: 12px; }
-              .highlight { background-color: #fef3c7; padding: 12px; border-radius: 8px; margin: 20px 0; }
-            </style>
-          </head>
+          <head><title>Enlace Expirado</title></head>
           <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
-            <div class="container">
-              <div class="icon">🕒</div>
-              <h1>Enlace Expirado</h1>
-              <p>Este enlace ha expirado por seguridad (válido por 2 horas).</p>
-              <div class="highlight">
-                <p><strong>Para acceder nuevamente:</strong></p>
-                <p>• Solicita al propietario que genere un nuevo enlace</p>
-                <p>• El propietario puede crear un nuevo QR desde la app</p>
-                <p>• Los nuevos enlaces son válidos por 2 horas</p>
-              </div>
-              <p><small>Los enlaces expiran automáticamente para proteger la información médica.</small></p>
-            </div>
+            <h1>🕒 Enlace Expirado</h1>
+            <p>Este enlace ha expirado por seguridad.</p>
           </body>
           </html>
         `, {
           status: 410,
           headers: { 'Content-Type': 'text/html', ...corsHeaders },
         });
-      }
-
-      // Update access tracking
-      try {
-        await supabase
-          .from('medical_history_tokens')
-          .update({
-            accessed_at: new Date().toISOString(),
-            access_count: (tokenData.access_count || 0) + 1
-          })
-          .eq('id', tokenData.id);
-        
-        console.log('Token access tracked:', {
-          accessCount: (tokenData.access_count || 0) + 1,
-          petId: tokenData.pet_id
-        });
-      } catch (trackingError) {
-        console.warn('Could not update access tracking:', trackingError);
       }
 
       // Verify token matches the requested pet
@@ -154,7 +128,6 @@ serve(async (req: Request) => {
           <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
             <h1>🚫 Acceso Denegado</h1>
             <p>Este enlace no corresponde a la mascota solicitada.</p>
-            <p>Verifica que el enlace sea correcto.</p>
           </body>
           </html>
         `, {
@@ -163,13 +136,11 @@ serve(async (req: Request) => {
         });
       }
       
-      console.log('Token verified successfully for pet:', tokenData.pet_id);
+      console.log('Token verified successfully');
     }
 
-    console.log('Fetching medical history for pet:', petId);
-
     // Fetch pet data
-    console.log('Fetching pet data with service role...');
+    console.log('Fetching pet data for ID:', petId);
     const { data: petData, error: petError } = await supabase
       .from('pets')
       .select('*')
@@ -202,8 +173,7 @@ serve(async (req: Request) => {
     console.log('Owner data result:', { 
       found: !!ownerData, 
       error: ownerError?.message,
-      ownerName: ownerData?.display_name,
-      ownerEmail: ownerData?.email
+      ownerName: ownerData?.display_name
     });
 
     if (ownerError || !ownerData) {
@@ -214,119 +184,82 @@ serve(async (req: Request) => {
       });
     }
 
-    // Fetch medical records
-    console.log('Fetching medical records for pet_id:', petId);
-    console.log('Using service role key for unrestricted access...');
+    // Fetch medical records with detailed logging
+    console.log('=== FETCHING MEDICAL RECORDS ===');
+    console.log('Pet ID for health records:', petId);
+    console.log('Using service role key for unrestricted access');
     
-    // First, let's check if the pet_health table is accessible
-    const { count: totalHealthRecords, error: countError } = await supabase
+    // First, test basic connectivity to pet_health table
+    console.log('Testing basic table access...');
+    const { count: totalCount, error: countError } = await supabase
       .from('pet_health')
-      .select('*', { count: 'exact', head: true })
-      .eq('pet_id', petId);
+      .select('*', { count: 'exact', head: true });
     
-    console.log('Total health records count check:', {
-      count: totalHealthRecords,
-      error: countError?.message,
-      petId: petId
-    });
+    console.log('Total records in pet_health table:', totalCount);
+    console.log('Count query error:', countError?.message);
     
-    if (countError) {
-      console.error('Error accessing pet_health table:', countError);
-      console.error('Error details:', JSON.stringify(countError, null, 2));
-    }
-    
+    // Now fetch records for this specific pet
+    console.log('Fetching records for pet:', petId);
     const { data: medicalRecords, error: recordsError } = await supabase
       .from('pet_health')
       .select('*')
-      .eq('pet_id', petId)
-      .order('created_at', { ascending: false });
+      .eq('pet_id', petId);
 
-    console.log('Medical records result:', { 
-      count: medicalRecords?.length || 0, 
+    console.log('Medical records query result:', {
+      recordsFound: medicalRecords?.length || 0,
       error: recordsError?.message,
       errorCode: recordsError?.code,
-      errorDetails: recordsError?.details,
-      errorHint: recordsError?.hint,
-      recordTypes: medicalRecords?.map(r => r.type) || [],
-      vaccines: medicalRecords?.filter(r => r.type === 'vaccine').length || 0,
-      illnesses: medicalRecords?.filter(r => r.type === 'illness').length || 0,
-      allergies: medicalRecords?.filter(r => r.type === 'allergy').length || 0,
-      dewormings: medicalRecords?.filter(r => r.type === 'deworming').length || 0,
-      weights: medicalRecords?.filter(r => r.type === 'weight').length || 0,
-      allRecords: medicalRecords || []
+      errorDetails: recordsError?.details
     });
 
     if (recordsError) {
       console.error('Error fetching medical records:', recordsError);
-      console.error('Full error object:', JSON.stringify(recordsError, null, 2));
+      console.error('Full error:', JSON.stringify(recordsError, null, 2));
+    }
+
+    // Log detailed information about found records
+    if (medicalRecords && medicalRecords.length > 0) {
+      console.log('=== FOUND MEDICAL RECORDS ===');
+      console.log('Total records found:', medicalRecords.length);
       
-      // Try alternative query without ordering to see if that's the issue
-      console.log('Trying alternative query without ordering...');
-      const { data: altRecords, error: altError } = await supabase
-        .from('pet_health')
-        .select('*')
-        .eq('pet_id', petId);
+      const recordsByType = medicalRecords.reduce((acc, record) => {
+        acc[record.type] = (acc[record.type] || 0) + 1;
+        return acc;
+      }, {});
       
-      console.log('Alternative query result:', {
-        count: altRecords?.length || 0,
-        error: altError?.message,
-        records: altRecords || []
-      });
+      console.log('Records by type:', recordsByType);
       
-      if (!altError && altRecords) {
-        console.log('Using alternative query results');
-        // Use alternative results if they work
-        medicalRecords = altRecords;
-      } else {
-        console.log('Both queries failed, continuing without medical records');
-      }
-    } else {
-      console.log('Medical records fetched successfully:', {
-        totalRecords: medicalRecords?.length || 0,
-        recordsByType: {
-          vaccines: medicalRecords?.filter(r => r.type === 'vaccine').length || 0,
-          illnesses: medicalRecords?.filter(r => r.type === 'illness').length || 0,
-          allergies: medicalRecords?.filter(r => r.type === 'allergy').length || 0,
-          dewormings: medicalRecords?.filter(r => r.type === 'deworming').length || 0,
-          weight: medicalRecords?.filter(r => r.type === 'weight').length || 0
-        }
-      });
-      
-      // Log sample records for debugging
-      if (medicalRecords && medicalRecords.length > 0) {
-        console.log('Sample records for debugging:');
-        medicalRecords.slice(0, 3).forEach((record, index) => {
-          console.log(`Record ${index + 1}:`, {
-            id: record.id,
-            type: record.type,
-            name: record.name,
-            product_name: record.product_name,
-            application_date: record.application_date,
-            diagnosis_date: record.diagnosis_date,
-            date: record.date,
-            veterinarian: record.veterinarian,
-            treatment: record.treatment,
-            symptoms: record.symptoms,
-            severity: record.severity,
-            weight: record.weight,
-            weight_unit: record.weight_unit,
-            notes: record.notes,
-            status: record.status
-          });
+      // Log first few records for debugging
+      medicalRecords.slice(0, 3).forEach((record, index) => {
+        console.log(`Record ${index + 1}:`, {
+          id: record.id,
+          type: record.type,
+          name: record.name,
+          product_name: record.product_name,
+          application_date: record.application_date,
+          diagnosis_date: record.diagnosis_date,
+          date: record.date,
+          veterinarian: record.veterinarian,
+          treatment: record.treatment,
+          symptoms: record.symptoms,
+          severity: record.severity,
+          weight: record.weight,
+          weight_unit: record.weight_unit,
+          notes: record.notes,
+          status: record.status,
+          created_at: record.created_at
         });
-      }
+      });
+    } else {
+      console.log('=== NO MEDICAL RECORDS FOUND ===');
+      console.log('This could mean:');
+      console.log('1. No records exist for this pet');
+      console.log('2. RLS is blocking access (even with service role)');
+      console.log('3. Pet ID is incorrect');
+      console.log('4. Table structure issue');
     }
 
     const records = medicalRecords || [];
-
-    console.log('Final records array for HTML generation:', {
-      totalRecords: records.length,
-      recordIds: records.map(r => r.id),
-      recordTypes: records.map(r => r.type),
-      recordNames: records.map(r => r.name || r.product_name)
-    });
-
-    console.log('Generating HTML for pet:', petData.name);
 
     // Helper functions
     const formatAge = (pet: any): string => {
@@ -368,33 +301,6 @@ serve(async (req: Request) => {
       }
     };
 
-    // Helper function for status badges
-    const getStatusBadge = (status: string) => {
-      switch (status) {
-        case 'active':
-          return 'Activa';
-        case 'recovered':
-          return 'Recuperada';
-        case 'chronic':
-          return 'Crónica';
-        default:
-          return status;
-      }
-    };
-
-    // Helper function for severity badges
-    const getSeverityBadge = (severity: string) => {
-      const severityLower = severity.toLowerCase();
-      if (severityLower.includes('severa') || severityLower.includes('alta')) {
-        return 'Alta';
-      } else if (severityLower.includes('moderada') || severityLower.includes('media')) {
-        return 'Media';
-      } else if (severityLower.includes('leve') || severityLower.includes('baja')) {
-        return 'Baja';
-      }
-      return severity;
-    };
-
     // Group records by type
     const vaccines = records.filter(r => r.type === 'vaccine');
     const illnesses = records.filter(r => r.type === 'illness');
@@ -402,73 +308,12 @@ serve(async (req: Request) => {
     const dewormings = records.filter(r => r.type === 'deworming');
     const weightRecords = records.filter(r => r.type === 'weight');
 
-    console.log('=== MEDICAL RECORDS GROUPING DEBUG ===');
-    console.log('Total records fetched:', records.length);
-    console.log('Records by type:', {
-      vaccines: vaccines.length,
-      illnesses: illnesses.length,
-      allergies: allergies.length,
-      dewormings: dewormings.length,
-      weightRecords: weightRecords.length
-    });
-    
-    console.log('Raw records data:', records);
-    
-    if (vaccines.length > 0) {
-      console.log('Sample vaccine:', {
-        id: vaccines[0].id,
-        name: vaccines[0].name,
-        application_date: vaccines[0].application_date,
-        date: vaccines[0].date,
-        veterinarian: vaccines[0].veterinarian,
-        notes: vaccines[0].notes
-      });
-    }
-    
-    if (illnesses.length > 0) {
-      console.log('Sample illness:', {
-        id: illnesses[0].id,
-        name: illnesses[0].name,
-        diagnosis_date: illnesses[0].diagnosis_date,
-        date: illnesses[0].date,
-        symptoms: illnesses[0].symptoms,
-        treatment: illnesses[0].treatment,
-        status: illnesses[0].status
-      });
-    }
-    
-    if (allergies.length > 0) {
-      console.log('Sample allergy:', {
-        id: allergies[0].id,
-        name: allergies[0].name,
-        symptoms: allergies[0].symptoms,
-        severity: allergies[0].severity,
-        treatment: allergies[0].treatment
-      });
-    }
-    
-    if (dewormings.length > 0) {
-      console.log('Sample deworming:', {
-        id: dewormings[0].id,
-        name: dewormings[0].name,
-        product_name: dewormings[0].product_name,
-        application_date: dewormings[0].application_date,
-        date: dewormings[0].date,
-        veterinarian: dewormings[0].veterinarian
-      });
-    }
-    
-    if (weightRecords.length > 0) {
-      console.log('Sample weight:', {
-        id: weightRecords[0].id,
-        weight: weightRecords[0].weight,
-        weight_unit: weightRecords[0].weight_unit,
-        date: weightRecords[0].date,
-        notes: weightRecords[0].notes
-      });
-    }
-    console.log('=== END MEDICAL RECORDS GROUPING DEBUG ===');
-
+    console.log('=== FINAL RECORD GROUPING ===');
+    console.log('Vaccines:', vaccines.length);
+    console.log('Illnesses:', illnesses.length);
+    console.log('Allergies:', allergies.length);
+    console.log('Dewormings:', dewormings.length);
+    console.log('Weight records:', weightRecords.length);
 
     // Generate HTML content
     const htmlContent = `
@@ -514,6 +359,15 @@ serve(async (req: Request) => {
         .content {
             padding: 30px;
         }
+        .debug-info {
+            background-color: #f0f9ff;
+            border: 1px solid #0ea5e9;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-family: monospace;
+            font-size: 12px;
+        }
         .pet-profile {
             display: flex;
             align-items: center;
@@ -551,9 +405,6 @@ serve(async (req: Request) => {
             border-radius: 10px 10px 0 0;
             font-size: 18px;
             font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 10px;
         }
         .section-content {
             background-color: white;
@@ -562,28 +413,6 @@ serve(async (req: Request) => {
             border-radius: 0 0 10px 10px;
             padding: 20px;
         }
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        .info-item {
-            padding: 15px;
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            border-radius: 8px;
-            border: 1px solid #dee2e6;
-        }
-        .info-label {
-            font-weight: 600;
-            color: #2D6A6F;
-            margin-bottom: 5px;
-            font-size: 14px;
-        }
-        .info-value {
-            color: #495057;
-            font-size: 16px;
-        }
         .record-item {
             background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
             border: 1px solid #dee2e6;
@@ -591,20 +420,12 @@ serve(async (req: Request) => {
             padding: 20px;
             margin-bottom: 15px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            transition: transform 0.2s ease;
-        }
-        .record-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
         }
         .record-title {
             font-weight: 600;
             font-size: 16px;
             color: #2D6A6F;
             margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
         }
         .record-detail {
             margin-bottom: 8px;
@@ -613,6 +434,32 @@ serve(async (req: Request) => {
         }
         .record-detail strong {
             color: #2D6A6F;
+        }
+        .empty-section {
+            text-align: center;
+            padding: 30px;
+            color: #6c757d;
+            font-style: italic;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-left: 10px;
+        }
+        .badge-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .badge-warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .badge-danger {
+            background-color: #f8d7da;
+            color: #721c24;
         }
         .weight-grid {
             display: grid;
@@ -655,65 +502,6 @@ serve(async (req: Request) => {
             color: #6c757d;
             margin-bottom: 5px;
         }
-        .empty-section {
-            text-align: center;
-            padding: 30px;
-            color: #6c757d;
-            font-style: italic;
-        }
-        .badge {
-            display: inline-block;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 500;
-            margin-left: 10px;
-        }
-        .badge-success {
-            background-color: #d4edda;
-            color: #155724;
-        }
-        .badge-warning {
-            background-color: #fff3cd;
-            color: #856404;
-        }
-        .badge-danger {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-        @media print {
-            body { 
-                margin: 0; 
-                background-color: white;
-            }
-            .container {
-                box-shadow: none;
-                max-width: none;
-            }
-            .section { 
-                page-break-inside: avoid; 
-            }
-            .record-item:hover {
-                transform: none;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            }
-        }
-        @media (max-width: 768px) {
-            .content {
-                padding: 20px;
-            }
-            .pet-profile {
-                flex-direction: column;
-                text-align: center;
-            }
-            .pet-image {
-                margin-right: 0;
-                margin-bottom: 15px;
-            }
-            .info-grid {
-                grid-template-columns: 1fr;
-            }
-        }
     </style>
 </head>
 <body>
@@ -729,6 +517,20 @@ serve(async (req: Request) => {
         </div>
 
         <div class="content">
+            <!-- Debug Information (remove in production) -->
+            <div class="debug-info">
+                <strong>DEBUG INFO:</strong><br>
+                Pet ID: ${petId}<br>
+                Records found: ${records.length}<br>
+                Vaccines: ${vaccines.length}<br>
+                Illnesses: ${illnesses.length}<br>
+                Allergies: ${allergies.length}<br>
+                Dewormings: ${dewormings.length}<br>
+                Weight records: ${weightRecords.length}<br>
+                Service role used: ${!!supabaseServiceKey}<br>
+                Query error: ${recordsError?.message || 'None'}
+            </div>
+
             <div class="pet-profile">
                 ${petData.photo_url ? `<img src="${petData.photo_url}" alt="${petData.name}" class="pet-image">` : ''}
                 <div class="pet-info">
@@ -741,98 +543,20 @@ serve(async (req: Request) => {
 
             <div class="section">
                 <div class="section-title">
-                    📋 INFORMACIÓN DE LA MASCOTA
-                </div>
-                <div class="section-content">
-                    <div class="info-grid">
-                        <div class="info-item">
-                            <div class="info-label">Nombre:</div>
-                            <div class="info-value">${petData.name}</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Especie:</div>
-                            <div class="info-value">${petData.species === 'dog' ? 'Perro' : 'Gato'}</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Raza:</div>
-                            <div class="info-value">${petData.breed}</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Sexo:</div>
-                            <div class="info-value">${petData.gender === 'male' ? 'Macho' : 'Hembra'}</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Edad:</div>
-                            <div class="info-value">${formatAge(petData)}</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Peso:</div>
-                            <div class="info-value">${formatWeight(petData)}</div>
-                        </div>
-                        ${petData.color ? `
-                        <div class="info-item">
-                            <div class="info-label">Color:</div>
-                            <div class="info-value">${petData.color}</div>
-                        </div>
-                        ` : ''}
-                        <div class="info-item">
-                            <div class="info-label">Estado reproductivo:</div>
-                            <div class="info-value">${petData.is_neutered ? 'Castrado/Esterilizado' : 'Entero'}</div>
-                        </div>
-                        ${petData.has_chip ? `
-                        <div class="info-item">
-                            <div class="info-label">Microchip:</div>
-                            <div class="info-value">${petData.chip_number || 'Sí'}</div>
-                        </div>
-                        ` : ''}
-                        <div class="info-item">
-                            <div class="info-label">Fecha de registro:</div>
-                            <div class="info-value">${formatDate(petData.created_at)}</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="section">
-                <div class="section-title">
                     👤 INFORMACIÓN DEL PROPIETARIO
                 </div>
                 <div class="section-content">
-                    <div class="info-grid">
-                        <div class="info-item">
-                            <div class="info-label">Nombre:</div>
-                            <div class="info-value">${ownerData.display_name}</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Email:</div>
-                            <div class="info-value">${ownerData.email}</div>
-                        </div>
-                        ${ownerData.phone ? `
-                        <div class="info-item">
-                            <div class="info-label">Teléfono:</div>
-                            <div class="info-value">${ownerData.phone}</div>
-                        </div>
-                        ` : ''}
-                    </div>
-                </div>
-            </div>
-
-            ${petData.medical_notes ? `
-            <div class="section">
-                <div class="section-title">
-                    📝 NOTAS MÉDICAS GENERALES
-                </div>
-                <div class="section-content">
                     <div class="record-item">
-                        <div>${petData.medical_notes}</div>
+                        <div class="record-detail"><strong>Nombre:</strong> ${ownerData.display_name}</div>
+                        <div class="record-detail"><strong>Email:</strong> ${ownerData.email}</div>
+                        ${ownerData.phone ? `<div class="record-detail"><strong>Teléfono:</strong> ${ownerData.phone}</div>` : ''}
                     </div>
                 </div>
             </div>
-            ` : ''}
 
             <div class="section">
                 <div class="section-title">
-                    💉 HISTORIAL DE VACUNACIÓN
+                    💉 HISTORIAL DE VACUNACIÓN (${vaccines.length} registros)
                 </div>
                 <div class="section-content">
                     ${vaccines.length > 0 ? vaccines.map((vaccine, index) => `
@@ -870,23 +594,20 @@ serve(async (req: Request) => {
 
             <div class="section">
                 <div class="section-title">
-                    🏥 HISTORIAL DE ENFERMEDADES
+                    🏥 HISTORIAL DE ENFERMEDADES (${illnesses.length} registros)
                 </div>
                 <div class="section-content">
                     ${illnesses.length > 0 ? illnesses.map((illness, index) => `
                     <div class="record-item">
                         <div class="record-title">
                             🏥 ${index + 1}. ${illness.name}
-                            ${illness.status ? `<span class="badge ${illness.status === 'active' ? 'badge-danger' : illness.status === 'recovered' ? 'badge-success' : 'badge-warning'}">${getStatusBadge(illness.status)}</span>` : ''}
+                            ${illness.status === 'active' ? '<span class="badge badge-danger">Activa</span>' : 
+                              illness.status === 'recovered' ? '<span class="badge badge-success">Recuperada</span>' : 
+                              illness.status ? `<span class="badge badge-warning">${illness.status}</span>` : ''}
                         </div>
                         <div class="record-detail">
                             <strong>Fecha de diagnóstico:</strong> ${formatDate(illness.diagnosis_date || illness.date || '')}
                         </div>
-                        ${illness.treatment ? `
-                        <div class="record-detail">
-                            <strong>Tratamiento:</strong> ${illness.treatment}
-                        </div>
-                        ` : ''}
                         ${illness.symptoms ? `
                         <div class="record-detail">
                             <strong>Síntomas:</strong> ${illness.symptoms}
@@ -895,6 +616,11 @@ serve(async (req: Request) => {
                         ${illness.severity ? `
                         <div class="record-detail">
                             <strong>Severidad:</strong> ${illness.severity}
+                        </div>
+                        ` : ''}
+                        ${illness.treatment ? `
+                        <div class="record-detail">
+                            <strong>Tratamiento:</strong> ${illness.treatment}
                         </div>
                         ` : ''}
                         ${illness.veterinarian ? `
@@ -918,7 +644,7 @@ serve(async (req: Request) => {
 
             <div class="section">
                 <div class="section-title">
-                    🚨 ALERGIAS CONOCIDAS
+                    🚨 ALERGIAS CONOCIDAS (${allergies.length} registros)
                 </div>
                 <div class="section-content">
                     ${allergies.length > 0 ? allergies.map((allergy, index) => `
@@ -962,7 +688,7 @@ serve(async (req: Request) => {
 
             <div class="section">
                 <div class="section-title">
-                    💊 HISTORIAL DE DESPARASITACIÓN
+                    💊 HISTORIAL DE DESPARASITACIÓN (${dewormings.length} registros)
                 </div>
                 <div class="section-content">
                     ${dewormings.length > 0 ? dewormings.map((deworming, index) => `
@@ -1000,7 +726,7 @@ serve(async (req: Request) => {
 
             <div class="section">
                 <div class="section-title">
-                    ⚖️ HISTORIAL DE PESO
+                    ⚖️ HISTORIAL DE PESO (${weightRecords.length} registros)
                 </div>
                 <div class="section-content">
                     ${weightRecords.length > 0 ? `
@@ -1033,9 +759,6 @@ serve(async (req: Request) => {
                 <p>Fecha de generación: ${new Date().toLocaleDateString('es-ES')}</p>
                 <p>Mascota: ${petData.name} | Propietario: ${ownerData.display_name}</p>
                 <p>Para uso veterinario exclusivamente</p>
-                <p style="margin-top: 10px; font-size: 10px;">
-                    Esta historia clínica contiene información médica confidencial y debe ser tratada con la debida confidencialidad médica.
-                </p>
             </div>
         </div>
     </div>
@@ -1043,13 +766,14 @@ serve(async (req: Request) => {
 </html>
     `;
 
-    console.log('HTML content generated successfully, length:', htmlContent.length);
+    console.log('HTML generated successfully, length:', htmlContent.length);
+    console.log('=== MEDICAL HISTORY FUNCTION END ===');
 
     return new Response(htmlContent, {
       status: 200,
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'public, max-age=3600',
+        'Cache-Control': 'no-cache',
         ...corsHeaders,
       },
     });
