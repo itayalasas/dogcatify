@@ -95,8 +95,8 @@ export default function MedicalHistoryView() {
       }
       
       console.log('Token valid, fetching medical history...');
-      // Token is valid, fetch medical history via Edge Function
-      await fetchMedicalHistoryViaEdgeFunction();
+      // Token is valid, fetch all data via Edge Function
+      await fetchAllDataViaEdgeFunction();
     } catch (error) {
       console.error('Error verifying token:', error);
       setError('Error verificando el enlace de acceso');
@@ -104,19 +104,19 @@ export default function MedicalHistoryView() {
     }
   };
 
-  const fetchMedicalHistoryViaEdgeFunction = async () => {
+  const fetchAllDataViaEdgeFunction = async () => {
     try {
       console.log('=== CALLING EDGE FUNCTION FOR MEDICAL DATA ===');
       const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
       const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-      const edgeFunctionUrl = `${supabaseUrl}/functions/v1/medical-history/${id}${token ? `?token=${token}` : ''}`;
+      const edgeFunctionUrl = `${supabaseUrl}/functions/v1/medical-history-data/${id}${token ? `?token=${token}` : ''}`;
       
       console.log('Edge Function URL:', edgeFunctionUrl);
       
       const response = await fetch(edgeFunctionUrl, {
         method: 'GET',
         headers: {
-          'Accept': 'text/html',
+          'Accept': 'application/json',
           'Authorization': `Bearer ${supabaseKey}`,
           'apikey': supabaseKey,
         },
@@ -130,31 +130,24 @@ export default function MedicalHistoryView() {
         throw new Error(`Edge Function error: ${response.status}`);
       }
       
-      const htmlContent = await response.text();
-      console.log('Edge Function returned HTML, length:', htmlContent.length);
+      const jsonData = await response.json();
+      console.log('Edge Function returned data:', jsonData);
       
-      // Parse the HTML to extract debug info
-      if (htmlContent.includes('DEBUG INFO:')) {
-        const debugMatch = htmlContent.match(/Records found: (\d+)/);
-        const vaccinesMatch = htmlContent.match(/Vaccines: (\d+)/);
-        const illnessesMatch = htmlContent.match(/Illnesses: (\d+)/);
-        const allergiesMatch = htmlContent.match(/Allergies: (\d+)/);
-        const dewormingsMatch = htmlContent.match(/Dewormings: (\d+)/);
-        const weightMatch = htmlContent.match(/Weight records: (\d+)/);
+      if (jsonData.success) {
+        console.log('=== EDGE FUNCTION DATA RECEIVED ===');
+        console.log('Pet:', jsonData.pet?.name);
+        console.log('Owner:', jsonData.owner?.display_name);
+        console.log('Medical records:', jsonData.medicalRecords?.length || 0);
         
-        console.log('=== EDGE FUNCTION DEBUG INFO ===');
-        console.log('Total records found:', debugMatch?.[1] || '0');
-        console.log('Vaccines:', vaccinesMatch?.[1] || '0');
-        console.log('Illnesses:', illnessesMatch?.[1] || '0');
-        console.log('Allergies:', allergiesMatch?.[1] || '0');
-        console.log('Dewormings:', dewormingsMatch?.[1] || '0');
-        console.log('Weight records:', weightMatch?.[1] || '0');
-        console.log('=== END DEBUG INFO ===');
+        // Set data directly from Edge Function
+        setPet(jsonData.pet);
+        setOwner(jsonData.owner);
+        setMedicalRecords(jsonData.medicalRecords || []);
+        
+        console.log('=== DATA SET SUCCESSFULLY ===');
+      } else {
+        throw new Error(jsonData.error || 'Edge Function returned error');
       }
-      
-      // For web, we could display the HTML directly, but for now let's extract the data
-      // and use our existing UI components
-      await extractDataFromEdgeFunctionResponse(htmlContent);
       
     } catch (error) {
       console.error('Error calling Edge Function:', error);
