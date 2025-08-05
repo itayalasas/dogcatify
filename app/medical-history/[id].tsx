@@ -7,7 +7,6 @@ import { Button } from '../../components/ui/Button';
 import { supabaseClient } from '../../lib/supabase';
 
 export default function MedicalHistoryView() {
-  const { id, pdf } = useLocalSearchParams<{ id: string; pdf?: string }>();
   const { id, pdf, html } = useLocalSearchParams<{ id: string; pdf?: string; html?: string }>();
   const [pet, setPet] = useState<any>(null);
   const [owner, setOwner] = useState<any>(null);
