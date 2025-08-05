@@ -659,7 +659,7 @@ const generateHTMLContent = (pet: Pet, owner: Owner, records: MedicalRecord[]): 
   `;
 };
 
-// Utility functions
+// Export the main function
 export const generateMedicalHistoryHTML = async (petId: string, ownerId: string): Promise<string> => {
   try {
     // Fetch pet data
@@ -707,3 +707,6 @@ export const generateMedicalHistoryHTML = async (petId: string, ownerId: string)
     throw error;
   }
 };
+
+// Export additional utility functions
+export { formatAge, formatWeight, formatDate, generateHTMLContent };
