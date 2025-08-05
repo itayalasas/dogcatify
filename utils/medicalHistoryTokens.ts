@@ -104,6 +104,8 @@ export const verifyMedicalHistoryToken = async (
   accessCount?: number;
 }> => {
   try {
+    console.log('Verifying medical history token:', token.substring(0, 8) + '...');
+    
     // Find token in database
     const { data: tokenData, error: tokenError } = await supabaseClient
       .from('medical_history_tokens')
@@ -111,6 +113,12 @@ export const verifyMedicalHistoryToken = async (
       .eq('token', token)
       .single();
 
+    console.log('Token lookup result:', { 
+      found: !!tokenData, 
+      error: tokenError?.message,
+      petId: tokenData?.pet_id,
+      expiresAt: tokenData?.expires_at
+    });
     if (tokenError || !tokenData) {
       console.log('Token not found:', token.substring(0, 8) + '...');
       return { success: false, error: 'Invalid token' };
@@ -119,6 +127,12 @@ export const verifyMedicalHistoryToken = async (
     // Check if token has expired
     const now = new Date();
     const expiresAt = new Date(tokenData.expires_at);
+    
+    console.log('Token expiration check:', {
+      now: now.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+      isExpired: now > expiresAt
+    });
     
     if (now > expiresAt) {
       console.log('Token expired:', {
@@ -135,6 +149,7 @@ export const verifyMedicalHistoryToken = async (
 
     // Update access tracking
     try {
+      console.log('Updating access tracking...');
       await supabaseClient
         .from('medical_history_tokens')
         .update({
@@ -142,6 +157,7 @@ export const verifyMedicalHistoryToken = async (
           access_count: (tokenData.access_count || 0) + 1
         })
         .eq('id', tokenData.id);
+      console.log('Access tracking updated');
     } catch (updateError) {
       console.warn('Could not update access tracking:', updateError);
       // Don't fail the verification if tracking update fails
