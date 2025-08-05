@@ -228,11 +228,23 @@ serve(async (req: Request) => {
     console.log('Medical records result:', { 
       count: medicalRecords?.length || 0, 
       error: recordsError?.message,
-      recordTypes: medicalRecords?.map(r => r.type) || []
+      recordTypes: medicalRecords?.map(r => r.type) || [],
+      sampleRecord: medicalRecords?.[0] || null
     });
 
     if (recordsError) {
       console.error('Error fetching medical records:', recordsError);
+    } else {
+      console.log('Medical records fetched successfully:', {
+        totalRecords: medicalRecords?.length || 0,
+        recordsByType: {
+          vaccines: medicalRecords?.filter(r => r.type === 'vaccine').length || 0,
+          illnesses: medicalRecords?.filter(r => r.type === 'illness').length || 0,
+          allergies: medicalRecords?.filter(r => r.type === 'allergy').length || 0,
+          dewormings: medicalRecords?.filter(r => r.type === 'deworming').length || 0,
+          weight: medicalRecords?.filter(r => r.type === 'weight').length || 0
+        }
+      });
     }
 
     const records = medicalRecords || [];
@@ -313,27 +325,20 @@ serve(async (req: Request) => {
     const dewormings = records.filter(r => r.type === 'deworming');
     const weightRecords = records.filter(r => r.type === 'weight');
 
-    console.log('Records grouped and filtered:', {
+    console.log('Records grouped by type:', {
       vaccines: vaccines.length,
       illnesses: illnesses.length,
       allergies: allergies.length,
       dewormings: dewormings.length,
       weightRecords: weightRecords.length,
       totalRecords: records.length,
-      sampleRecord: records[0] || 'none'
+      sampleVaccine: vaccines[0] || null,
+      sampleIllness: illnesses[0] || null,
+      sampleAllergy: allergies[0] || null,
+      sampleDeworming: dewormings[0] || null,
+      sampleWeight: weightRecords[0] || null
     });
 
-    // Debug: Log first few records to see structure
-    if (records.length > 0) {
-      console.log('Sample records structure:', records.slice(0, 3).map(r => ({
-        id: r.id,
-        type: r.type,
-        name: r.name,
-        hasApplicationDate: !!r.application_date,
-        hasDiagnosisDate: !!r.diagnosis_date,
-        hasWeight: !!r.weight
-      })));
-    }
 
     // Generate HTML content
     const htmlContent = `
@@ -706,7 +711,7 @@ serve(async (req: Request) => {
                             💉 ${index + 1}. ${vaccine.name}
                         </div>
                         <div class="record-detail">
-                            <strong>Fecha de aplicación:</strong> ${formatDate(vaccine.application_date || '')}
+                            <strong>Fecha de aplicación:</strong> ${formatDate(vaccine.application_date || vaccine.date || '')}
                         </div>
                         ${vaccine.next_due_date ? `
                         <div class="record-detail">
@@ -745,11 +750,21 @@ serve(async (req: Request) => {
                             ${illness.status ? `<span class="badge ${illness.status === 'active' ? 'badge-danger' : illness.status === 'recovered' ? 'badge-success' : 'badge-warning'}">${getStatusBadge(illness.status)}</span>` : ''}
                         </div>
                         <div class="record-detail">
-                            <strong>Fecha de diagnóstico:</strong> ${formatDate(illness.diagnosis_date || '')}
+                            <strong>Fecha de diagnóstico:</strong> ${formatDate(illness.diagnosis_date || illness.date || '')}
                         </div>
                         ${illness.treatment ? `
                         <div class="record-detail">
                             <strong>Tratamiento:</strong> ${illness.treatment}
+                        </div>
+                        ` : ''}
+                        ${illness.symptoms ? `
+                        <div class="record-detail">
+                            <strong>Síntomas:</strong> ${illness.symptoms}
+                        </div>
+                        ` : ''}
+                        ${illness.severity ? `
+                        <div class="record-detail">
+                            <strong>Severidad:</strong> ${illness.severity}
                         </div>
                         ` : ''}
                         ${illness.veterinarian ? `
@@ -789,7 +804,11 @@ serve(async (req: Request) => {
                         ${allergy.severity ? `
                         <div class="record-detail">
                             <strong>Severidad:</strong> ${allergy.severity}
-                            <span class="badge ${getSeverityBadge(allergy.severity) === 'Alta' ? 'badge-danger' : getSeverityBadge(allergy.severity) === 'Media' ? 'badge-warning' : 'badge-success'}">${getSeverityBadge(allergy.severity)}</span>
+                            ${allergy.severity.toLowerCase().includes('severa') || allergy.severity.toLowerCase().includes('alta') ? 
+                              '<span class="badge badge-danger">Alta</span>' : 
+                              allergy.severity.toLowerCase().includes('moderada') || allergy.severity.toLowerCase().includes('media') ? 
+                              '<span class="badge badge-warning">Media</span>' : 
+                              '<span class="badge badge-success">Baja</span>'}
                         </div>
                         ` : ''}
                         ${allergy.treatment ? `
@@ -822,7 +841,7 @@ serve(async (req: Request) => {
                             💊 ${index + 1}. ${deworming.product_name || deworming.name}
                         </div>
                         <div class="record-detail">
-                            <strong>Fecha de aplicación:</strong> ${formatDate(deworming.application_date || '')}
+                            <strong>Fecha de aplicación:</strong> ${formatDate(deworming.application_date || deworming.date || '')}
                         </div>
                         ${deworming.next_due_date ? `
                         <div class="record-detail">
