@@ -701,36 +701,3 @@ export const generateMedicalHistoryHTML = async (petId: string, ownerId: string)
 
     // Generate HTML content
     const htmlContent = generateHTMLContent(pet, owner, records);
-
-    return htmlContent;
-  } catch (error) {
-    console.error('Error generating medical history:', error);
-    throw error;
-  }
-};
-
-export const generateMedicalHistoryWithQR = async (petId: string, ownerId: string): Promise<{ htmlContent: string; shareUrl: string; directHtmlUrl: string }> => {
-  try {
-    // Generate HTML content
-    const htmlContent = await generateMedicalHistoryHTML(petId, ownerId);
-    
-    // Create shareable URL using Edge Function
-    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-    const directHtmlUrl = `${supabaseUrl}/functions/v1/medical-history/${petId}`;
-
-    // Create app URL for internal navigation
-    const appDomain = process.env.EXPO_PUBLIC_APP_DOMAIN || 
-                     process.env.EXPO_PUBLIC_APP_URL || 
-                     'https://app-dogcatify.netlify.app';
-    const appShareUrl = `${appDomain}/medical-history/${petId}`;
-
-    return { 
-      htmlContent, 
-      shareUrl: appShareUrl,
-      directHtmlUrl: directHtmlUrl
-    };
-  } catch (error) {
-    console.error('Error generating medical history with QR:', error);
-    throw error;
-  }
-};

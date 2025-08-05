@@ -16,6 +16,9 @@ serve(async (req: Request) => {
     });
   }
 
+  // Allow public access for veterinary sharing
+  // No authorization required for medical history viewing
+
   try {
     const url = new URL(req.url);
     const petId = url.pathname.split('/').pop();

@@ -375,7 +375,7 @@ export default function PetDetail() {
     try {
       Alert.alert('Generando historia clínica', 'Por favor espera...');
       
-      // Generate HTML content directly here to avoid encoding issues
+      // Generate HTML content using the correct function
       const htmlContent = await generateMedicalHistoryHTML(pet.id, currentUser!.id);
       
       // Navigate to a preview screen where user can share or view
@@ -384,7 +384,6 @@ export default function PetDetail() {
         params: {
           petId: pet.id,
           petName: pet.name,
-          // Use base64 encoding instead of URI encoding to avoid malformed input
           htmlContent: btoa(unescape(encodeURIComponent(htmlContent)))
         }
       });
@@ -398,8 +397,11 @@ export default function PetDetail() {
     try {
       Alert.alert('Generando QR', 'Creando enlace para veterinario...');
       
-      const { generateSharingPackage } = await import('../../utils/qrGenerator');
-      const sharingData = await generateSharingPackage(pet.id, pet.name);
+      // Create sharing data directly
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+      const shareUrl = `${supabaseUrl}/functions/v1/medical-history/${pet.id}`;
+      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(shareUrl)}&format=png&margin=20&ecc=M&color=2D6A6F&bgcolor=FFFFFF`;
+      const shortUrl = `dogcatify.com/vet/${pet.id.slice(-8)}`;
       
       // Navigate to QR sharing screen
       router.push({
@@ -407,9 +409,9 @@ export default function PetDetail() {
         params: {
           petId: pet.id,
           petName: pet.name,
-          qrCodeUrl: sharingData.qrCodeUrl,
-          shareUrl: sharingData.shareUrl,
-          shortUrl: sharingData.shortUrl
+          qrCodeUrl,
+          shareUrl,
+          shortUrl
         }
       });
     } catch (error) {
