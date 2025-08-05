@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { createClient } from 'npm:@supabase/supabase-js@2';
+import { createClient } from 'npm:@supabase/supabase-js@2.43.2';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,16 +27,32 @@ serve(async (req: Request) => {
       });
     }
 
-    // Initialize Supabase client with service role for public access
+    // Initialize Supabase client with service role for unrestricted access
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Missing Supabase environment variables');
+      return new Response('Server configuration error', {
+        status: 500,
+        headers: { 'Content-Type': 'text/plain', ...corsHeaders },
+      });
+    }
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         autoRefreshToken: false,
-        persistSession: false
+        persistSession: false,
+        detectSessionInUrl: false
+      },
+      global: {
+        headers: {
+          'Authorization': `Bearer ${supabaseServiceKey}`
+        }
       }
     });
+
+    console.log('Fetching medical history for pet:', petId);
 
     // Fetch pet data
     const { data: petData, error: petError } = await supabase
@@ -45,7 +61,10 @@ serve(async (req: Request) => {
       .eq('id', petId)
       .single();
 
+    console.log('Pet data result:', { found: !!petData, error: petError?.message });
+
     if (petError || !petData) {
+      console.error('Pet not found:', petError);
       return new Response('Pet not found', {
         status: 404,
         headers: { 'Content-Type': 'text/plain', ...corsHeaders },
@@ -59,7 +78,10 @@ serve(async (req: Request) => {
       .eq('id', petData.owner_id)
       .single();
 
+    console.log('Owner data result:', { found: !!ownerData, error: ownerError?.message });
+
     if (ownerError || !ownerData) {
+      console.error('Owner not found:', ownerError);
       return new Response('Owner not found', {
         status: 404,
         headers: { 'Content-Type': 'text/plain', ...corsHeaders },
@@ -73,11 +95,15 @@ serve(async (req: Request) => {
       .eq('pet_id', petId)
       .order('created_at', { ascending: false });
 
+    console.log('Medical records result:', { count: medicalRecords?.length || 0, error: recordsError?.message });
+
     if (recordsError) {
       console.error('Error fetching medical records:', recordsError);
     }
 
     const records = medicalRecords || [];
+
+    console.log('Generating HTML for pet:', petData.name);
 
     // Helper functions
     const formatAge = (pet: any): string => {
@@ -125,6 +151,14 @@ serve(async (req: Request) => {
     const allergies = records.filter(r => r.type === 'allergy');
     const dewormings = records.filter(r => r.type === 'deworming');
     const weightRecords = records.filter(r => r.type === 'weight');
+
+    console.log('Records grouped:', {
+      vaccines: vaccines.length,
+      illnesses: illnesses.length,
+      allergies: allergies.length,
+      dewormings: dewormings.length,
+      weightRecords: weightRecords.length
+    });
 
     // Generate HTML content
     const htmlContent = `
@@ -687,6 +721,8 @@ serve(async (req: Request) => {
 </body>
 </html>
     `;
+
+    console.log('HTML content generated successfully, length:', htmlContent.length);
 
     return new Response(htmlContent, {
       status: 200,
