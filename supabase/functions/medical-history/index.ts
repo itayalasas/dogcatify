@@ -61,6 +61,13 @@ serve(async (req: Request) => {
         .eq('token', token)
         .single();
 
+      console.log('Token verification result:', { 
+        found: !!tokenData, 
+        error: tokenError?.message,
+        petId: tokenData?.pet_id,
+        expiresAt: tokenData?.expires_at
+      });
+
       if (tokenError || !tokenData) {
         console.error('Invalid token:', tokenError);
         return new Response(`
@@ -88,12 +95,32 @@ serve(async (req: Request) => {
         return new Response(`
           <!DOCTYPE html>
           <html>
-          <head><title>Enlace Expirado</title></head>
+          <head>
+            <title>Enlace Expirado</title>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+              body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background-color: #f9fafb; }
+              .container { max-width: 500px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+              .icon { font-size: 64px; margin-bottom: 20px; }
+              h1 { color: #ef4444; margin-bottom: 16px; }
+              p { color: #6b7280; line-height: 1.6; margin-bottom: 12px; }
+              .highlight { background-color: #fef3c7; padding: 12px; border-radius: 8px; margin: 20px 0; }
+            </style>
+          </head>
           <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
-            <h1>🕒 Enlace Expirado</h1>
-            <p>Este enlace ha expirado por seguridad (válido por 2 horas).</p>
-            <p>Solicita un nuevo enlace al propietario de la mascota.</p>
-            <p><small>Los enlaces expiran automáticamente para proteger la información médica.</small></p>
+            <div class="container">
+              <div class="icon">🕒</div>
+              <h1>Enlace Expirado</h1>
+              <p>Este enlace ha expirado por seguridad (válido por 2 horas).</p>
+              <div class="highlight">
+                <p><strong>Para acceder nuevamente:</strong></p>
+                <p>• Solicita al propietario que genere un nuevo enlace</p>
+                <p>• El propietario puede crear un nuevo QR desde la app</p>
+                <p>• Los nuevos enlaces son válidos por 2 horas</p>
+              </div>
+              <p><small>Los enlaces expiran automáticamente para proteger la información médica.</small></p>
+            </div>
           </body>
           </html>
         `, {
@@ -123,11 +150,23 @@ serve(async (req: Request) => {
       // Verify token matches the requested pet
       if (tokenData.pet_id !== petId) {
         console.error('Token pet ID mismatch');
-        return new Response('Token does not match requested pet', {
+        return new Response(`
+          <!DOCTYPE html>
+          <html>
+          <head><title>Acceso Denegado</title></head>
+          <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+            <h1>🚫 Acceso Denegado</h1>
+            <p>Este enlace no corresponde a la mascota solicitada.</p>
+            <p>Verifica que el enlace sea correcto.</p>
+          </body>
+          </html>
+        `, {
           status: 403,
-          headers: { 'Content-Type': 'text/plain', ...corsHeaders },
+          headers: { 'Content-Type': 'text/html', ...corsHeaders },
         });
       }
+      
+      console.log('Token verified successfully for pet:', tokenData.pet_id);
     }
 
     console.log('Fetching medical history for pet:', petId);

@@ -314,6 +314,24 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     color: '#3B82F6',
   },
+  tokenContainer: {
+    alignItems: 'center',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  tokenLabel: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  tokenValue: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+  },
   expirationContainer: {
     backgroundColor: '#FEF3C7',
     paddingHorizontal: 12,

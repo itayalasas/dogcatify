@@ -399,16 +399,18 @@ export default function PetDetail() {
       Alert.alert('Generando enlace seguro', 'Creando enlace temporal para veterinario...');
       
       // Generate secure token for medical history access
-      const { generateSecureMedicalHistoryUrl } = await import('../../utils/medicalHistoryTokens');
-      const tokenResult = await generateSecureMedicalHistoryUrl(pet.id, currentUser!.id);
+      const { createMedicalHistoryToken } = await import('../../utils/medicalHistoryTokens');
+      const tokenResult = await createMedicalHistoryToken(pet.id, currentUser!.id, 2); // 2 hours
       
-      if (!tokenResult.success || !tokenResult.url) {
+      if (!tokenResult.success || !tokenResult.token) {
         throw new Error(tokenResult.error || 'No se pudo generar el enlace seguro');
       }
       
-      const shareUrl = tokenResult.url;
+      // Create URL with token parameter
+      const baseUrl = process.env.EXPO_PUBLIC_APP_URL || 'https://app-dogcatify.netlify.app';
+      const shareUrl = `${baseUrl}/medical-history/${pet.id}?token=${tokenResult.token}`;
       const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(shareUrl)}&format=png&margin=20&ecc=M&color=2D6A6F&bgcolor=FFFFFF`;
-      const shortUrl = `dogcatify.com/vet/${tokenResult.token?.slice(-8)}`;
+      const shortUrl = `dogcatify.com/vet/${tokenResult.token.slice(-8)}`;
       
       // Navigate to QR sharing screen
       router.push({
@@ -419,6 +421,7 @@ export default function PetDetail() {
           qrCodeUrl,
           shareUrl,
           shortUrl,
+          token: tokenResult.token,
           expiresAt: tokenResult.expiresAt?.toISOString()
         }
       });

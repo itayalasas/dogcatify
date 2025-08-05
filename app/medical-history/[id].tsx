@@ -20,10 +20,10 @@ export default function MedicalHistoryView() {
   useEffect(() => {
     if (id) {
       if (token) {
-        // Verify token first if provided
+        console.log('Token provided, verifying access...');
         verifyTokenAndFetchData();
       } else {
-        // Direct access (from app) - fetch normally
+        console.log('No token provided, direct app access');
         fetchMedicalHistory();
       }
     }
@@ -31,20 +31,26 @@ export default function MedicalHistoryView() {
 
   const verifyTokenAndFetchData = async () => {
     try {
+      console.log('Verifying token:', token?.substring(0, 8) + '...');
       const { verifyMedicalHistoryToken } = await import('../../utils/medicalHistoryTokens');
       const verification = await verifyMedicalHistoryToken(token!);
       
+      console.log('Token verification result:', verification);
+      
       if (!verification.success) {
         if (verification.isExpired) {
+          console.log('Token expired');
           setTokenExpired(true);
           setError('El enlace ha expirado. Solicita un nuevo enlace al propietario de la mascota.');
         } else {
+          console.log('Token invalid');
           setError('Enlace inválido. Verifica que el enlace sea correcto.');
         }
         setLoading(false);
         return;
       }
       
+      console.log('Token valid, fetching medical history...');
       // Token is valid, fetch medical history
       await fetchMedicalHistory();
     } catch (error) {
