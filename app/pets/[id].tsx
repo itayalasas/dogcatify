@@ -375,7 +375,7 @@ export default function PetDetail() {
     try {
       Alert.alert('Generando historia clínica', 'Por favor espera...');
       
-      const { generateMedicalHistoryHTML } = await import('../../utils/medicalHistoryPDF');
+      // Generate HTML content directly here to avoid encoding issues
       const htmlContent = await generateMedicalHistoryHTML(pet.id, currentUser!.id);
       
       // Navigate to a preview screen where user can share or view
@@ -384,7 +384,8 @@ export default function PetDetail() {
         params: {
           petId: pet.id,
           petName: pet.name,
-          htmlContent: encodeURIComponent(htmlContent)
+          // Use base64 encoding instead of URI encoding to avoid malformed input
+          htmlContent: btoa(unescape(encodeURIComponent(htmlContent)))
         }
       });
     } catch (error) {

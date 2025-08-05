@@ -13,7 +13,9 @@ export default function MedicalHistoryPreview() {
     htmlContent: string;
   }>();
 
-  const decodedHtml = htmlContent ? decodeURIComponent(htmlContent) : '';
+  // Decode base64 content safely
+  const decodedHtml = htmlContent ? 
+    decodeURIComponent(escape(atob(htmlContent))) : '';
 
   const handleShare = async () => {
     try {
