@@ -145,6 +145,33 @@ serve(async (req: Request) => {
       }
     };
 
+    // Helper function for status badges
+    const getStatusBadge = (status: string) => {
+      switch (status) {
+        case 'active':
+          return 'Activa';
+        case 'recovered':
+          return 'Recuperada';
+        case 'chronic':
+          return 'Crónica';
+        default:
+          return status;
+      }
+    };
+
+    // Helper function for severity badges
+    const getSeverityBadge = (severity: string) => {
+      const severityLower = severity.toLowerCase();
+      if (severityLower.includes('severa') || severityLower.includes('alta')) {
+        return 'Alta';
+      } else if (severityLower.includes('moderada') || severityLower.includes('media')) {
+        return 'Media';
+      } else if (severityLower.includes('leve') || severityLower.includes('baja')) {
+        return 'Baja';
+      }
+      return severity;
+    };
+
     // Group records by type
     const vaccines = records.filter(r => r.type === 'vaccine');
     const illnesses = records.filter(r => r.type === 'illness');
@@ -567,8 +594,7 @@ serve(async (req: Request) => {
                     <div class="record-item">
                         <div class="record-title">
                             🏥 ${index + 1}. ${illness.name}
-                            ${illness.status === 'active' ? '<span class="badge badge-danger">Activa</span>' : 
-                              illness.status === 'recovered' ? '<span class="badge badge-success">Recuperada</span>' : ''}
+                            ${illness.status ? `<span class="badge ${illness.status === 'active' ? 'badge-danger' : illness.status === 'recovered' ? 'badge-success' : 'badge-warning'}">${getStatusBadge(illness.status)}</span>` : ''}
                         </div>
                         <div class="record-detail">
                             <strong>Fecha de diagnóstico:</strong> ${formatDate(illness.diagnosis_date || '')}
@@ -615,9 +641,7 @@ serve(async (req: Request) => {
                         ${allergy.severity ? `
                         <div class="record-detail">
                             <strong>Severidad:</strong> ${allergy.severity}
-                            ${allergy.severity.toLowerCase().includes('severa') ? '<span class="badge badge-danger">Alta</span>' : 
-                              allergy.severity.toLowerCase().includes('moderada') ? '<span class="badge badge-warning">Media</span>' : 
-                              '<span class="badge badge-success">Baja</span>'}
+                            <span class="badge ${getSeverityBadge(allergy.severity) === 'Alta' ? 'badge-danger' : getSeverityBadge(allergy.severity) === 'Media' ? 'badge-warning' : 'badge-success'}">${getSeverityBadge(allergy.severity)}</span>
                         </div>
                         ` : ''}
                         ${allergy.treatment ? `
