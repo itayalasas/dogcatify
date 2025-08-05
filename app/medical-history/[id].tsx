@@ -16,8 +16,17 @@ export default function MedicalHistoryView() {
 
   useEffect(() => {
     if (id) {
-      // Always fetch from database for React Native view
-      fetchMedicalHistory();
+      // Check if we're in web and should use Edge Function
+      if (Platform.OS === 'web') {
+        // For web, redirect to Edge Function for better performance
+        const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+        const edgeFunctionUrl = `${supabaseUrl}/functions/v1/medical-history/${id}`;
+        window.location.href = edgeFunctionUrl;
+        return;
+      } else {
+        // For mobile, fetch from database and render locally
+        fetchMedicalHistory();
+      }
     }
   }, [id, html]);
 
