@@ -215,6 +215,11 @@ export class MedicalHistoryPDF {
             padding: 20px;
             margin-bottom: 15px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease;
+        }
+        .record-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
         }
         .record-title {
             font-weight: 600;
@@ -261,6 +266,19 @@ export class MedicalHistoryPDF {
             margin-top: 5px;
             font-style: italic;
         }
+        .footer {
+            margin-top: 40px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-top: 3px solid #2D6A6F;
+            text-align: center;
+            border-radius: 10px;
+        }
+        .footer p {
+            font-size: 12px;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
         .empty-section {
             text-align: center;
             padding: 30px;
@@ -287,19 +305,6 @@ export class MedicalHistoryPDF {
             background-color: #f8d7da;
             color: #721c24;
         }
-        .footer {
-            margin-top: 40px;
-            padding: 20px;
-            background-color: #f8f9fa;
-            border-top: 3px solid #2D6A6F;
-            text-align: center;
-            border-radius: 10px;
-        }
-        .footer p {
-            font-size: 12px;
-            color: #6c757d;
-            margin-bottom: 5px;
-        }
         @media print {
             body { 
                 margin: 0; 
@@ -311,6 +316,10 @@ export class MedicalHistoryPDF {
             }
             .section { 
                 page-break-inside: avoid; 
+            }
+            .record-item:hover {
+                transform: none;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
         }
         @media (max-width: 768px) {
@@ -345,12 +354,12 @@ export class MedicalHistoryPDF {
 
         <div class="content">
             <div class="pet-profile">
-                ${petData.photo_url ? `<img src="${petData.photo_url}" alt="${petData.name}" class="pet-image">` : ''}
+                ${pet.photo_url ? `<img src="${pet.photo_url}" alt="${pet.name}" class="pet-image">` : ''}
                 <div class="pet-info">
-                    <h2>${petData.name}</h2>
-                    <p><strong>${petData.breed}</strong></p>
-                    <p>${petData.species === 'dog' ? 'Perro' : 'Gato'} • ${petData.gender === 'male' ? 'Macho' : 'Hembra'}</p>
-                    ${petData.color ? `<p>Color: ${petData.color}</p>` : ''}
+                    <h2>${pet.name}</h2>
+                    <p><strong>${pet.breed}</strong></p>
+                    <p>${pet.species === 'dog' ? 'Perro' : 'Gato'} • ${pet.gender === 'male' ? 'Macho' : 'Hembra'}</p>
+                    ${pet.color ? `<p>Color: ${pet.color}</p>` : ''}
                 </div>
             </div>
 
@@ -362,47 +371,47 @@ export class MedicalHistoryPDF {
                     <div class="info-grid">
                         <div class="info-item">
                             <div class="info-label">Nombre:</div>
-                            <div class="info-value">${petData.name}</div>
+                            <div class="info-value">${pet.name}</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Especie:</div>
-                            <div class="info-value">${petData.species === 'dog' ? 'Perro' : 'Gato'}</div>
+                            <div class="info-value">${pet.species === 'dog' ? 'Perro' : 'Gato'}</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Raza:</div>
-                            <div class="info-value">${petData.breed}</div>
+                            <div class="info-value">${pet.breed}</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Sexo:</div>
-                            <div class="info-value">${petData.gender === 'male' ? 'Macho' : 'Hembra'}</div>
+                            <div class="info-value">${pet.gender === 'male' ? 'Macho' : 'Hembra'}</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Edad:</div>
-                            <div class="info-value">${formatAge(petData)}</div>
+                            <div class="info-value">${this.formatAge(pet)}</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Peso:</div>
-                            <div class="info-value">${formatWeight(petData)}</div>
+                            <div class="info-value">${this.formatWeight(pet)}</div>
                         </div>
-                        ${petData.color ? `
+                        ${pet.color ? `
                         <div class="info-item">
                             <div class="info-label">Color:</div>
-                            <div class="info-value">${petData.color}</div>
+                            <div class="info-value">${pet.color}</div>
                         </div>
                         ` : ''}
                         <div class="info-item">
                             <div class="info-label">Estado reproductivo:</div>
-                            <div class="info-value">${petData.is_neutered ? 'Castrado/Esterilizado' : 'Entero'}</div>
+                            <div class="info-value">${pet.is_neutered ? 'Castrado/Esterilizado' : 'Entero'}</div>
                         </div>
-                        ${petData.has_chip ? `
+                        ${pet.has_chip ? `
                         <div class="info-item">
                             <div class="info-label">Microchip:</div>
-                            <div class="info-value">${petData.chip_number || 'Sí'}</div>
+                            <div class="info-value">${pet.chip_number || 'Sí'}</div>
                         </div>
                         ` : ''}
                         <div class="info-item">
                             <div class="info-label">Fecha de registro:</div>
-                            <div class="info-value">${formatDate(petData.created_at)}</div>
+                            <div class="info-value">${this.formatDate(pet.created_at)}</div>
                         </div>
                     </div>
                 </div>
@@ -416,30 +425,30 @@ export class MedicalHistoryPDF {
                     <div class="info-grid">
                         <div class="info-item">
                             <div class="info-label">Nombre:</div>
-                            <div class="info-value">${ownerData.display_name}</div>
+                            <div class="info-value">${owner.display_name}</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Email:</div>
-                            <div class="info-value">${ownerData.email}</div>
+                            <div class="info-value">${owner.email}</div>
                         </div>
-                        ${ownerData.phone ? `
+                        ${owner.phone ? `
                         <div class="info-item">
                             <div class="info-label">Teléfono:</div>
-                            <div class="info-value">${ownerData.phone}</div>
+                            <div class="info-value">${owner.phone}</div>
                         </div>
                         ` : ''}
                     </div>
                 </div>
             </div>
 
-            ${petData.medical_notes ? `
+            ${pet.medical_notes ? `
             <div class="section">
                 <div class="section-title">
                     📝 NOTAS MÉDICAS GENERALES
                 </div>
                 <div class="section-content">
                     <div class="record-item">
-                        <div>${petData.medical_notes}</div>
+                        <div>${pet.medical_notes}</div>
                     </div>
                 </div>
             </div>
@@ -452,11 +461,28 @@ export class MedicalHistoryPDF {
                 <div class="section-content">
                     ${vaccines.length > 0 ? vaccines.map((vaccine, index) => `
                     <div class="record-item">
-                        <div class="record-title">💉 ${index + 1}. ${vaccine.name}</div>
-                        <div class="record-detail"><strong>Fecha de aplicación:</strong> ${this.formatDate(vaccine.application_date || '')}</div>
-                        ${vaccine.next_due_date ? `<div class="record-detail"><strong>Próxima dosis:</strong> ${this.formatDate(vaccine.next_due_date)}</div>` : ''}
-                        ${vaccine.veterinarian ? `<div class="record-detail"><strong>Veterinario:</strong> ${vaccine.veterinarian}</div>` : ''}
-                        ${vaccine.notes ? `<div class="record-detail"><strong>Notas:</strong> ${vaccine.notes}</div>` : ''}
+                        <div class="record-title">
+                            💉 ${index + 1}. ${vaccine.name}
+                        </div>
+                        <div class="record-detail">
+                            <strong>Fecha de aplicación:</strong> ${this.formatDate(vaccine.application_date || '')}
+                        </div>
+                        ${vaccine.next_due_date ? `
+                        <div class="record-detail">
+                            <strong>Próxima dosis:</strong> ${this.formatDate(vaccine.next_due_date)}
+                            <span class="badge badge-warning">Pendiente</span>
+                        </div>
+                        ` : ''}
+                        ${vaccine.veterinarian ? `
+                        <div class="record-detail">
+                            <strong>Veterinario:</strong> ${vaccine.veterinarian}
+                        </div>
+                        ` : ''}
+                        ${vaccine.notes ? `
+                        <div class="record-detail">
+                            <strong>Notas:</strong> ${vaccine.notes}
+                        </div>
+                        ` : ''}
                     </div>
                     `).join('') : `
                     <div class="empty-section">
@@ -473,12 +499,29 @@ export class MedicalHistoryPDF {
                 <div class="section-content">
                     ${illnesses.length > 0 ? illnesses.map((illness, index) => `
                     <div class="record-item">
-                        <div class="record-title">🏥 ${index + 1}. ${illness.name}</div>
-                        <div class="record-detail"><strong>Fecha de diagnóstico:</strong> ${this.formatDate(illness.diagnosis_date || '')}</div>
-                        ${illness.treatment ? `<div class="record-detail"><strong>Tratamiento:</strong> ${illness.treatment}</div>` : ''}
-                        ${illness.veterinarian ? `<div class="record-detail"><strong>Veterinario:</strong> ${illness.veterinarian}</div>` : ''}
-                        ${illness.status ? `<div class="record-detail"><strong>Estado:</strong> ${illness.status}</div>` : ''}
-                        ${illness.notes ? `<div class="record-detail"><strong>Notas:</strong> ${illness.notes}</div>` : ''}
+                        <div class="record-title">
+                            🏥 ${index + 1}. ${illness.name}
+                            ${illness.status === 'active' ? '<span class="badge badge-danger">Activa</span>' : 
+                              illness.status === 'recovered' ? '<span class="badge badge-success">Recuperada</span>' : ''}
+                        </div>
+                        <div class="record-detail">
+                            <strong>Fecha de diagnóstico:</strong> ${this.formatDate(illness.diagnosis_date || '')}
+                        </div>
+                        ${illness.treatment ? `
+                        <div class="record-detail">
+                            <strong>Tratamiento:</strong> ${illness.treatment}
+                        </div>
+                        ` : ''}
+                        ${illness.veterinarian ? `
+                        <div class="record-detail">
+                            <strong>Veterinario:</strong> ${illness.veterinarian}
+                        </div>
+                        ` : ''}
+                        ${illness.notes ? `
+                        <div class="record-detail">
+                            <strong>Notas:</strong> ${illness.notes}
+                        </div>
+                        ` : ''}
                     </div>
                     `).join('') : `
                     <div class="empty-section">
@@ -495,11 +538,32 @@ export class MedicalHistoryPDF {
                 <div class="section-content">
                     ${allergies.length > 0 ? allergies.map((allergy, index) => `
                     <div class="record-item">
-                        <div class="record-title">🚨 ${index + 1}. ${allergy.name}</div>
-                        ${allergy.symptoms ? `<div class="record-detail"><strong>Síntomas:</strong> ${allergy.symptoms}</div>` : ''}
-                        ${allergy.severity ? `<div class="record-detail"><strong>Severidad:</strong> ${allergy.severity}</div>` : ''}
-                        ${allergy.treatment ? `<div class="record-detail"><strong>Tratamiento:</strong> ${allergy.treatment}</div>` : ''}
-                        ${allergy.notes ? `<div class="record-detail"><strong>Notas:</strong> ${allergy.notes}</div>` : ''}
+                        <div class="record-title">
+                            🚨 ${index + 1}. ${allergy.name}
+                        </div>
+                        ${allergy.symptoms ? `
+                        <div class="record-detail">
+                            <strong>Síntomas:</strong> ${allergy.symptoms}
+                        </div>
+                        ` : ''}
+                        ${allergy.severity ? `
+                        <div class="record-detail">
+                            <strong>Severidad:</strong> ${allergy.severity}
+                            ${allergy.severity.toLowerCase().includes('severa') ? '<span class="badge badge-danger">Alta</span>' : 
+                              allergy.severity.toLowerCase().includes('moderada') ? '<span class="badge badge-warning">Media</span>' : 
+                              '<span class="badge badge-success">Baja</span>'}
+                        </div>
+                        ` : ''}
+                        ${allergy.treatment ? `
+                        <div class="record-detail">
+                            <strong>Tratamiento:</strong> ${allergy.treatment}
+                        </div>
+                        ` : ''}
+                        ${allergy.notes ? `
+                        <div class="record-detail">
+                            <strong>Notas:</strong> ${allergy.notes}
+                        </div>
+                        ` : ''}
                     </div>
                     `).join('') : `
                     <div class="empty-section">
@@ -516,11 +580,28 @@ export class MedicalHistoryPDF {
                 <div class="section-content">
                     ${dewormings.length > 0 ? dewormings.map((deworming, index) => `
                     <div class="record-item">
-                        <div class="record-title">💊 ${index + 1}. ${deworming.product_name || deworming.name}</div>
-                        <div class="record-detail"><strong>Fecha de aplicación:</strong> ${this.formatDate(deworming.application_date || '')}</div>
-                        ${deworming.next_due_date ? `<div class="record-detail"><strong>Próxima dosis:</strong> ${this.formatDate(deworming.next_due_date)}</div>` : ''}
-                        ${deworming.veterinarian ? `<div class="record-detail"><strong>Veterinario:</strong> ${deworming.veterinarian}</div>` : ''}
-                        ${deworming.notes ? `<div class="record-detail"><strong>Notas:</strong> ${deworming.notes}</div>` : ''}
+                        <div class="record-title">
+                            💊 ${index + 1}. ${deworming.product_name || deworming.name}
+                        </div>
+                        <div class="record-detail">
+                            <strong>Fecha de aplicación:</strong> ${this.formatDate(deworming.application_date || '')}
+                        </div>
+                        ${deworming.next_due_date ? `
+                        <div class="record-detail">
+                            <strong>Próxima dosis:</strong> ${this.formatDate(deworming.next_due_date)}
+                            <span class="badge badge-warning">Pendiente</span>
+                        </div>
+                        ` : ''}
+                        ${deworming.veterinarian ? `
+                        <div class="record-detail">
+                            <strong>Veterinario:</strong> ${deworming.veterinarian}
+                        </div>
+                        ` : ''}
+                        ${deworming.notes ? `
+                        <div class="record-detail">
+                            <strong>Notas:</strong> ${deworming.notes}
+                        </div>
+                        ` : ''}
                     </div>
                     `).join('') : `
                     <div class="empty-section">
@@ -625,7 +706,7 @@ export class MedicalHistoryPDF {
     }
   }
 
-  public async generateMedicalHistoryWithQR(petId: string, ownerId: string): Promise<{ htmlContent: string; shareUrl: string; directHtmlUrl: string }> {
+  public async generateMedicalHistoryWithQR(petId: string, ownerId: string): Promise<{ htmlContent: string; shareUrl: string; directHtmlUrl: string }> => {
     try {
       // Generate HTML content
       const htmlContent = await this.generateMedicalHistory(petId, ownerId);

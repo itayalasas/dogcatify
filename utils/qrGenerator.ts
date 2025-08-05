@@ -41,7 +41,7 @@ export const createVeterinaryShareUrl = (petId: string): string => {
 };
 
 /**
- * Generate complete sharing package (HTML + QR) using Edge Function
+ * Generate complete sharing package using Edge Function
  */
 export const generateSharingPackage = async (
   petId: string, 
