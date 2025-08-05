@@ -37,6 +37,14 @@ export default function PetDetail() {
     fetchMedicalAlerts();
   }, [id]);
 
+  // Add effect to refetch health records when returning from health forms
+  useEffect(() => {
+    if (refresh === 'true' && activeTab === 'health') {
+      console.log('Refreshing health records due to refresh param');
+      fetchHealthRecords();
+    }
+  }, [refresh, activeTab]);
+
   // Separate effect to create initial weight record after data is loaded
   useEffect(() => {
     if (pet && pet.weight && currentUser && weightRecords.length === 0 && !initialWeightCreated && !isCreatingInitialWeight) {
@@ -83,6 +91,7 @@ export default function PetDetail() {
         .order('created_at', { ascending: false });
       
       console.log('Health records fetched:', healthRecords?.length || 0);
+      console.log('Raw health records data:', healthRecords);
       
       if (healthRecords && !error) {
         const processedRecords = healthRecords.map(record => ({
@@ -100,14 +109,26 @@ export default function PetDetail() {
           status: record.status || 'active'
         }));
       
-        // Filter by type
-        setVaccines(processedRecords.filter(record => record.type === 'vaccine'));
-        setIllnesses(processedRecords.filter(record => record.type === 'illness'));
-        setAllergies(processedRecords.filter(record => record.type === 'allergy'));
-        setDewormings(processedRecords.filter(record => record.type === 'deworming'));
-        
+        // Filter by type with debugging
+        const vaccinesFiltered = processedRecords.filter(record => record.type === 'vaccine');
+        const illnessesFiltered = processedRecords.filter(record => record.type === 'illness');
+        const allergiesFiltered = processedRecords.filter(record => record.type === 'allergy');
+        const dewormingsFiltered = processedRecords.filter(record => record.type === 'deworming');
         const weightRecordsFiltered = processedRecords.filter(record => record.type === 'weight');
-        console.log('Weight records filtered:', weightRecordsFiltered.length);
+        
+        console.log('Filtered records:', {
+          vaccines: vaccinesFiltered.length,
+          illnesses: illnessesFiltered.length,
+          allergies: allergiesFiltered.length,
+          dewormings: dewormingsFiltered.length,
+          weight: weightRecordsFiltered.length
+        });
+        
+        setVaccines(vaccinesFiltered);
+        setIllnesses(illnessesFiltered);
+        setAllergies(allergiesFiltered);
+        setDewormings(dewormingsFiltered);
+        
         setWeightRecords(weightRecordsFiltered);
         
         // If no weight records exist but pet has weight, create initial record
@@ -115,9 +136,13 @@ export default function PetDetail() {
           console.log('No weight records found, creating initial record...');
           await createInitialWeightRecord();
         }
+      } else if (error) {
+        console.error('Error fetching health records:', error);
+        Alert.alert('Error', 'No se pudieron cargar los registros de salud');
       }
     } catch (error) {
       console.error('Error fetching health records:', error);
+      Alert.alert('Error', 'Error al cargar los datos de salud');
     }
   };
   
@@ -577,6 +602,15 @@ export default function PetDetail() {
 
   const renderHealthTab = () => (
     <View style={styles.healthContainer}>
+      {/* Debug info */}
+      {__DEV__ && (
+        <Card style={styles.debugCard}>
+          <Text style={styles.debugText}>
+            Debug: V:{vaccines.length} E:{illnesses.length} A:{allergies.length} D:{dewormings.length} P:{weightRecords.length}
+          </Text>
+        </Card>
+      )}
+      
       <View style={styles.healthSection}>
         <View style={styles.healthHeader}>
           <View style={styles.healthTitleContainer}>
@@ -600,6 +634,16 @@ export default function PetDetail() {
               {vaccine.nextDueDate && (
                 <Text style={styles.healthItemNextDate}>
                   Próxima: {vaccine.nextDueDate}
+                </Text>
+              )}
+              {vaccine.veterinarian && (
+                <Text style={styles.healthItemVet}>
+                  Veterinario: {vaccine.veterinarian}
+                </Text>
+              )}
+              {vaccine.notes && (
+                <Text style={styles.healthItemNotes}>
+                  {vaccine.notes}
                 </Text>
               )}
             </Card>
@@ -630,6 +674,28 @@ export default function PetDetail() {
               {illness.treatment && (
                 <Text style={styles.healthItemTreatment}>
                   Tratamiento: {illness.treatment}
+                </Text>
+              )}
+              {illness.veterinarian && (
+                <Text style={styles.healthItemVet}>
+                  Veterinario: {illness.veterinarian}
+                </Text>
+              )}
+              {illness.status && (
+                <View style={styles.statusContainer}>
+                  <Text style={[
+                    styles.statusText,
+                    illness.status === 'active' && styles.activeStatus,
+                    illness.status === 'recovered' && styles.recoveredStatus
+                  ]}>
+                    Estado: {illness.status === 'active' ? 'Activa' : 
+                            illness.status === 'recovered' ? 'Recuperada' : illness.status}
+                  </Text>
+                </View>
+              )}
+              {illness.notes && (
+                <Text style={styles.healthItemNotes}>
+                  {illness.notes}
                 </Text>
               )}
             </Card>
@@ -664,6 +730,16 @@ export default function PetDetail() {
                   Severidad: {allergy.severity}
                 </Text>
               )}
+              {allergy.treatment && (
+                <Text style={styles.healthItemTreatment}>
+                  Tratamiento: {allergy.treatment}
+                </Text>
+              )}
+              {allergy.notes && (
+                <Text style={styles.healthItemNotes}>
+                  {allergy.notes}
+                </Text>
+              )}
             </Card>
           ))
         )}
@@ -692,6 +768,16 @@ export default function PetDetail() {
               {deworming.nextDueDate && (
                 <Text style={styles.healthItemNextDate}>
                   Próxima: {deworming.nextDueDate}
+                </Text>
+              )}
+              {deworming.veterinarian && (
+                <Text style={styles.healthItemVet}>
+                  Veterinario: {deworming.veterinarian}
+                </Text>
+              )}
+              {deworming.notes && (
+                <Text style={styles.healthItemNotes}>
+                  {deworming.notes}
                 </Text>
               )}
             </Card>
@@ -1334,6 +1420,34 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
     fontStyle: 'italic',
+  },
+  healthItemVet: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#3B82F6',
+  },
+  statusContainer: {
+    marginTop: 4,
+  },
+  statusText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+  },
+  activeStatus: {
+    color: '#EF4444',
+  },
+  recoveredStatus: {
+    color: '#10B981',
+  },
+  debugCard: {
+    marginBottom: 8,
+    backgroundColor: '#FEF3C7',
+  },
+  debugText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#92400E',
   },
   emptyText: {
     fontSize: 14,
