@@ -525,89 +525,6 @@ export default function MedicalHistoryView() {
                     </View>
                   )}
                 </View>
-                {vaccine.next_due_date && (
-                  <Text style={styles.recordNextDate}>
-                    Próxima: {formatDate(vaccine.next_due_date)}
-                  </Text>
-                )}
-                {vaccine.veterinarian && (
-                  <Text style={styles.recordVet}>
-                    Veterinario: {vaccine.veterinarian}
-                  </Text>
-                )}
-              </View>
-            ))}
-          </Card>
-        )}
-
-        {illnesses.length > 0 && (
-          <Card style={styles.recordsCard}>
-            <Text style={styles.sectionTitle}>🏥 Enfermedades</Text>
-            {illnesses.map((illness) => (
-              <View key={illness.id} style={styles.recordItem}>
-                <View style={styles.recordHeader}>
-                  {getRecordIcon(illness.type)}
-                  <Text style={styles.recordName}>{illness.name}</Text>
-                </View>
-                <Text style={styles.recordDate}>
-                  Diagnóstico: {formatDate(illness.diagnosis_date)}
-                </Text>
-                {illness.treatment && (
-                  <Text style={styles.recordTreatment}>
-                    Tratamiento: {illness.treatment}
-                  </Text>
-                )}
-                {illness.veterinarian && (
-                  <Text style={styles.recordVet}>
-                    Veterinario: {illness.veterinarian}
-                  </Text>
-                )}
-              </View>
-            ))}
-          </Card>
-        )}
-
-        {allergies.length > 0 && (
-          <Card style={styles.recordsCard}>
-            <Text style={styles.sectionTitle}>🚨 Alergias</Text>
-            {allergies.map((allergy) => (
-              <View key={allergy.id} style={styles.recordItem}>
-                <View style={styles.recordHeader}>
-                  {getRecordIcon(allergy.type)}
-                  <Text style={styles.recordName}>{allergy.name}</Text>
-                </View>
-                {allergy.symptoms && (
-                  <Text style={styles.recordSymptoms}>
-                    Síntomas: {allergy.symptoms}
-                  </Text>
-                )}
-                {allergy.severity && (
-                  <Text style={styles.recordSeverity}>
-                    Severidad: {allergy.severity}
-                  </Text>
-                )}
-              </View>
-            ))}
-          </Card>
-        )}
-
-        {dewormings.length > 0 && (
-          <Card style={styles.recordsCard}>
-            <Text style={styles.sectionTitle}>💊 Desparasitaciones</Text>
-            {dewormings.map((deworming) => (
-              <View key={deworming.id} style={styles.recordItem}>
-                <View style={styles.recordHeader}>
-                  {getRecordIcon(deworming.type)}
-                  <Text style={styles.recordName}>{deworming.name}</Text>
-                </View>
-                <Text style={styles.recordDate}>
-                  Aplicada: {formatDate(deworming.application_date)}
-                </Text>
-                {deworming.next_due_date && (
-                  <Text style={styles.recordNextDate}>
-                    Próxima: {formatDate(deworming.next_due_date)}
-                  </Text>
-                )}
               </View>
             ))}
           </Card>
@@ -671,8 +588,6 @@ export default function MedicalHistoryView() {
           <Card style={styles.emptyCard}>
             <Text style={styles.sectionTitle}>⚖️ Historial de Peso</Text>
             <Text style={styles.emptyText}>No hay registros de peso</Text>
-          </Card>
-        )}
           </Card>
         )}
 
@@ -997,7 +912,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     color: '#1565C0',
     marginBottom: 4,
-    marginBottom: 4,
   },
   weightGridValue: {
     fontSize: 16,
@@ -1008,7 +922,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontFamily: 'Inter-Regular',
     color: '#1976D2',
-    marginBottom: 4,
+    marginTop: 4,
     fontStyle: 'italic',
     textAlign: 'center',
   },
@@ -1076,34 +990,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 14,
     fontStyle: 'italic',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  errorText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#EF4444',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-});
-
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: '#9CA3AF',
   },
 });
