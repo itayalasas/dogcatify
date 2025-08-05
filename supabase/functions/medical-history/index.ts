@@ -946,7 +946,7 @@ serve(async (req: Request) => {
                     ` : ''}
                     ` : `
                     <div class="empty-section">
-                        <p>No hay registros de peso</p>
+                        <p>No hay registros de peso para esta mascota</p>
                     </div>
                     `}
                 </div>
