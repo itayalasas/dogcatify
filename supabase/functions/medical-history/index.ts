@@ -19,6 +19,7 @@ serve(async (req: Request) => {
   try {
     const url = new URL(req.url);
     const petId = url.pathname.split('/').pop();
+    const token = url.searchParams.get('token');
     
     if (!petId) {
       return new Response('Pet ID is required', {
@@ -26,6 +27,8 @@ serve(async (req: Request) => {
         headers: { 'Content-Type': 'text/plain', ...corsHeaders },
       });
     }
+
+    console.log('Medical history request:', { petId, hasToken: !!token });
 
     // Initialize Supabase client with service role for unrestricted access
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -47,6 +50,85 @@ serve(async (req: Request) => {
         storage: undefined
       }
     });
+
+    // If token is provided, verify it first
+    if (token) {
+      console.log('Verifying access token...');
+      
+      const { data: tokenData, error: tokenError } = await supabase
+        .from('medical_history_tokens')
+        .select('*')
+        .eq('token', token)
+        .single();
+
+      if (tokenError || !tokenData) {
+        console.error('Invalid token:', tokenError);
+        return new Response(`
+          <!DOCTYPE html>
+          <html>
+          <head><title>Enlace Inválido</title></head>
+          <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+            <h1>🚫 Enlace Inválido</h1>
+            <p>El enlace proporcionado no es válido o ha sido revocado.</p>
+            <p>Solicita un nuevo enlace al propietario de la mascota.</p>
+          </body>
+          </html>
+        `, {
+          status: 400,
+          headers: { 'Content-Type': 'text/html', ...corsHeaders },
+        });
+      }
+
+      // Check if token has expired
+      const now = new Date();
+      const expiresAt = new Date(tokenData.expires_at);
+      
+      if (now > expiresAt) {
+        console.log('Token expired');
+        return new Response(`
+          <!DOCTYPE html>
+          <html>
+          <head><title>Enlace Expirado</title></head>
+          <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+            <h1>🕒 Enlace Expirado</h1>
+            <p>Este enlace ha expirado por seguridad (válido por 2 horas).</p>
+            <p>Solicita un nuevo enlace al propietario de la mascota.</p>
+            <p><small>Los enlaces expiran automáticamente para proteger la información médica.</small></p>
+          </body>
+          </html>
+        `, {
+          status: 410,
+          headers: { 'Content-Type': 'text/html', ...corsHeaders },
+        });
+      }
+
+      // Update access tracking
+      try {
+        await supabase
+          .from('medical_history_tokens')
+          .update({
+            accessed_at: new Date().toISOString(),
+            access_count: (tokenData.access_count || 0) + 1
+          })
+          .eq('id', tokenData.id);
+        
+        console.log('Token access tracked:', {
+          accessCount: (tokenData.access_count || 0) + 1,
+          petId: tokenData.pet_id
+        });
+      } catch (trackingError) {
+        console.warn('Could not update access tracking:', trackingError);
+      }
+
+      // Verify token matches the requested pet
+      if (tokenData.pet_id !== petId) {
+        console.error('Token pet ID mismatch');
+        return new Response('Token does not match requested pet', {
+          status: 403,
+          headers: { 'Content-Type': 'text/plain', ...corsHeaders },
+        });
+      }
+    }
 
     console.log('Fetching medical history for pet:', petId);
 
