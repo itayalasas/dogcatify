@@ -77,7 +77,6 @@ export default function RootLayout() {
                 <Stack.Screen name="partner/manage-products" />
                 <Stack.Screen name="partner/business-insights" />
                 <Stack.Screen name="partner/edit-business" />
-                <Stack.Screen name="pets/medical-history-preview" />
                 <Stack.Screen name="profile/edit" />
                 <Stack.Screen name="profile/mercadopago-config" />
                 <Stack.Screen name="profile/help-support" />
@@ -89,7 +88,6 @@ export default function RootLayout() {
                 <Stack.Screen name="medical-history/[id]" />
                 <Stack.Screen name="pets/medical-history-preview" />
                 <Stack.Screen name="pets/share-medical-history" />
-                <Stack.Screen name="index" />
                 <Stack.Screen name="+not-found" />
               </Stack>
               <StatusBar style="auto" />
