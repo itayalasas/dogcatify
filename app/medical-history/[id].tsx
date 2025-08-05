@@ -108,6 +108,7 @@ export default function MedicalHistoryView() {
     try {
       console.log('=== CALLING EDGE FUNCTION FOR MEDICAL DATA ===');
       const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+      const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
       const edgeFunctionUrl = `${supabaseUrl}/functions/v1/medical-history/${id}${token ? `?token=${token}` : ''}`;
       
       console.log('Edge Function URL:', edgeFunctionUrl);
@@ -116,7 +117,8 @@ export default function MedicalHistoryView() {
         method: 'GET',
         headers: {
           'Accept': 'text/html',
-          'Cache-Control': 'no-cache',
+          'Authorization': `Bearer ${supabaseKey}`,
+          'apikey': supabaseKey,
         },
       });
       
@@ -215,36 +217,22 @@ export default function MedicalHistoryView() {
       let recordsData = null;
       let recordsError = null;
       
-      try {
-        console.log('Attempting to fetch via Edge Function...');
-        const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-        const response = await fetch(`${supabaseUrl}/functions/v1/medical-history-data/${id}${token ? `?token=${token}` : ''}`, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-          },
-        });
-        
-        if (response.ok) {
-          const result = await response.json();
-          recordsData = result.records || [];
-          console.log('Medical records from Edge Function:', recordsData.length);
-        } else {
-          throw new Error(`Edge Function error: ${response.status}`);
-        }
-      } catch (edgeFunctionError) {
-        console.log('Edge Function failed, trying direct database access:', edgeFunctionError);
-        
-        // Fallback to direct database access (may be limited by RLS)
-        const { data: directData, error: directError } = await supabaseClient
-          .from('pet_health')
-          .select('*')
-          .eq('pet_id', id)
-          .order('created_at', { ascending: false });
-        
-        recordsData = directData;
-        recordsError = directError;
-      }
+      // Use direct database access with current user session
+      console.log('Fetching medical records directly from database...');
+      const { data: directData, error: directError } = await supabaseClient
+        .from('pet_health')
+        .select('*')
+        .eq('pet_id', id)
+        .order('created_at', { ascending: false });
+      
+      recordsData = directData;
+      recordsError = directError;
+      
+      console.log('Direct database query result:', {
+        recordsFound: recordsData?.length || 0,
+        error: recordsError?.message,
+        errorCode: recordsError?.code
+      });
 
       if (recordsError) {
         console.error('Error fetching medical records:', recordsError);
