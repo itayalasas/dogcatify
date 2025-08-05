@@ -1,5 +1,4 @@
 import { supabaseClient } from '../lib/supabase';
-import { Platform } from 'react-native';
 
 interface MedicalRecord {
   id: string;
@@ -402,7 +401,6 @@ export class MedicalHistoryPDF {
       // Generate HTML content
       const htmlContent = this.generateHTMLContent(pet, owner, records);
 
-      // For React Native, return HTML content that can be used with WebView or external service
       return htmlContent;
     } catch (error) {
       console.error('Error generating medical history:', error);
@@ -418,11 +416,10 @@ export class MedicalHistoryPDF {
       // Upload HTML to storage for sharing
       const filename = `medical-history/${petId}/${Date.now()}.html`;
       
-      const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
-      
+      // Convert HTML string to blob for upload
       const { data, error } = await supabaseClient.storage
         .from('dogcatify')
-        .upload(filename, htmlBlob, {
+        .upload(filename, htmlContent, {
           contentType: 'text/html',
           cacheControl: '3600',
         });
@@ -434,8 +431,9 @@ export class MedicalHistoryPDF {
         .from('dogcatify')
         .getPublicUrl(filename);
 
-      // Create shareable URL for veterinarians
-      const shareUrl = `${process.env.EXPO_PUBLIC_APP_DOMAIN || 'https://app-dogcatify.netlify.app'}/medical-history/${petId}?html=${encodeURIComponent(publicUrl)}`;
+      // Create shareable URL for veterinarians using environment variable
+      const appDomain = process.env.EXPO_PUBLIC_APP_DOMAIN || process.env.EXPO_PUBLIC_APP_URL || 'https://app-dogcatify.netlify.app';
+      const shareUrl = `${appDomain}/medical-history/${petId}?html=${encodeURIComponent(publicUrl)}`;
 
       return { htmlContent, shareUrl };
     } catch (error) {
