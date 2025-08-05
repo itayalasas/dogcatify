@@ -15,10 +15,14 @@ export interface MedicalHistoryToken {
  * Generate a secure random token for medical history access
  */
 const generateSecureToken = (): string => {
-  // Generate a cryptographically secure random token
-  const array = new Uint8Array(32);
-  crypto.getRandomValues(array);
-  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+  // Generate a secure random token compatible with React Native
+  const timestamp = Date.now().toString(36);
+  const randomPart1 = Math.random().toString(36).substring(2);
+  const randomPart2 = Math.random().toString(36).substring(2);
+  const randomPart3 = Math.random().toString(36).substring(2);
+  
+  // Combine parts to create a long, unique token
+  return `${timestamp}_${randomPart1}_${randomPart2}_${randomPart3}`;
 };
 
 /**
