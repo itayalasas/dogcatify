@@ -19,20 +19,15 @@ export default function ShareMedicalHistory() {
   const handleCopyUrl = async () => {
     setCopying(true);
     try {
-      if (Platform.OS === 'web') {
-        await navigator.clipboard.writeText(shareUrl);
-        Alert.alert('Copiado', 'El enlace ha sido copiado al portapapeles');
-      } else {
-        // For mobile, show the URL to copy manually
-        Alert.alert(
-          'Enlace para Veterinario',
-          shareUrl,
-          [
-            { text: 'Cerrar' },
-            { text: 'Compartir', onPress: () => handleShare() }
-          ]
-        );
-      }
+      // For mobile, show the URL to copy manually
+      Alert.alert(
+        'Enlace para Veterinario',
+        shareUrl,
+        [
+          { text: 'Cerrar' },
+          { text: 'Compartir', onPress: () => handleShare() }
+        ]
+      );
     } catch (error) {
       Alert.alert('Error', 'No se pudo copiar el enlace');
     } finally {
@@ -48,17 +43,7 @@ export default function ShareMedicalHistory() {
         url: shareUrl
       };
 
-      if (Platform.OS === 'web') {
-        if (navigator.share) {
-          await navigator.share(shareContent);
-        } else {
-          // Fallback for web
-          await navigator.clipboard.writeText(`${shareContent.message}`);
-          Alert.alert('Copiado', 'El mensaje ha sido copiado al portapapeles');
-        }
-      } else {
-        await Share.share(shareContent);
-      }
+      await Share.share(shareContent);
     } catch (error) {
       console.error('Error sharing:', error);
       if (!error.message?.includes('cancelled')) {
@@ -83,12 +68,8 @@ Saludos cordiales.`;
     const emailUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     
     try {
-      if (Platform.OS === 'web') {
-        window.open(emailUrl);
-      } else {
-        const { Linking } = require('react-native');
-        Linking.openURL(emailUrl);
-      }
+      const { Linking } = require('react-native');
+      Linking.openURL(emailUrl);
     } catch (error) {
       Alert.alert('Error', 'No se pudo abrir la aplicación de correo');
     }
@@ -99,12 +80,8 @@ Saludos cordiales.`;
     const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(message)}`;
     
     try {
-      if (Platform.OS === 'web') {
-        window.open(`https://wa.me/?text=${encodeURIComponent(message)}`);
-      } else {
-        const { Linking } = require('react-native');
-        Linking.openURL(whatsappUrl);
-      }
+      const { Linking } = require('react-native');
+      Linking.openURL(whatsappUrl);
     } catch (error) {
       Alert.alert('Error', 'No se pudo abrir WhatsApp');
     }

@@ -373,43 +373,20 @@ export default function PetDetail() {
 
   const generatePDF = async () => {
     try {
-      if (Platform.OS === 'web') {
-        // For web, generate HTML and open in new window for printing
-        Alert.alert('Generando historia clínica', 'Por favor espera...');
-        
-        const { generateMedicalHistoryHTML } = await import('../../utils/medicalHistoryPDF');
-        const htmlContent = await generateMedicalHistoryHTML(pet.id, currentUser!.id);
-        
-        // Open in new window for printing/saving as PDF
-        const newWindow = window.open('', '_blank');
-        if (newWindow) {
-          newWindow.document.write(htmlContent);
-          newWindow.document.close();
-          
-          // Auto-trigger print dialog
-          setTimeout(() => {
-            newWindow.print();
-          }, 1000);
+      Alert.alert('Generando historia clínica', 'Por favor espera...');
+      
+      const { generateMedicalHistoryHTML } = await import('../../utils/medicalHistoryPDF');
+      const htmlContent = await generateMedicalHistoryHTML(pet.id, currentUser!.id);
+      
+      // Navigate to a preview screen where user can share or view
+      router.push({
+        pathname: '/pets/medical-history-preview',
+        params: {
+          petId: pet.id,
+          petName: pet.name,
+          htmlContent: encodeURIComponent(htmlContent)
         }
-        
-        Alert.alert('Historia clínica generada', 'Se ha abierto una nueva ventana. Puedes imprimir o guardar como PDF desde el navegador.');
-      } else {
-        // For mobile, show sharing options with HTML content
-        Alert.alert('Generando historia clínica', 'Por favor espera...');
-        
-        const { generateMedicalHistoryHTML } = await import('../../utils/medicalHistoryPDF');
-        const htmlContent = await generateMedicalHistoryHTML(pet.id, currentUser!.id);
-        
-        // Navigate to a preview screen where user can share or view
-        router.push({
-          pathname: '/pets/medical-history-preview',
-          params: {
-            petId: pet.id,
-            petName: pet.name,
-            htmlContent: encodeURIComponent(htmlContent)
-          }
-        });
-      }
+      });
     } catch (error) {
       console.error('Error generating medical history:', error);
       Alert.alert('Error', 'No se pudo generar la historia clínica');
@@ -424,7 +401,7 @@ export default function PetDetail() {
       const { htmlContent, shareUrl } = await generateMedicalHistoryWithQR(pet.id, currentUser!.id);
       
       const { generateSharingPackage } = await import('../../utils/qrGenerator');
-      const { qrCodeUrl, shortUrl } = await generateSharingPackage(pet.id, pet.name, shareUrl);
+      const sharingData = await generateSharingPackage(pet.id, pet.name, shareUrl);
       
       // Navigate to QR sharing screen
       router.push({
@@ -432,9 +409,9 @@ export default function PetDetail() {
         params: {
           petId: pet.id,
           petName: pet.name,
-          qrCodeUrl,
-          shareUrl,
-          shortUrl
+          qrCodeUrl: sharingData.qrCodeUrl,
+          shareUrl: sharingData.shareUrl,
+          shortUrl: sharingData.shortUrl
         }
       });
     } catch (error) {

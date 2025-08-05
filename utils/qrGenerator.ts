@@ -1,5 +1,3 @@
-import { Platform } from 'react-native';
-
 /**
  * Generate QR code for medical history sharing
  */
@@ -37,31 +35,30 @@ export const generateVeterinaryQRCode = async (
 /**
  * Create shareable medical history URL for veterinarians
  */
-export const createVeterinaryShareUrl = (petId: string, pdfUrl?: string): string => {
-  const baseUrl = process.env.EXPO_PUBLIC_APP_DOMAIN || 'https://app-dogcatify.netlify.app';
-  let shareUrl = `${baseUrl}/medical-history/${petId}`;
+export const createVeterinaryShareUrl = (petId: string, htmlUrl?: string): string => {
+  const appDomain = process.env.EXPO_PUBLIC_APP_DOMAIN || process.env.EXPO_PUBLIC_APP_URL || 'https://app-dogcatify.netlify.app';
+  let shareUrl = `${appDomain}/medical-history/${petId}`;
   
-  if (pdfUrl) {
-    shareUrl += `?pdf=${encodeURIComponent(pdfUrl)}`;
+  if (htmlUrl) {
+    shareUrl += `?html=${encodeURIComponent(htmlUrl)}`;
   }
   
   return shareUrl;
 };
 
 /**
- * Generate complete sharing package (PDF + QR)
+ * Generate complete sharing package (HTML + QR)
  */
 export const generateSharingPackage = async (
   petId: string, 
   petName: string, 
-  pdfUrl: string
+  shareUrl: string
 ): Promise<{
   shareUrl: string;
   qrCodeUrl: string;
   shortUrl: string;
 }> => {
   try {
-    const shareUrl = createVeterinaryShareUrl(petId, pdfUrl);
     const qrCodeUrl = await generateVeterinaryQRCode(shareUrl, petName);
     
     // Create a shorter, more readable URL for display

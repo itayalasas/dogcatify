@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Alert, Share, Platform } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Alert, Share } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Download, Share2, FileText, Printer } from 'lucide-react-native';
 import { WebView } from 'react-native-webview';
@@ -22,16 +22,7 @@ export default function MedicalHistoryPreview() {
         message: `Historia clínica veterinaria de ${petName}\n\nGenerada por DogCatiFy`,
       };
 
-      if (Platform.OS === 'web') {
-        if (navigator.share) {
-          await navigator.share(shareContent);
-        } else {
-          await navigator.clipboard.writeText(shareContent.message);
-          Alert.alert('Copiado', 'El contenido ha sido copiado al portapapeles');
-        }
-      } else {
-        await Share.share(shareContent);
-      }
+      await Share.share(shareContent);
     } catch (error) {
       console.error('Error sharing:', error);
       if (!error.message?.includes('cancelled')) {
@@ -41,26 +32,14 @@ export default function MedicalHistoryPreview() {
   };
 
   const handlePrint = () => {
-    if (Platform.OS === 'web') {
-      // Open in new window for printing
-      const newWindow = window.open('', '_blank');
-      if (newWindow) {
-        newWindow.document.write(decodedHtml);
-        newWindow.document.close();
-        setTimeout(() => {
-          newWindow.print();
-        }, 1000);
-      }
-    } else {
-      Alert.alert(
-        'Imprimir',
-        'Para imprimir en móvil, comparte la historia clínica y ábrela en un navegador.',
-        [
-          { text: 'Entendido' },
-          { text: 'Compartir', onPress: handleShare }
-        ]
-      );
-    }
+    Alert.alert(
+      'Imprimir',
+      'Para imprimir, comparte la historia clínica y ábrela en un navegador.',
+      [
+        { text: 'Entendido' },
+        { text: 'Compartir', onPress: handleShare }
+      ]
+    );
   };
 
   const handleGenerateQR = () => {
@@ -69,8 +48,8 @@ export default function MedicalHistoryPreview() {
       params: {
         petId,
         petName,
-        qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(`https://app-dogcatify.netlify.app/medical-history/${petId}`)}&format=png&margin=20&ecc=M&color=2D6A6F&bgcolor=FFFFFF`,
-        shareUrl: `https://app-dogcatify.netlify.app/medical-history/${petId}`,
+        qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(`${process.env.EXPO_PUBLIC_APP_DOMAIN || process.env.EXPO_PUBLIC_APP_URL || 'https://app-dogcatify.netlify.app'}/medical-history/${petId}`)}&format=png&margin=20&ecc=M&color=2D6A6F&bgcolor=FFFFFF`,
+        shareUrl: `${process.env.EXPO_PUBLIC_APP_DOMAIN || process.env.EXPO_PUBLIC_APP_URL || 'https://app-dogcatify.netlify.app'}/medical-history/${petId}`,
         shortUrl: `dogcatify.com/vet/${petId.slice(-8)}`
       }
     });
