@@ -701,3 +701,9 @@ export const generateMedicalHistoryHTML = async (petId: string, ownerId: string)
 
     // Generate HTML content
     const htmlContent = generateHTMLContent(pet, owner, records);
+
+    return htmlContent;
+  } catch (error) {
+    throw error;
+  }
+};
