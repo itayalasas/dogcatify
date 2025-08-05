@@ -202,8 +202,8 @@ export const generateSecureMedicalHistoryUrl = async (
       return { success: false, error: tokenResult.error };
     }
 
-    const baseUrl = process.env.EXPO_PUBLIC_APP_DOMAIN || process.env.EXPO_PUBLIC_APP_URL || 'https://app-dogcatify.netlify.app';
-    const secureUrl = `${baseUrl}/medical-history/${petId}?token=${tokenResult.token}`;
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+    const secureUrl = `${supabaseUrl}/functions/v1/medical-history/${petId}?token=${tokenResult.token}`;
 
     return {
       success: true,
