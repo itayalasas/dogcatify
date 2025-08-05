@@ -51,7 +51,7 @@ export default function MedicalHistoryPreview() {
         petId,
         petName,
         qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(`${process.env.EXPO_PUBLIC_APP_DOMAIN || process.env.EXPO_PUBLIC_APP_URL || 'https://app-dogcatify.netlify.app'}/medical-history/${petId}`)}&format=png&margin=20&ecc=M&color=2D6A6F&bgcolor=FFFFFF`,
-        shareUrl: `${process.env.EXPO_PUBLIC_APP_DOMAIN || process.env.EXPO_PUBLIC_APP_URL || 'https://app-dogcatify.netlify.app'}/medical-history/${petId}`,
+        shareUrl: `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/medical-history/${petId}`,
         shortUrl: `dogcatify.com/vet/${petId.slice(-8)}`
       }
     });
