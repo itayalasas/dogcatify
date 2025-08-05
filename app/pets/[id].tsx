@@ -375,7 +375,8 @@ export default function PetDetail() {
     try {
       Alert.alert('Generando historia clínica', 'Por favor espera...');
       
-      // Generate HTML content using the correct function
+      // Import and use the function
+      const { generateMedicalHistoryHTML } = await import('../../utils/medicalHistoryPDF');
       const htmlContent = await generateMedicalHistoryHTML(pet.id, currentUser!.id);
       
       // Navigate to a preview screen where user can share or view
