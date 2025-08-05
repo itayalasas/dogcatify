@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, Image, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView, Image, Platform, Alert, Dimensions } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { Download, ArrowLeft, Calendar, Scale, Syringe, Heart, TriangleAlert as AlertTriangle, Pill } from 'lucide-react-native';
+import { Download, ArrowLeft, Calendar, Scale, Syringe, Heart, TriangleAlert as AlertTriangle, Pill, User, MapPin, Phone, Mail, Shield, Clock } from 'lucide-react-native';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { supabaseClient } from '../../lib/supabase';
+
+const { width } = Dimensions.get('window');
 
 export default function MedicalHistoryView() {
   const { id, pdf, html } = useLocalSearchParams<{ id: string; pdf?: string; html?: string }>();
@@ -149,6 +151,31 @@ export default function MedicalHistoryView() {
     }
   };
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'active':
+        return { text: 'Activa', color: '#EF4444', bgColor: '#FEE2E2' };
+      case 'recovered':
+        return { text: 'Recuperada', color: '#10B981', bgColor: '#D1FAE5' };
+      case 'chronic':
+        return { text: 'Crónica', color: '#F59E0B', bgColor: '#FEF3C7' };
+      default:
+        return { text: 'Sin estado', color: '#6B7280', bgColor: '#F3F4F6' };
+    }
+  };
+
+  const getSeverityBadge = (severity: string) => {
+    const severityLower = severity.toLowerCase();
+    if (severityLower.includes('severa') || severityLower.includes('alta')) {
+      return { text: 'Alta', color: '#EF4444', bgColor: '#FEE2E2' };
+    } else if (severityLower.includes('moderada') || severityLower.includes('media')) {
+      return { text: 'Media', color: '#F59E0B', bgColor: '#FEF3C7' };
+    } else if (severityLower.includes('leve') || severityLower.includes('baja')) {
+      return { text: 'Baja', color: '#10B981', bgColor: '#D1FAE5' };
+    }
+    return { text: severity, color: '#6B7280', bgColor: '#F3F4F6' };
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -180,7 +207,17 @@ export default function MedicalHistoryView() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Historia Clínica Veterinaria</Text>
+        <View style={styles.headerContent}>
+          <Text style={styles.title}>🐾 Historia Clínica Veterinaria</Text>
+          <Text style={styles.subtitle}>
+            Generada el {new Date().toLocaleDateString('es-ES', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            })}
+          </Text>
+        </View>
         {pdf && (
           <Button
             title="Descargar PDF"
@@ -203,38 +240,103 @@ export default function MedicalHistoryView() {
               <Text style={styles.petDetails}>
                 {pet.species === 'dog' ? 'Perro' : 'Gato'} • {pet.gender === 'male' ? 'Macho' : 'Hembra'}
               </Text>
+              {pet.color && (
+                <Text style={styles.petColor}>Color: {pet.color}</Text>
+              )}
             </View>
           </View>
           
-          <View style={styles.petStats}>
-            <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Edad:</Text>
-              <Text style={styles.statValue}>{formatAge(pet)}</Text>
+          <View style={styles.petDetailsGrid}>
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>Nombre:</Text>
+              <Text style={styles.detailValue}>{pet.name}</Text>
             </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Peso:</Text>
-              <Text style={styles.statValue}>{formatWeight(pet)}</Text>
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>Especie:</Text>
+              <Text style={styles.detailValue}>{pet.species === 'dog' ? 'Perro' : 'Gato'}</Text>
             </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Estado:</Text>
-              <Text style={styles.statValue}>
-                {pet.is_neutered ? 'Castrado' : 'Entero'}
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>Raza:</Text>
+              <Text style={styles.detailValue}>{pet.breed}</Text>
+            </View>
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>Sexo:</Text>
+              <Text style={styles.detailValue}>{pet.gender === 'male' ? 'Macho' : 'Hembra'}</Text>
+            </View>
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>Edad:</Text>
+              <Text style={styles.detailValue}>{formatAge(pet)}</Text>
+            </View>
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>Peso:</Text>
+              <Text style={styles.detailValue}>{formatWeight(pet)}</Text>
+            </View>
+            {pet.color && (
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>Color:</Text>
+                <Text style={styles.detailValue}>{pet.color}</Text>
+              </View>
+            )}
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>Estado reproductivo:</Text>
+              <Text style={styles.detailValue}>
+                {pet.is_neutered ? 'Castrado/Esterilizado' : 'Entero'}
               </Text>
+            </View>
+            {pet.has_chip && (
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>Microchip:</Text>
+                <Text style={styles.detailValue}>{pet.chip_number || 'Sí'}</Text>
+              </View>
+            )}
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>Fecha de registro:</Text>
+              <Text style={styles.detailValue}>{formatDate(pet.created_at)}</Text>
             </View>
           </View>
         </Card>
 
         {/* Owner Information */}
         <Card style={styles.ownerCard}>
-          <Text style={styles.sectionTitle}>Información del Propietario</Text>
-          <Text style={styles.ownerName}>{owner.display_name}</Text>
-          <Text style={styles.ownerContact}>{owner.email}</Text>
-          {owner.phone && (
-            <Text style={styles.ownerContact}>{owner.phone}</Text>
-          )}
+          <Text style={styles.sectionTitle}>👤 Información del Propietario</Text>
+          <View style={styles.ownerDetailsGrid}>
+            <View style={styles.ownerDetailItem}>
+              <User size={16} color="#6B7280" />
+              <View style={styles.ownerDetailText}>
+                <Text style={styles.ownerDetailLabel}>Nombre:</Text>
+                <Text style={styles.ownerDetailValue}>{owner.display_name}</Text>
+              </View>
+            </View>
+            <View style={styles.ownerDetailItem}>
+              <Mail size={16} color="#6B7280" />
+              <View style={styles.ownerDetailText}>
+                <Text style={styles.ownerDetailLabel}>Email:</Text>
+                <Text style={styles.ownerDetailValue}>{owner.email}</Text>
+              </View>
+            </View>
+            {owner.phone && (
+              <View style={styles.ownerDetailItem}>
+                <Phone size={16} color="#6B7280" />
+                <View style={styles.ownerDetailText}>
+                  <Text style={styles.ownerDetailLabel}>Teléfono:</Text>
+                  <Text style={styles.ownerDetailValue}>{owner.phone}</Text>
+                </View>
+              </View>
+            )}
+          </View>
         </Card>
 
-        {/* Medical Records Sections */}
+        {/* General Medical Notes */}
+        {pet.medical_notes && (
+          <Card style={styles.notesCard}>
+            <Text style={styles.sectionTitle}>📝 Notas Médicas Generales</Text>
+            <View style={styles.notesContent}>
+              <Text style={styles.notesText}>{pet.medical_notes}</Text>
+            </View>
+          </Card>
+        )}
+
+        {/* Vaccines Section */}
         {vaccines.length > 0 && (
           <Card style={styles.recordsCard}>
             <Text style={styles.sectionTitle}>💉 Vacunas</Text>
@@ -244,9 +346,185 @@ export default function MedicalHistoryView() {
                   {getRecordIcon(vaccine.type)}
                   <Text style={styles.recordName}>{vaccine.name}</Text>
                 </View>
-                <Text style={styles.recordDate}>
-                  Aplicada: {formatDate(vaccine.application_date)}
-                </Text>
+                <View style={styles.recordDetails}>
+                  <View style={styles.recordDetailRow}>
+                    <Text style={styles.recordDetailLabel}>Fecha de aplicación:</Text>
+                    <Text style={styles.recordDetailValue}>{formatDate(vaccine.application_date)}</Text>
+                  </View>
+                  {vaccine.next_due_date && (
+                    <View style={styles.recordDetailRow}>
+                      <Text style={styles.recordDetailLabel}>Próxima dosis:</Text>
+                      <View style={styles.nextDoseContainer}>
+                        <Text style={styles.recordDetailValue}>{formatDate(vaccine.next_due_date)}</Text>
+                        <View style={styles.pendingBadge}>
+                          <Text style={styles.pendingBadgeText}>Pendiente</Text>
+                        </View>
+                      </View>
+                    </View>
+                  )}
+                  {vaccine.veterinarian && (
+                    <View style={styles.recordDetailRow}>
+                      <Text style={styles.recordDetailLabel}>Veterinario:</Text>
+                      <Text style={styles.recordDetailValue}>{vaccine.veterinarian}</Text>
+                    </View>
+                  )}
+                  {vaccine.notes && (
+                    <View style={styles.recordDetailRow}>
+                      <Text style={styles.recordDetailLabel}>Notas:</Text>
+                      <Text style={styles.recordDetailValue}>{vaccine.notes}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            ))}
+          </Card>
+        )}
+
+        {/* Illnesses Section */}
+        {illnesses.length > 0 && (
+          <Card style={styles.recordsCard}>
+            <Text style={styles.sectionTitle}>🏥 Historial de Enfermedades</Text>
+            {illnesses.map((illness) => (
+              <View key={illness.id} style={styles.recordItem}>
+                <View style={styles.recordHeader}>
+                  {getRecordIcon(illness.type)}
+                  <Text style={styles.recordName}>{illness.name}</Text>
+                  {illness.status && (
+                    <View style={[
+                      styles.statusBadge,
+                      { backgroundColor: getStatusBadge(illness.status).bgColor }
+                    ]}>
+                      <Text style={[
+                        styles.statusBadgeText,
+                        { color: getStatusBadge(illness.status).color }
+                      ]}>
+                        {getStatusBadge(illness.status).text}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                <View style={styles.recordDetails}>
+                  <View style={styles.recordDetailRow}>
+                    <Text style={styles.recordDetailLabel}>Fecha de diagnóstico:</Text>
+                    <Text style={styles.recordDetailValue}>{formatDate(illness.diagnosis_date)}</Text>
+                  </View>
+                  {illness.treatment && (
+                    <View style={styles.recordDetailRow}>
+                      <Text style={styles.recordDetailLabel}>Tratamiento:</Text>
+                      <Text style={styles.recordDetailValue}>{illness.treatment}</Text>
+                    </View>
+                  )}
+                  {illness.veterinarian && (
+                    <View style={styles.recordDetailRow}>
+                      <Text style={styles.recordDetailLabel}>Veterinario:</Text>
+                      <Text style={styles.recordDetailValue}>{illness.veterinarian}</Text>
+                    </View>
+                  )}
+                  {illness.notes && (
+                    <View style={styles.recordDetailRow}>
+                      <Text style={styles.recordDetailLabel}>Notas:</Text>
+                      <Text style={styles.recordDetailValue}>{illness.notes}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            ))}
+          </Card>
+        )}
+
+        {/* Allergies Section */}
+        {allergies.length > 0 && (
+          <Card style={styles.recordsCard}>
+            <Text style={styles.sectionTitle}>🚨 Alergias Conocidas</Text>
+            {allergies.map((allergy) => (
+              <View key={allergy.id} style={styles.recordItem}>
+                <View style={styles.recordHeader}>
+                  {getRecordIcon(allergy.type)}
+                  <Text style={styles.recordName}>{allergy.name}</Text>
+                </View>
+                <View style={styles.recordDetails}>
+                  {allergy.symptoms && (
+                    <View style={styles.recordDetailRow}>
+                      <Text style={styles.recordDetailLabel}>Síntomas:</Text>
+                      <Text style={styles.recordDetailValue}>{allergy.symptoms}</Text>
+                    </View>
+                  )}
+                  {allergy.severity && (
+                    <View style={styles.recordDetailRow}>
+                      <Text style={styles.recordDetailLabel}>Severidad:</Text>
+                      <View style={styles.severityContainer}>
+                        <Text style={styles.recordDetailValue}>{allergy.severity}</Text>
+                        <View style={[
+                          styles.severityBadge,
+                          { backgroundColor: getSeverityBadge(allergy.severity).bgColor }
+                        ]}>
+                          <Text style={[
+                            styles.severityBadgeText,
+                            { color: getSeverityBadge(allergy.severity).color }
+                          ]}>
+                            {getSeverityBadge(allergy.severity).text}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  )}
+                  {allergy.treatment && (
+                    <View style={styles.recordDetailRow}>
+                      <Text style={styles.recordDetailLabel}>Tratamiento:</Text>
+                      <Text style={styles.recordDetailValue}>{allergy.treatment}</Text>
+                    </View>
+                  )}
+                  {allergy.notes && (
+                    <View style={styles.recordDetailRow}>
+                      <Text style={styles.recordDetailLabel}>Notas:</Text>
+                      <Text style={styles.recordDetailValue}>{allergy.notes}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            ))}
+          </Card>
+        )}
+
+        {/* Deworming Section */}
+        {dewormings.length > 0 && (
+          <Card style={styles.recordsCard}>
+            <Text style={styles.sectionTitle}>💊 Historial de Desparasitación</Text>
+            {dewormings.map((deworming) => (
+              <View key={deworming.id} style={styles.recordItem}>
+                <View style={styles.recordHeader}>
+                  {getRecordIcon(deworming.type)}
+                  <Text style={styles.recordName}>{deworming.product_name || deworming.name}</Text>
+                </View>
+                <View style={styles.recordDetails}>
+                  <View style={styles.recordDetailRow}>
+                    <Text style={styles.recordDetailLabel}>Fecha de aplicación:</Text>
+                    <Text style={styles.recordDetailValue}>{formatDate(deworming.application_date)}</Text>
+                  </View>
+                  {deworming.next_due_date && (
+                    <View style={styles.recordDetailRow}>
+                      <Text style={styles.recordDetailLabel}>Próxima dosis:</Text>
+                      <View style={styles.nextDoseContainer}>
+                        <Text style={styles.recordDetailValue}>{formatDate(deworming.next_due_date)}</Text>
+                        <View style={styles.pendingBadge}>
+                          <Text style={styles.pendingBadgeText}>Pendiente</Text>
+                        </View>
+                      </View>
+                    </View>
+                  )}
+                  {deworming.veterinarian && (
+                    <View style={styles.recordDetailRow}>
+                      <Text style={styles.recordDetailLabel}>Veterinario:</Text>
+                      <Text style={styles.recordDetailValue}>{deworming.veterinarian}</Text>
+                    </View>
+                  )}
+                  {deworming.notes && (
+                    <View style={styles.recordDetailRow}>
+                      <Text style={styles.recordDetailLabel}>Notas:</Text>
+                      <Text style={styles.recordDetailValue}>{deworming.notes}</Text>
+                    </View>
+                  )}
+                </View>
                 {vaccine.next_due_date && (
                   <Text style={styles.recordNextDate}>
                     Próxima: {formatDate(vaccine.next_due_date)}
@@ -335,29 +613,85 @@ export default function MedicalHistoryView() {
           </Card>
         )}
 
+        {/* Weight History Section */}
         {weightRecords.length > 0 && (
           <Card style={styles.recordsCard}>
             <Text style={styles.sectionTitle}>⚖️ Historial de Peso</Text>
-            {weightRecords.slice(0, 10).map((weight) => (
-              <View key={weight.id} style={styles.weightItem}>
-                <Text style={styles.weightDate}>{formatDate(weight.date)}</Text>
-                <Text style={styles.weightValue}>
-                  {weight.weight} {weight.weight_unit || 'kg'}
-                </Text>
-              </View>
-            ))}
+            <View style={styles.weightGrid}>
+              {weightRecords.slice(0, 12).map((weight) => (
+                <View key={weight.id} style={styles.weightGridItem}>
+                  <Text style={styles.weightGridDate}>{formatDate(weight.date)}</Text>
+                  <Text style={styles.weightGridValue}>
+                    {weight.weight} {weight.weight_unit || 'kg'}
+                  </Text>
+                  {weight.notes && weight.notes !== 'Peso inicial al registrar la mascota' && (
+                    <Text style={styles.weightGridNotes}>{weight.notes}</Text>
+                  )}
+                </View>
+              ))}
+            </View>
+            {weightRecords.length > 12 && (
+              <Text style={styles.moreRecordsText}>
+                ... y {weightRecords.length - 12} registros más
+              </Text>
+            )}
+          </Card>
+        )}
+
+        {/* Empty sections for completeness */}
+        {vaccines.length === 0 && (
+          <Card style={styles.emptyCard}>
+            <Text style={styles.sectionTitle}>💉 Historial de Vacunación</Text>
+            <Text style={styles.emptyText}>No hay vacunas registradas</Text>
+          </Card>
+        )}
+
+        {illnesses.length === 0 && (
+          <Card style={styles.emptyCard}>
+            <Text style={styles.sectionTitle}>🏥 Historial de Enfermedades</Text>
+            <Text style={styles.emptyText}>No hay enfermedades registradas</Text>
+          </Card>
+        )}
+
+        {allergies.length === 0 && (
+          <Card style={styles.emptyCard}>
+            <Text style={styles.sectionTitle}>🚨 Alergias Conocidas</Text>
+            <Text style={styles.emptyText}>No hay alergias registradas</Text>
+          </Card>
+        )}
+
+        {dewormings.length === 0 && (
+          <Card style={styles.emptyCard}>
+            <Text style={styles.sectionTitle}>💊 Historial de Desparasitación</Text>
+            <Text style={styles.emptyText}>No hay desparasitaciones registradas</Text>
+          </Card>
+        )}
+
+        {weightRecords.length === 0 && (
+          <Card style={styles.emptyCard}>
+            <Text style={styles.sectionTitle}>⚖️ Historial de Peso</Text>
+            <Text style={styles.emptyText}>No hay registros de peso</Text>
+          </Card>
+        )}
           </Card>
         )}
 
         {/* Footer */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            Historia clínica generada por DogCatiFy
-          </Text>
-          <Text style={styles.footerDate}>
-            {new Date().toLocaleDateString('es-ES')}
-          </Text>
-        </View>
+        <Card style={styles.footer}>
+          <View style={styles.footerContent}>
+            <Text style={styles.footerTitle}>Historia clínica generada por DogCatiFy</Text>
+            <Text style={styles.footerDate}>
+              Fecha de generación: {new Date().toLocaleDateString('es-ES')}
+            </Text>
+            <Text style={styles.footerInfo}>
+              Mascota: {pet.name} | Propietario: {owner.display_name}
+            </Text>
+            <Text style={styles.footerUsage}>Para uso veterinario exclusivamente</Text>
+            <Text style={styles.footerDisclaimer}>
+              Esta historia clínica contiene información médica confidencial y debe ser tratada con la debida confidencialidad médica.
+            </Text>
+          </View>
+        </Card>
       </ScrollView>
     </SafeAreaView>
   );
@@ -370,19 +704,28 @@ const styles = StyleSheet.create({
     paddingTop: 50,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
+    alignItems: 'center',
+  },
+  headerContent: {
+    alignItems: 'center',
   },
   title: {
-    fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
+    fontSize: 24,
+    fontFamily: 'Inter-Bold',
+    color: '#2D6A6F',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
   },
   content: {
     flex: 1,
@@ -413,6 +756,9 @@ const styles = StyleSheet.create({
   },
   petCard: {
     marginBottom: 16,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   petHeader: {
     flexDirection: 'row',
@@ -420,10 +766,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   petImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     marginRight: 16,
+    borderWidth: 4,
+    borderColor: '#2D6A6F',
   },
   petInfo: {
     flex: 1,
@@ -431,12 +779,12 @@ const styles = StyleSheet.create({
   petName: {
     fontSize: 24,
     fontFamily: 'Inter-Bold',
-    color: '#111827',
+    color: '#2D6A6F',
     marginBottom: 4,
   },
   petBreed: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
     color: '#6B7280',
     marginBottom: 4,
   },
@@ -444,136 +792,316 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
+    marginBottom: 4,
   },
-  petStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+  petColor: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+  },
+  petDetailsGrid: {
     paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
+    gap: 12,
   },
-  statItem: {
-    alignItems: 'center',
+  detailItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
-  statLabel: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    marginBottom: 4,
-  },
-  statValue: {
+  detailLabel: {
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
-    color: '#111827',
+    color: '#2D6A6F',
+  },
+  detailValue: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+    textAlign: 'right',
+    flex: 1,
+    marginLeft: 12,
   },
   ownerCard: {
     marginBottom: 16,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
-    marginBottom: 12,
+  ownerDetailsGrid: {
+    gap: 12,
   },
-  ownerName: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
+  ownerDetailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  ownerDetailText: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  ownerDetailLabel: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
     marginBottom: 4,
   },
-  ownerContact: {
+  ownerDetailValue: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#111827',
+  },
+  notesCard: {
+    marginBottom: 16,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+  },
+  notesContent: {
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#F59E0B',
+  },
+  notesText: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    marginBottom: 2,
+    color: '#374151',
+    lineHeight: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: '#2D6A6F',
+    marginBottom: 12,
   },
   recordsCard: {
     marginBottom: 16,
   },
   recordItem: {
-    backgroundColor: '#F8FAFC',
-    padding: 12,
-    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 12,
     marginBottom: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: '#3B82F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   recordHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    justifyContent: 'space-between',
+    marginBottom: 12,
   },
   recordName: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: '#2D6A6F',
     marginLeft: 8,
+    flex: 1,
   },
-  recordDate: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    marginBottom: 4,
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
-  recordNextDate: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#3B82F6',
-    marginBottom: 4,
+  statusBadgeText: {
+    fontSize: 12,
+    fontFamily: 'Inter-SemiBold',
   },
-  recordVet: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    marginBottom: 4,
+  recordDetails: {
+    gap: 8,
   },
-  recordTreatment: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    marginBottom: 4,
-  },
-  recordSymptoms: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    marginBottom: 4,
-  },
-  recordSeverity: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-  },
-  weightItem: {
+  recordDetailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    alignItems: 'flex-start',
+    paddingVertical: 4,
   },
-  weightDate: {
+  recordDetailLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#2D6A6F',
+    flex: 1,
+  },
+  recordDetailValue: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+    flex: 2,
+    textAlign: 'right',
+  },
+  nextDoseContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    flex: 2,
+  },
+  pendingBadge: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+  pendingBadgeText: {
+    fontSize: 10,
+    fontFamily: 'Inter-SemiBold',
+    color: '#92400E',
+  },
+  severityContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    flex: 2,
+  },
+  severityBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+  severityBadgeText: {
+    fontSize: 10,
+    fontFamily: 'Inter-SemiBold',
+  },
+  weightGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  weightGridItem: {
+    backgroundColor: '#E3F2FD',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    minWidth: (width - 80) / 3 - 8, // 3 columns with gaps
+    borderWidth: 1,
+    borderColor: '#90CAF9',
+  },
+  weightGridDate: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1565C0',
+    marginBottom: 4,
+    marginBottom: 4,
+  },
+  weightGridValue: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: '#0D47A1',
+  },
+  weightGridNotes: {
+    fontSize: 10,
+    fontFamily: 'Inter-Regular',
+    color: '#1976D2',
+    marginBottom: 4,
+    fontStyle: 'italic',
+    textAlign: 'center',
+  },
+  moreRecordsText: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
+    textAlign: 'center',
+    marginTop: 12,
+    fontStyle: 'italic',
   },
-  weightValue: {
+  emptyCard: {
+    marginBottom: 16,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  emptyText: {
     fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+    fontStyle: 'italic',
+    paddingVertical: 20,
   },
   footer: {
-    alignItems: 'center',
-    paddingVertical: 20,
     marginTop: 20,
+    marginBottom: 24,
+    backgroundColor: '#F8FAFC',
+    borderTopWidth: 3,
+    borderTopColor: '#2D6A6F',
   },
-  footerText: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: '#9CA3AF',
-    marginBottom: 4,
+  footerContent: {
+    alignItems: 'center',
+    padding: 20,
+  },
+  footerTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: '#111827',
+    marginBottom: 8,
   },
   footerDate: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  footerInfo: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginBottom: 8,
+  },
+  footerUsage: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  footerDisclaimer: {
+    fontSize: 10,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 14,
+    fontStyle: 'italic',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#EF4444',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+});
+
     fontSize: 12,
     fontFamily: 'Inter-Regular',
     color: '#9CA3AF',
