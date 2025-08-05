@@ -123,7 +123,7 @@ Saludos cordiales.`;
           
           <View style={styles.urlContainer}>
             <Text style={styles.urlLabel}>Enlace directo:</Text>
-            <Text style={styles.shortUrl}>{shortUrl}</Text>
+            <Text style={styles.shortUrl}>{shareUrl}</Text>
           </View>
         </Card>
 

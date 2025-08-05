@@ -399,7 +399,7 @@ export default function PetDetail() {
       Alert.alert('Generando QR', 'Creando enlace para veterinario...');
       
       // Create sharing data directly
-      const appDomain = process.env.EXPO_PUBLIC_APP_DOMAIN || 'https://app-dogcatify.netlify.app';
+      const appDomain = process.env.EXPO_PUBLIC_APP_URL || 'https://app-dogcatify.netlify.app';
       const shareUrl = `${appDomain}/medical-history/${pet.id}`;
       const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(shareUrl)}&format=png&margin=20&ecc=M&color=2D6A6F&bgcolor=FFFFFF`;
       const shortUrl = `dogcatify.com/vet/${pet.id.slice(-8)}`;
