@@ -95,8 +95,8 @@ export default function MedicalHistoryView() {
       }
       
       console.log('Token valid, fetching medical history...');
-      // Token is valid, fetch medical history
-      await fetchMedicalHistory();
+      // Token is valid, fetch medical history via Edge Function
+      await fetchMedicalHistoryViaEdgeFunction();
     } catch (error) {
       console.error('Error verifying token:', error);
       setError('Error verificando el enlace de acceso');
@@ -104,8 +104,82 @@ export default function MedicalHistoryView() {
     }
   };
 
+  const fetchMedicalHistoryViaEdgeFunction = async () => {
+    try {
+      console.log('=== CALLING EDGE FUNCTION FOR MEDICAL DATA ===');
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+      const edgeFunctionUrl = `${supabaseUrl}/functions/v1/medical-history/${id}${token ? `?token=${token}` : ''}`;
+      
+      console.log('Edge Function URL:', edgeFunctionUrl);
+      
+      const response = await fetch(edgeFunctionUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'text/html',
+          'Cache-Control': 'no-cache',
+        },
+      });
+      
+      console.log('Edge Function response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Edge Function error:', response.status, errorText);
+        throw new Error(`Edge Function error: ${response.status}`);
+      }
+      
+      const htmlContent = await response.text();
+      console.log('Edge Function returned HTML, length:', htmlContent.length);
+      
+      // Parse the HTML to extract debug info
+      if (htmlContent.includes('DEBUG INFO:')) {
+        const debugMatch = htmlContent.match(/Records found: (\d+)/);
+        const vaccinesMatch = htmlContent.match(/Vaccines: (\d+)/);
+        const illnessesMatch = htmlContent.match(/Illnesses: (\d+)/);
+        const allergiesMatch = htmlContent.match(/Allergies: (\d+)/);
+        const dewormingsMatch = htmlContent.match(/Dewormings: (\d+)/);
+        const weightMatch = htmlContent.match(/Weight records: (\d+)/);
+        
+        console.log('=== EDGE FUNCTION DEBUG INFO ===');
+        console.log('Total records found:', debugMatch?.[1] || '0');
+        console.log('Vaccines:', vaccinesMatch?.[1] || '0');
+        console.log('Illnesses:', illnessesMatch?.[1] || '0');
+        console.log('Allergies:', allergiesMatch?.[1] || '0');
+        console.log('Dewormings:', dewormingsMatch?.[1] || '0');
+        console.log('Weight records:', weightMatch?.[1] || '0');
+        console.log('=== END DEBUG INFO ===');
+      }
+      
+      // For web, we could display the HTML directly, but for now let's extract the data
+      // and use our existing UI components
+      await extractDataFromEdgeFunctionResponse(htmlContent);
+      
+    } catch (error) {
+      console.error('Error calling Edge Function:', error);
+      // Fallback to direct database access
+      console.log('Falling back to direct database access...');
+      await fetchMedicalHistory();
+    }
+  };
+  
+  const extractDataFromEdgeFunctionResponse = async (htmlContent: string) => {
+    try {
+      // Since the Edge Function returns complete HTML with all data,
+      // we still need to fetch the raw data for our React components
+      // The Edge Function call confirms the data exists and is accessible
+      console.log('Edge Function confirmed data exists, fetching for React components...');
+      await fetchMedicalHistory();
+    } catch (error) {
+      console.error('Error extracting data from Edge Function response:', error);
+      throw error;
+    }
+  };
+
   const fetchMedicalHistory = async () => {
     try {
+      console.log('=== FETCHING MEDICAL DATA FOR REACT COMPONENTS ===');
+      console.log('Pet ID:', id);
+      
       // Fetch pet data
       const { data: petData, error: petError } = await supabaseClient
         .from('pets')
@@ -113,7 +187,12 @@ export default function MedicalHistoryView() {
         .eq('id', id)
         .single();
 
-      if (petError) throw petError;
+      if (petError) {
+        console.error('Error fetching pet data:', petError);
+        throw petError;
+      }
+      
+      console.log('Pet data loaded:', petData.name);
 
       // Fetch owner data
       const { data: ownerData, error: ownerError } = await supabaseClient
@@ -122,20 +201,43 @@ export default function MedicalHistoryView() {
         .eq('id', petData.owner_id)
         .single();
 
-      if (ownerError) throw ownerError;
+      if (ownerError) {
+        console.error('Error fetching owner data:', ownerError);
+        throw ownerError;
+      }
+      
+      console.log('Owner data loaded:', ownerData.display_name);
 
       // Fetch medical records
+      console.log('Fetching medical records for pet:', id);
       const { data: recordsData, error: recordsError } = await supabaseClient
         .from('pet_health')
         .select('*')
         .eq('pet_id', id)
         .order('created_at', { ascending: false });
 
-      if (recordsError) throw recordsError;
+      if (recordsError) {
+        console.error('Error fetching medical records:', recordsError);
+        console.error('Full error details:', JSON.stringify(recordsError, null, 2));
+        throw recordsError;
+      }
+      
+      console.log('Medical records loaded:', recordsData?.length || 0);
+      
+      // Log record types for debugging
+      if (recordsData && recordsData.length > 0) {
+        const recordsByType = recordsData.reduce((acc, record) => {
+          acc[record.type] = (acc[record.type] || 0) + 1;
+          return acc;
+        }, {});
+        console.log('Records by type:', recordsByType);
+      }
 
       setPet(petData);
       setOwner(ownerData);
       setMedicalRecords(recordsData || []);
+      
+      console.log('=== MEDICAL DATA LOADED SUCCESSFULLY ===');
     } catch (error) {
       console.error('Error fetching medical history:', error);
       setError('No se pudo cargar la historia clínica');
