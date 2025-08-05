@@ -397,11 +397,8 @@ export default function PetDetail() {
     try {
       Alert.alert('Generando QR', 'Creando enlace para veterinario...');
       
-      const { generateMedicalHistoryWithQR } = await import('../../utils/medicalHistoryPDF');
-      const { htmlContent, shareUrl, directHtmlUrl } = await generateMedicalHistoryWithQR(pet.id, currentUser!.id);
-      
       const { generateSharingPackage } = await import('../../utils/qrGenerator');
-      const sharingData = await generateSharingPackage(pet.id, pet.name, directHtmlUrl || shareUrl);
+      const sharingData = await generateSharingPackage(pet.id, pet.name);
       
       // Navigate to QR sharing screen
       router.push({
@@ -410,7 +407,7 @@ export default function PetDetail() {
           petId: pet.id,
           petName: pet.name,
           qrCodeUrl: sharingData.qrCodeUrl,
-          shareUrl: directHtmlUrl || sharingData.shareUrl,
+          shareUrl: sharingData.shareUrl,
           shortUrl: sharingData.shortUrl
         }
       });

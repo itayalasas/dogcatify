@@ -1,93 +1,124 @@
-import { supabaseClient } from '../lib/supabase';
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
-interface MedicalRecord {
-  id: string;
-  type: string;
-  name: string;
-  product_name?: string;
-  application_date?: string;
-  diagnosis_date?: string;
-  next_due_date?: string;
-  symptoms?: string;
-  severity?: string;
-  treatment?: string;
-  veterinarian?: string;
-  notes?: string;
-  weight?: number;
-  weight_unit?: string;
-  date?: string;
-  status?: string;
-  created_at: string;
-}
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
 
-interface Pet {
-  id: string;
-  name: string;
-  species: string;
-  breed: string;
-  age: number;
-  age_display?: { value: number; unit: string };
-  gender: string;
-  weight: number;
-  weight_display?: { value: number; unit: string };
-  color?: string;
-  is_neutered?: boolean;
-  has_chip?: boolean;
-  chip_number?: string;
-  medical_notes?: string;
-  created_at: string;
-  photo_url?: string;
-}
-
-interface Owner {
-  display_name: string;
-  email: string;
-  phone?: string;
-}
-
-export class MedicalHistoryPDF {
-  private formatAge(pet: Pet): string {
-    if (pet.age_display) {
-      const { value, unit } = pet.age_display;
-      switch (unit) {
-        case 'days': return `${value} ${value === 1 ? 'día' : 'días'}`;
-        case 'months': return `${value} ${value === 1 ? 'mes' : 'meses'}`;
-        case 'years': return `${value} ${value === 1 ? 'año' : 'años'}`;
-        default: return `${value} ${unit}`;
-      }
-    }
-    return `${pet.age} ${pet.age === 1 ? 'año' : 'años'}`;
+serve(async (req: Request) => {
+  // Handle CORS preflight request
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 200,
+      headers: corsHeaders,
+    });
   }
 
-  private formatWeight(pet: Pet): string {
-    if (pet.weight_display) {
-      return `${pet.weight_display.value} ${pet.weight_display.unit}`;
-    }
-    return `${pet.weight} kg`;
-  }
-
-  private formatDate(dateString: string): string {
-    if (!dateString) return 'No especificada';
+  try {
+    const url = new URL(req.url);
+    const petId = url.pathname.split('/').pop();
     
-    // If already in dd/mm/yyyy format, return as is
-    if (dateString.includes('/')) {
-      return dateString;
-    }
-    
-    // If in ISO format, convert
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('es-ES', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
+    if (!petId) {
+      return new Response('Pet ID is required', {
+        status: 400,
+        headers: { 'Content-Type': 'text/plain', ...corsHeaders },
       });
-    } catch {
-      return dateString;
     }
-  }
 
-  private generateHTMLContent(pet: Pet, owner: Owner, records: MedicalRecord[]): string {
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
+
+    // Fetch pet data
+    const { data: petData, error: petError } = await supabase
+      .from('pets')
+      .select('*')
+      .eq('id', petId)
+      .single();
+
+    if (petError || !petData) {
+      return new Response('Pet not found', {
+        status: 404,
+        headers: { 'Content-Type': 'text/plain', ...corsHeaders },
+      });
+    }
+
+    // Fetch owner data
+    const { data: ownerData, error: ownerError } = await supabase
+      .from('profiles')
+      .select('display_name, email, phone')
+      .eq('id', petData.owner_id)
+      .single();
+
+    if (ownerError || !ownerData) {
+      return new Response('Owner not found', {
+        status: 404,
+        headers: { 'Content-Type': 'text/plain', ...corsHeaders },
+      });
+    }
+
+    // Fetch medical records
+    const { data: medicalRecords, error: recordsError } = await supabase
+      .from('pet_health')
+      .select('*')
+      .eq('pet_id', petId)
+      .order('created_at', { ascending: false });
+
+    if (recordsError) {
+      console.error('Error fetching medical records:', recordsError);
+    }
+
+    const records = medicalRecords || [];
+
+    // Helper functions
+    const formatAge = (pet: any): string => {
+      if (pet.age_display) {
+        const { value, unit } = pet.age_display;
+        switch (unit) {
+          case 'days': return `${value} ${value === 1 ? 'día' : 'días'}`;
+          case 'months': return `${value} ${value === 1 ? 'mes' : 'meses'}`;
+          case 'years': return `${value} ${value === 1 ? 'año' : 'años'}`;
+          default: return `${value} ${unit}`;
+        }
+      }
+      return `${pet.age} ${pet.age === 1 ? 'año' : 'años'}`;
+    };
+
+    const formatWeight = (pet: any): string => {
+      if (pet.weight_display) {
+        return `${pet.weight_display.value} ${pet.weight_display.unit}`;
+      }
+      return `${pet.weight} kg`;
+    };
+
+    const formatDate = (dateString: string): string => {
+      if (!dateString) return 'No especificada';
+      
+      if (dateString.includes('/')) {
+        return dateString;
+      }
+      
+      try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('es-ES', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        });
+      } catch {
+        return dateString;
+      }
+    };
+
     // Group records by type
     const vaccines = records.filter(r => r.type === 'vaccine');
     const illnesses = records.filter(r => r.type === 'illness');
@@ -95,13 +126,14 @@ export class MedicalHistoryPDF {
     const dewormings = records.filter(r => r.type === 'deworming');
     const weightRecords = records.filter(r => r.type === 'weight');
 
-    return `
+    // Generate HTML content
+    const htmlContent = `
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Historia Clínica - ${pet.name}</title>
+    <title>Historia Clínica - ${petData.name}</title>
     <style>
         * {
             margin: 0;
@@ -215,6 +247,11 @@ export class MedicalHistoryPDF {
             padding: 20px;
             margin-bottom: 15px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease;
+        }
+        .record-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
         }
         .record-title {
             font-weight: 600;
@@ -261,6 +298,19 @@ export class MedicalHistoryPDF {
             margin-top: 5px;
             font-style: italic;
         }
+        .footer {
+            margin-top: 40px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-top: 3px solid #2D6A6F;
+            text-align: center;
+            border-radius: 10px;
+        }
+        .footer p {
+            font-size: 12px;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
         .empty-section {
             text-align: center;
             padding: 30px;
@@ -287,19 +337,6 @@ export class MedicalHistoryPDF {
             background-color: #f8d7da;
             color: #721c24;
         }
-        .footer {
-            margin-top: 40px;
-            padding: 20px;
-            background-color: #f8f9fa;
-            border-top: 3px solid #2D6A6F;
-            text-align: center;
-            border-radius: 10px;
-        }
-        .footer p {
-            font-size: 12px;
-            color: #6c757d;
-            margin-bottom: 5px;
-        }
         @media print {
             body { 
                 margin: 0; 
@@ -311,6 +348,10 @@ export class MedicalHistoryPDF {
             }
             .section { 
                 page-break-inside: avoid; 
+            }
+            .record-item:hover {
+                transform: none;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
         }
         @media (max-width: 768px) {
@@ -452,11 +493,28 @@ export class MedicalHistoryPDF {
                 <div class="section-content">
                     ${vaccines.length > 0 ? vaccines.map((vaccine, index) => `
                     <div class="record-item">
-                        <div class="record-title">💉 ${index + 1}. ${vaccine.name}</div>
-                        <div class="record-detail"><strong>Fecha de aplicación:</strong> ${this.formatDate(vaccine.application_date || '')}</div>
-                        ${vaccine.next_due_date ? `<div class="record-detail"><strong>Próxima dosis:</strong> ${this.formatDate(vaccine.next_due_date)}</div>` : ''}
-                        ${vaccine.veterinarian ? `<div class="record-detail"><strong>Veterinario:</strong> ${vaccine.veterinarian}</div>` : ''}
-                        ${vaccine.notes ? `<div class="record-detail"><strong>Notas:</strong> ${vaccine.notes}</div>` : ''}
+                        <div class="record-title">
+                            💉 ${index + 1}. ${vaccine.name}
+                        </div>
+                        <div class="record-detail">
+                            <strong>Fecha de aplicación:</strong> ${formatDate(vaccine.application_date || '')}
+                        </div>
+                        ${vaccine.next_due_date ? `
+                        <div class="record-detail">
+                            <strong>Próxima dosis:</strong> ${formatDate(vaccine.next_due_date)}
+                            <span class="badge badge-warning">Pendiente</span>
+                        </div>
+                        ` : ''}
+                        ${vaccine.veterinarian ? `
+                        <div class="record-detail">
+                            <strong>Veterinario:</strong> ${vaccine.veterinarian}
+                        </div>
+                        ` : ''}
+                        ${vaccine.notes ? `
+                        <div class="record-detail">
+                            <strong>Notas:</strong> ${vaccine.notes}
+                        </div>
+                        ` : ''}
                     </div>
                     `).join('') : `
                     <div class="empty-section">
@@ -473,12 +531,29 @@ export class MedicalHistoryPDF {
                 <div class="section-content">
                     ${illnesses.length > 0 ? illnesses.map((illness, index) => `
                     <div class="record-item">
-                        <div class="record-title">🏥 ${index + 1}. ${illness.name}</div>
-                        <div class="record-detail"><strong>Fecha de diagnóstico:</strong> ${this.formatDate(illness.diagnosis_date || '')}</div>
-                        ${illness.treatment ? `<div class="record-detail"><strong>Tratamiento:</strong> ${illness.treatment}</div>` : ''}
-                        ${illness.veterinarian ? `<div class="record-detail"><strong>Veterinario:</strong> ${illness.veterinarian}</div>` : ''}
-                        ${illness.status ? `<div class="record-detail"><strong>Estado:</strong> ${illness.status}</div>` : ''}
-                        ${illness.notes ? `<div class="record-detail"><strong>Notas:</strong> ${illness.notes}</div>` : ''}
+                        <div class="record-title">
+                            🏥 ${index + 1}. ${illness.name}
+                            ${illness.status === 'active' ? '<span class="badge badge-danger">Activa</span>' : 
+                              illness.status === 'recovered' ? '<span class="badge badge-success">Recuperada</span>' : ''}
+                        </div>
+                        <div class="record-detail">
+                            <strong>Fecha de diagnóstico:</strong> ${formatDate(illness.diagnosis_date || '')}
+                        </div>
+                        ${illness.treatment ? `
+                        <div class="record-detail">
+                            <strong>Tratamiento:</strong> ${illness.treatment}
+                        </div>
+                        ` : ''}
+                        ${illness.veterinarian ? `
+                        <div class="record-detail">
+                            <strong>Veterinario:</strong> ${illness.veterinarian}
+                        </div>
+                        ` : ''}
+                        ${illness.notes ? `
+                        <div class="record-detail">
+                            <strong>Notas:</strong> ${illness.notes}
+                        </div>
+                        ` : ''}
                     </div>
                     `).join('') : `
                     <div class="empty-section">
@@ -495,11 +570,32 @@ export class MedicalHistoryPDF {
                 <div class="section-content">
                     ${allergies.length > 0 ? allergies.map((allergy, index) => `
                     <div class="record-item">
-                        <div class="record-title">🚨 ${index + 1}. ${allergy.name}</div>
-                        ${allergy.symptoms ? `<div class="record-detail"><strong>Síntomas:</strong> ${allergy.symptoms}</div>` : ''}
-                        ${allergy.severity ? `<div class="record-detail"><strong>Severidad:</strong> ${allergy.severity}</div>` : ''}
-                        ${allergy.treatment ? `<div class="record-detail"><strong>Tratamiento:</strong> ${allergy.treatment}</div>` : ''}
-                        ${allergy.notes ? `<div class="record-detail"><strong>Notas:</strong> ${allergy.notes}</div>` : ''}
+                        <div class="record-title">
+                            🚨 ${index + 1}. ${allergy.name}
+                        </div>
+                        ${allergy.symptoms ? `
+                        <div class="record-detail">
+                            <strong>Síntomas:</strong> ${allergy.symptoms}
+                        </div>
+                        ` : ''}
+                        ${allergy.severity ? `
+                        <div class="record-detail">
+                            <strong>Severidad:</strong> ${allergy.severity}
+                            ${allergy.severity.toLowerCase().includes('severa') ? '<span class="badge badge-danger">Alta</span>' : 
+                              allergy.severity.toLowerCase().includes('moderada') ? '<span class="badge badge-warning">Media</span>' : 
+                              '<span class="badge badge-success">Baja</span>'}
+                        </div>
+                        ` : ''}
+                        ${allergy.treatment ? `
+                        <div class="record-detail">
+                            <strong>Tratamiento:</strong> ${allergy.treatment}
+                        </div>
+                        ` : ''}
+                        ${allergy.notes ? `
+                        <div class="record-detail">
+                            <strong>Notas:</strong> ${allergy.notes}
+                        </div>
+                        ` : ''}
                     </div>
                     `).join('') : `
                     <div class="empty-section">
@@ -516,11 +612,28 @@ export class MedicalHistoryPDF {
                 <div class="section-content">
                     ${dewormings.length > 0 ? dewormings.map((deworming, index) => `
                     <div class="record-item">
-                        <div class="record-title">💊 ${index + 1}. ${deworming.product_name || deworming.name}</div>
-                        <div class="record-detail"><strong>Fecha de aplicación:</strong> ${this.formatDate(deworming.application_date || '')}</div>
-                        ${deworming.next_due_date ? `<div class="record-detail"><strong>Próxima dosis:</strong> ${this.formatDate(deworming.next_due_date)}</div>` : ''}
-                        ${deworming.veterinarian ? `<div class="record-detail"><strong>Veterinario:</strong> ${deworming.veterinarian}</div>` : ''}
-                        ${deworming.notes ? `<div class="record-detail"><strong>Notas:</strong> ${deworming.notes}</div>` : ''}
+                        <div class="record-title">
+                            💊 ${index + 1}. ${deworming.product_name || deworming.name}
+                        </div>
+                        <div class="record-detail">
+                            <strong>Fecha de aplicación:</strong> ${formatDate(deworming.application_date || '')}
+                        </div>
+                        ${deworming.next_due_date ? `
+                        <div class="record-detail">
+                            <strong>Próxima dosis:</strong> ${formatDate(deworming.next_due_date)}
+                            <span class="badge badge-warning">Pendiente</span>
+                        </div>
+                        ` : ''}
+                        ${deworming.veterinarian ? `
+                        <div class="record-detail">
+                            <strong>Veterinario:</strong> ${deworming.veterinarian}
+                        </div>
+                        ` : ''}
+                        ${deworming.notes ? `
+                        <div class="record-detail">
+                            <strong>Notas:</strong> ${deworming.notes}
+                        </div>
+                        ` : ''}
                     </div>
                     `).join('') : `
                     <div class="empty-section">
@@ -539,7 +652,7 @@ export class MedicalHistoryPDF {
                     <div class="weight-grid">
                         ${weightRecords.slice(0, 12).map(weight => `
                         <div class="weight-item">
-                            <div class="weight-date">${this.formatDate(weight.date || '')}</div>
+                            <div class="weight-date">${formatDate(weight.date || '')}</div>
                             <div class="weight-value">${weight.weight} ${weight.weight_unit || 'kg'}</div>
                             ${weight.notes && weight.notes !== 'Peso inicial al registrar la mascota' ? `
                             <div class="weight-notes">${weight.notes}</div>
@@ -563,7 +676,7 @@ export class MedicalHistoryPDF {
             <div class="footer">
                 <p><strong>Historia clínica generada por DogCatiFy</strong></p>
                 <p>Fecha de generación: ${new Date().toLocaleDateString('es-ES')}</p>
-                <p>Mascota: ${pet.name} | Propietario: ${owner.display_name}</p>
+                <p>Mascota: ${petData.name} | Propietario: ${ownerData.display_name}</p>
                 <p>Para uso veterinario exclusivamente</p>
                 <p style="margin-top: 10px; font-size: 10px;">
                     Esta historia clínica contiene información médica confidencial y debe ser tratada con la debida confidencialidad médica.
@@ -574,91 +687,64 @@ export class MedicalHistoryPDF {
 </body>
 </html>
     `;
-  }
 
-  public async generateMedicalHistory(petId: string, ownerId: string): Promise<string> {
-    try {
-      // Fetch pet data
-      const { data: petData, error: petError } = await supabaseClient
-        .from('pets')
-        .select('*')
-        .eq('id', petId)
-        .single();
-
-      if (petError || !petData) {
-        throw new Error('No se pudo obtener la información de la mascota');
+    // Helper functions for the template
+    function formatAge(pet: any): string {
+      if (pet.age_display) {
+        const { value, unit } = pet.age_display;
+        switch (unit) {
+          case 'days': return `${value} ${value === 1 ? 'día' : 'días'}`;
+          case 'months': return `${value} ${value === 1 ? 'mes' : 'meses'}`;
+          case 'years': return `${value} ${value === 1 ? 'año' : 'años'}`;
+          default: return `${value} ${unit}`;
+        }
       }
-
-      // Fetch owner data
-      const { data: ownerData, error: ownerError } = await supabaseClient
-        .from('profiles')
-        .select('display_name, email, phone')
-        .eq('id', ownerId)
-        .single();
-
-      if (ownerError || !ownerData) {
-        throw new Error('No se pudo obtener la información del propietario');
-      }
-
-      // Fetch medical records
-      const { data: medicalRecords, error: recordsError } = await supabaseClient
-        .from('pet_health')
-        .select('*')
-        .eq('pet_id', petId)
-        .order('created_at', { ascending: false });
-
-      if (recordsError) {
-        throw new Error('No se pudieron obtener los registros médicos');
-      }
-
-      const pet = petData as Pet;
-      const owner = ownerData as Owner;
-      const records = (medicalRecords || []) as MedicalRecord[];
-
-      // Generate HTML content
-      const htmlContent = this.generateHTMLContent(pet, owner, records);
-
-      return htmlContent;
-    } catch (error) {
-      console.error('Error generating medical history:', error);
-      throw error;
+      return `${pet.age} ${pet.age === 1 ? 'año' : 'años'}`;
     }
-  }
 
-  public async generateMedicalHistoryWithQR(petId: string, ownerId: string): Promise<{ htmlContent: string; shareUrl: string; directHtmlUrl: string }> {
-    try {
-      // Generate HTML content
-      const htmlContent = await this.generateMedicalHistory(petId, ownerId);
+    function formatWeight(pet: any): string {
+      if (pet.weight_display) {
+        return `${pet.weight_display.value} ${pet.weight_display.unit}`;
+      }
+      return `${pet.weight} kg`;
+    }
+
+    function formatDate(dateString: string): string {
+      if (!dateString) return 'No especificada';
       
-      // Create shareable URL using Edge Function
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const directHtmlUrl = `${supabaseUrl}/functions/v1/medical-history/${petId}`;
-
-      // Create app URL for internal navigation
-      const appDomain = process.env.EXPO_PUBLIC_APP_DOMAIN || 
-                       process.env.EXPO_PUBLIC_APP_URL || 
-                       'https://app-dogcatify.netlify.app';
-      const appShareUrl = `${appDomain}/medical-history/${petId}`;
-
-      return { 
-        htmlContent, 
-        shareUrl: appShareUrl,
-        directHtmlUrl: directHtmlUrl
-      };
-    } catch (error) {
-      console.error('Error generating medical history with QR:', error);
-      throw error;
+      if (dateString.includes('/')) {
+        return dateString;
+      }
+      
+      try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('es-ES', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        });
+      } catch {
+        return dateString;
+      }
     }
+
+    return new Response(htmlContent, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'public, max-age=3600',
+        ...corsHeaders,
+      },
+    });
+
+  } catch (error) {
+    console.error('Error in medical-history function:', error);
+    return new Response(
+      `Error generating medical history: ${error.message}`,
+      {
+        status: 500,
+        headers: { 'Content-Type': 'text/plain', ...corsHeaders },
+      }
+    );
   }
-}
-
-// Utility functions
-export const generateMedicalHistoryHTML = async (petId: string, ownerId: string): Promise<string> => {
-  const generator = new MedicalHistoryPDF();
-  return await generator.generateMedicalHistory(petId, ownerId);
-};
-
-export const generateMedicalHistoryWithQR = async (petId: string, ownerId: string): Promise<{ htmlContent: string; shareUrl: string; directHtmlUrl: string }> => {
-  const generator = new MedicalHistoryPDF();
-  return await generator.generateMedicalHistoryWithQR(petId, ownerId);
-};
+});

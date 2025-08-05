@@ -33,32 +33,27 @@ export const generateVeterinaryQRCode = async (
 };
 
 /**
- * Create shareable medical history URL for veterinarians
+ * Create shareable medical history URL for veterinarians using Edge Function
  */
-export const createVeterinaryShareUrl = (petId: string, htmlUrl?: string): string => {
-  if (htmlUrl) {
-    // Return the direct HTML URL from Supabase Storage
-    return htmlUrl;
-  }
-  
-  // Fallback to app route
-  const appDomain = process.env.EXPO_PUBLIC_APP_DOMAIN || process.env.EXPO_PUBLIC_APP_URL || 'https://app-dogcatify.netlify.app';
-  return `${appDomain}/medical-history/${petId}`;
+export const createVeterinaryShareUrl = (petId: string): string => {
+  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+  return `${supabaseUrl}/functions/v1/medical-history/${petId}`;
 };
 
 /**
- * Generate complete sharing package (HTML + QR)
+ * Generate complete sharing package (HTML + QR) using Edge Function
  */
 export const generateSharingPackage = async (
   petId: string, 
-  petName: string, 
-  shareUrl: string
+  petName: string
 ): Promise<{
   shareUrl: string;
   qrCodeUrl: string;
   shortUrl: string;
 }> => {
   try {
+    // Use Edge Function URL for direct HTML serving
+    const shareUrl = createVeterinaryShareUrl(petId);
     const qrCodeUrl = await generateVeterinaryQRCode(shareUrl, petName);
     
     // Create a shorter, more readable URL for display

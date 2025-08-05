@@ -16,35 +16,10 @@ export default function MedicalHistoryView() {
 
   useEffect(() => {
     if (id) {
-      if (html) {
-        // If HTML URL is provided, fetch and display it
-        fetchHTMLContent();
-      } else {
-        // Otherwise fetch from database
-        fetchMedicalHistory();
-      }
+      // Always fetch from database for React Native view
+      fetchMedicalHistory();
     }
   }, [id, html]);
-
-  const fetchHTMLContent = async () => {
-    try {
-      if (html) {
-        // Fetch the HTML content from the provided URL
-        const response = await fetch(decodeURIComponent(html));
-        if (response.ok) {
-          const htmlContent = await response.text();
-          // For now, we'll still fetch the database data for the React Native view
-          await fetchMedicalHistory();
-        } else {
-          throw new Error('No se pudo cargar el contenido HTML');
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching HTML content:', error);
-      // Fallback to database fetch
-      await fetchMedicalHistory();
-    }
-  };
 
   const fetchMedicalHistory = async () => {
     try {
