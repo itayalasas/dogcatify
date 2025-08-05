@@ -16,9 +16,6 @@ serve(async (req: Request) => {
     });
   }
 
-  // Allow public access for veterinary sharing
-  // No authorization required for medical history viewing
-
   try {
     const url = new URL(req.url);
     const petId = url.pathname.split('/').pop();
@@ -30,7 +27,7 @@ serve(async (req: Request) => {
       });
     }
 
-    // Initialize Supabase client with service role
+    // Initialize Supabase client with service role for public access
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     

@@ -1,8 +1,5 @@
 import { supabaseClient } from '../lib/supabase';
 
-// Import the generateMedicalHistoryHTML function at the top level
-import { supabaseClient } from '../lib/supabase';
-
 interface MedicalRecord {
   id: string;
   type: string;
