@@ -63,6 +63,13 @@ export default function MedicalHistoryShared() {
   const [loading, setLoading] = useState(true);
   const [hasValidToken, setHasValidToken] = useState(false);
   
+  // Derived state for different record types
+  const vaccineRecords = medicalRecords.filter(record => record.type === 'vaccine');
+  const illnessRecords = medicalRecords.filter(record => record.type === 'illness');
+  const allergyRecords = medicalRecords.filter(record => record.type === 'allergy');
+  const dewormingRecords = medicalRecords.filter(record => record.type === 'deworming');
+  const weightRecords = medicalRecords.filter(record => record.type === 'weight');
+  
   // Form states for adding new records
   const [currentFormType, setCurrentFormType] = useState<string | null>(null);
   const [formData, setFormData] = useState<any>({});
