@@ -118,7 +118,7 @@ export default function MedicalHistoryShared() {
     try {
       console.log('Fetching vaccines for species:', pet?.species);
       
-      const { data, error, count } = await supabaseClient
+      const { data, error } = await supabaseClient
         .from('vaccines_catalog')
         .select('*')
         .eq('is_active', true)
@@ -127,11 +127,9 @@ export default function MedicalHistoryShared() {
         .order('name', { ascending: true });
 
       console.log('Vaccines query result:', { 
-        data: data?.length || 0, 
+        count: data?.length || 0, 
         error: error?.message,
-        count,
-        species: pet?.species,
-        querySpecies: [pet?.species || 'dog', 'both']
+        firstVaccine: data?.[0]?.name 
       });
       
       if (error) {
@@ -140,9 +138,7 @@ export default function MedicalHistoryShared() {
         return;
       }
       
-      const vaccinesData = data || [];
-      console.log('Setting vaccines data:', vaccinesData.length, 'items');
-      setVaccines(vaccinesData);
+      setVaccines(data || []);
     } catch (error) {
       console.error('Error in fetchVaccines:', error);
       setVaccines([]);
@@ -153,7 +149,7 @@ export default function MedicalHistoryShared() {
     try {
       console.log('Fetching conditions for species:', pet?.species);
       
-      const { data, error, count } = await supabaseClient
+      const { data, error } = await supabaseClient
         .from('medical_conditions')
         .select('*')
         .eq('is_active', true)
@@ -161,11 +157,9 @@ export default function MedicalHistoryShared() {
         .order('name', { ascending: true });
 
       console.log('Conditions query result:', { 
-        data: data?.length || 0, 
+        count: data?.length || 0, 
         error: error?.message,
-        count,
-        species: pet?.species,
-        querySpecies: [pet?.species || 'dog', 'both']
+        firstCondition: data?.[0]?.name 
       });
       
       if (error) {
@@ -174,9 +168,7 @@ export default function MedicalHistoryShared() {
         return;
       }
       
-      const conditionsData = data || [];
-      console.log('Setting conditions data:', conditionsData.length, 'items');
-      setConditions(conditionsData);
+      setConditions(data || []);
     } catch (error) {
       console.error('Error in fetchConditions:', error);
       setConditions([]);
@@ -185,18 +177,18 @@ export default function MedicalHistoryShared() {
 
   const fetchTreatments = async () => {
     try {
-      console.log('Fetching treatments...');
+      console.log('Fetching treatments for all conditions');
       
-      const { data, error, count } = await supabaseClient
+      const { data, error } = await supabaseClient
         .from('medical_treatments')
         .select('*')
         .eq('is_active', true)
         .order('name', { ascending: true });
 
       console.log('Treatments query result:', { 
-        data: data?.length || 0, 
+        count: data?.length || 0, 
         error: error?.message,
-        count
+        firstTreatment: data?.[0]?.name 
       });
       
       if (error) {
@@ -205,9 +197,7 @@ export default function MedicalHistoryShared() {
         return;
       }
       
-      const treatmentsData = data || [];
-      console.log('Setting treatments data:', treatmentsData.length, 'items');
-      setTreatments(treatmentsData);
+      setTreatments(data || []);
     } catch (error) {
       console.error('Error in fetchTreatments:', error);
       setTreatments([]);
@@ -218,7 +208,7 @@ export default function MedicalHistoryShared() {
     try {
       console.log('Fetching allergies for species:', pet?.species);
       
-      const { data, error, count } = await supabaseClient
+      const { data, error } = await supabaseClient
         .from('allergies_catalog')
         .select('*')
         .eq('is_active', true)
@@ -227,11 +217,9 @@ export default function MedicalHistoryShared() {
         .order('name', { ascending: true });
 
       console.log('Allergies query result:', { 
-        data: data?.length || 0, 
+        count: data?.length || 0, 
         error: error?.message,
-        count,
-        species: pet?.species,
-        querySpecies: [pet?.species || 'dog', 'both']
+        firstAllergy: data?.[0]?.name 
       });
       
       if (error) {
@@ -240,9 +228,7 @@ export default function MedicalHistoryShared() {
         return;
       }
       
-      const allergiesData = data || [];
-      console.log('Setting allergies data:', allergiesData.length, 'items');
-      setAllergies(allergiesData);
+      setAllergies(data || []);
     } catch (error) {
       console.error('Error in fetchAllergies:', error);
       setAllergies([]);
@@ -253,7 +239,7 @@ export default function MedicalHistoryShared() {
     try {
       console.log('Fetching dewormers for species:', pet?.species);
       
-      const { data, error, count } = await supabaseClient
+      const { data, error } = await supabaseClient
         .from('dewormers_catalog')
         .select('*')
         .eq('is_active', true)
@@ -261,11 +247,9 @@ export default function MedicalHistoryShared() {
         .order('name', { ascending: true });
 
       console.log('Dewormers query result:', { 
-        data: data?.length || 0, 
+        count: data?.length || 0, 
         error: error?.message,
-        count,
-        species: pet?.species,
-        querySpecies: [pet?.species || 'dog', 'both']
+        firstDewormer: data?.[0]?.name 
       });
       
       if (error) {
@@ -274,9 +258,7 @@ export default function MedicalHistoryShared() {
         return;
       }
       
-      const dewormersData = data || [];
-      console.log('Setting dewormers data:', dewormersData.length, 'items');
-      setDewormers(dewormersData);
+      setDewormers(data || []);
     } catch (error) {
       console.error('Error in fetchDewormers:', error);
       setDewormers([]);
