@@ -142,7 +142,6 @@ export default function MedicalHistoryShared() {
   });
   
   const [saving, setSaving] = useState(false);
-  const [showTempVetModal, setShowTempVetModal] = useState(false);
   
   // Loading states for catalogs
   const [loadingVaccines, setLoadingVaccines] = useState(false);
