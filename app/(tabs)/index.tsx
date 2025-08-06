@@ -512,7 +512,6 @@ export default function Home() {
               window.open(promotion.ctaUrl, '_blank');
             } else {
               console.log('Opening with Linking API');
-              const { Linking } = require('react-native');
               const supported = await Linking.canOpenURL(promotion.ctaUrl);
               if (supported) {
                 await Linking.openURL(promotion.ctaUrl);
