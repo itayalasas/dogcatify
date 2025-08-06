@@ -154,7 +154,6 @@ export default function MedicalHistoryShared() {
   const [loadingVeterinarians, setLoadingVeterinarians] = useState(false);
   
   // Modal states
-  const [showVaccineModal, setShowVaccineModal] = useState(false);
   const [showConditionModal, setShowConditionModal] = useState(false);
   const [showTreatmentModal, setShowTreatmentModal] = useState(false);
   const [showAllergyModal, setShowAllergyModal] = useState(false);
