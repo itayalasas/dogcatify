@@ -152,7 +152,6 @@ export default function MedicalHistoryShared() {
   const [loadingAllergies, setLoadingAllergies] = useState(false);
   const [loadingDewormers, setLoadingDewormers] = useState(false);
   const [loadingVeterinarians, setLoadingVeterinarians] = useState(false);
-  const [tempVetName, setTempVetName] = useState('');
   const [currentFormType, setCurrentFormType] = useState<string>('');
 
   useEffect(() => {
