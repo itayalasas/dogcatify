@@ -31,7 +31,6 @@ export default function AddIllness() {
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const handleBackNavigation = () => {
-    // Always go back to the pet detail health tab
     router.push({
       pathname: `/pets/${id}`,
       params: { activeTab: 'health' }
