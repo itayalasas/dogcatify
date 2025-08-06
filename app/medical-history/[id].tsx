@@ -62,6 +62,7 @@ export default function MedicalHistoryShared() {
   const [medicalRecords, setMedicalRecords] = useState<MedicalRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasValidToken, setHasValidToken] = useState(false);
+  const [currentFormType, setCurrentFormType] = useState<string | null>(null);
   
   // Modal states
   const [showVaccineModal, setShowVaccineModal] = useState(false);
