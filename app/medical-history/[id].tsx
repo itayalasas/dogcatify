@@ -297,171 +297,10 @@ export default function MedicalHistoryShared() {
   };
 
   // Load catalog data when modals open
-  const fetchVaccines = async () => {
+  const loadVaccines = async () => {
     if (vaccines.length > 0) return; // Already loaded
     
     setLoadingVaccines(true);
-    try {
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-      
-      const response = await fetch(`${supabaseUrl}/rest/v1/vaccines_catalog?is_active=eq.true&species=in.(${pet?.species || 'dog'},both)&order=is_required.desc,name.asc`, {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setVaccines(data);
-        console.log('Vaccines loaded:', data.length);
-      } else {
-        console.error('Error fetching vaccines:', response.status);
-      }
-    } finally {
-      setLoadingVaccines(false);
-    }
-  };
-
-  const fetchConditions = async () => {
-    if (conditions.length > 0) return; // Already loaded
-    
-    setLoadingConditions(true);
-    try {
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-      
-      const response = await fetch(`${supabaseUrl}/rest/v1/medical_conditions?is_active=eq.true&species=in.(${pet?.species || 'dog'},both)&order=name.asc`, {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setConditions(data);
-        console.log('Conditions loaded:', data.length);
-      } else {
-        console.error('Error fetching conditions:', response.status);
-      }
-    } finally {
-      setLoadingConditions(false);
-    }
-  };
-
-  const fetchTreatments = async () => {
-    if (treatments.length > 0) return; // Already loaded
-    
-    setLoadingTreatments(true);
-    try {
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-      
-      const response = await fetch(`${supabaseUrl}/rest/v1/medical_treatments?is_active=eq.true&order=name.asc`, {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setTreatments(data);
-        console.log('Treatments loaded:', data.length);
-      } else {
-        console.error('Error fetching treatments:', response.status);
-      }
-    } finally {
-      setLoadingTreatments(false);
-    }
-  };
-
-  const fetchAllergies = async () => {
-    if (allergies.length > 0) return; // Already loaded
-    
-    setLoadingAllergies(true);
-    try {
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-      
-      const response = await fetch(`${supabaseUrl}/rest/v1/allergies_catalog?is_active=eq.true&species=in.(${pet?.species || 'dog'},both)&order=is_common.desc,name.asc`, {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setAllergies(data);
-        console.log('Allergies loaded:', data.length);
-      } else {
-        console.error('Error fetching allergies:', response.status);
-      }
-    } finally {
-      setLoadingAllergies(false);
-    }
-  };
-
-  const fetchDewormers = async () => {
-    if (dewormers.length > 0) return; // Already loaded
-    
-    setLoadingDewormers(true);
-    try {
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-      
-      const response = await fetch(`${supabaseUrl}/rest/v1/dewormers_catalog?is_active=eq.true&species=in.(${pet?.species || 'dog'},both)&order=name.asc`, {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setDewormers(data);
-        console.log('Dewormers loaded:', data.length);
-      } else {
-        console.error('Error fetching dewormers:', response.status);
-      }
-    } finally {
-      setLoadingDewormers(false);
-    }
-  };
-
-  const fetchVeterinarians = async () => {
-    if (veterinarians.length > 0) return; // Already loaded
-    
-    setLoadingVeterinarians(true);
-    try {
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-      
-      const response = await fetch(`${supabaseUrl}/rest/v1/partners?business_type=eq.veterinary&is_verified=eq.true&is_active=eq.true&order=business_name.asc`, {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setVeterinarians(data);
-        console.log('Veterinarians loaded:', data.length);
-      } else {
-        console.error('Error fetching veterinarians:', response.status);
-      }
-    } finally {
-      setLoadingVeterinarians(false);
-    }
-  };
-
-  const loadVaccines = async () => {
-    if (vaccines.length > 0) return;
-    
     try {
       const { data, error } = await supabaseClient
         .from('vaccines_catalog')
@@ -473,14 +312,18 @@ export default function MedicalHistoryShared() {
       
       if (error) throw error;
       setVaccines(data || []);
+      console.log('Vaccines loaded:', data.length);
     } catch (error) {
       console.error('Error loading vaccines:', error);
+    } finally {
+      setLoadingVaccines(false);
     }
   };
 
   const loadConditions = async () => {
-    if (conditions.length > 0) return;
+    if (conditions.length > 0) return; // Already loaded
     
+    setLoadingConditions(true);
     try {
       const { data, error } = await supabaseClient
         .from('medical_conditions')
@@ -491,14 +334,18 @@ export default function MedicalHistoryShared() {
       
       if (error) throw error;
       setConditions(data || []);
+      console.log('Conditions loaded:', data.length);
     } catch (error) {
       console.error('Error loading conditions:', error);
+    } finally {
+      setLoadingConditions(false);
     }
   };
 
   const loadTreatments = async () => {
-    if (treatments.length > 0) return;
+    if (treatments.length > 0) return; // Already loaded
     
+    setLoadingTreatments(true);
     try {
       const { data, error } = await supabaseClient
         .from('medical_treatments')
@@ -508,14 +355,18 @@ export default function MedicalHistoryShared() {
       
       if (error) throw error;
       setTreatments(data || []);
+      console.log('Treatments loaded:', data.length);
     } catch (error) {
       console.error('Error loading treatments:', error);
+    } finally {
+      setLoadingTreatments(false);
     }
   };
 
   const loadAllergies = async () => {
-    if (allergies.length > 0) return;
+    if (allergies.length > 0) return; // Already loaded
     
+    setLoadingAllergies(true);
     try {
       const { data, error } = await supabaseClient
         .from('allergies_catalog')
@@ -527,14 +378,18 @@ export default function MedicalHistoryShared() {
       
       if (error) throw error;
       setAllergies(data || []);
+      console.log('Allergies loaded:', data.length);
     } catch (error) {
       console.error('Error loading allergies:', error);
+    } finally {
+      setLoadingAllergies(false);
     }
   };
 
   const loadDewormers = async () => {
-    if (dewormers.length > 0) return;
+    if (dewormers.length > 0) return; // Already loaded
     
+    setLoadingDewormers(true);
     try {
       const { data, error } = await supabaseClient
         .from('dewormers_catalog')
@@ -545,14 +400,18 @@ export default function MedicalHistoryShared() {
       
       if (error) throw error;
       setDewormers(data || []);
+      console.log('Dewormers loaded:', data.length);
     } catch (error) {
       console.error('Error loading dewormers:', error);
+    } finally {
+      setLoadingDewormers(false);
     }
   };
 
   const loadVeterinarians = async () => {
-    if (veterinarians.length > 0) return;
+    if (veterinarians.length > 0) return; // Already loaded
     
+    setLoadingVeterinarians(true);
     try {
       const { data, error } = await supabaseClient
         .from('partners')
@@ -564,8 +423,11 @@ export default function MedicalHistoryShared() {
       
       if (error) throw error;
       setVeterinarians(data || []);
+      console.log('Veterinarians loaded:', data.length);
     } catch (error) {
       console.error('Error loading veterinarians:', error);
+    } finally {
+      setLoadingVeterinarians(false);
     }
   };
 
@@ -1039,7 +901,7 @@ export default function MedicalHistoryShared() {
                 style={styles.addButton}
                 onPress={() => {
                   setShowVaccineModal(true);
-                  fetchVaccines();
+                  loadVaccines();
                 }}
               >
                 <Plus size={20} color="#FFFFFF" />
@@ -1083,8 +945,8 @@ export default function MedicalHistoryShared() {
                 style={styles.addButton}
                 onPress={() => {
                   setShowIllnessModal(true);
-                  fetchConditions();
-                  fetchTreatments();
+                  loadConditions();
+                  loadTreatments();
                 }}
               >
                 <Plus size={20} color="#FFFFFF" />
@@ -1138,7 +1000,7 @@ export default function MedicalHistoryShared() {
                 style={styles.addButton}
                 onPress={() => {
                   setShowAllergyModal(true);
-                  fetchAllergies();
+                  loadAllergies();
                 }}
               >
                 <Plus size={20} color="#FFFFFF" />
@@ -1184,7 +1046,7 @@ export default function MedicalHistoryShared() {
                 style={styles.addButton}
                 onPress={() => {
                   setShowDewormingModal(true);
-                  fetchDewormers();
+                  loadDewormers();
                 }}
               >
                 <Plus size={20} color="#FFFFFF" />
@@ -1325,7 +1187,7 @@ export default function MedicalHistoryShared() {
                 onPress={() => {
                   setCurrentFormType('vaccine');
                   setShowVeterinarianSelection(true);
-                  fetchVeterinarians();
+                  loadVeterinarians();
                 }}
               >
                 <Text style={[styles.selectInputText, !vaccineForm.veterinarian && styles.placeholderText]}>
@@ -1447,7 +1309,7 @@ export default function MedicalHistoryShared() {
                 onPress={() => {
                   setCurrentFormType('illness');
                   setShowVeterinarianSelection(true);
-                  fetchVeterinarians();
+                  loadVeterinarians();
                 }}
               >
                 <Text style={[styles.selectInputText, !illnessForm.veterinarian && styles.placeholderText]}>
@@ -1647,7 +1509,7 @@ export default function MedicalHistoryShared() {
                 onPress={() => {
                   setCurrentFormType('deworming');
                   setShowVeterinarianSelection(true);
-                  fetchVeterinarians();
+                  loadVeterinarians();
                 }}
               >
                 <Text style={[styles.selectInputText, !dewormingForm.veterinarian && styles.placeholderText]}>
