@@ -114,6 +114,10 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [initialLoading, setInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMorePosts, setHasMorePosts] = useState(true);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [allPostsLoaded, setAllPostsLoaded] = useState(false);
   const { t } = useLanguage();
   const { currentUser } = useAuth();
   const [realtimeSubscription, setRealtimeSubscription] = useState<any>(null);
@@ -369,8 +373,12 @@ export default function Home() {
   };
   const fetchFeedData = async () => {
     try {
+      // Reset pagination when refreshing
+      setCurrentPage(0);
+      setHasMorePosts(true);
+      setAllPostsLoaded(false);
       await Promise.all([
-        fetchPosts(),
+        fetchPosts(true), // true = reset
         fetchPromotions()
       ]);
     } catch (error) {
@@ -384,13 +392,19 @@ export default function Home() {
     }
   };
 
-  const fetchPosts = async () => {
+  const fetchPosts = async (reset: boolean = false) => {
     try {
+      const pageSize = 10;
+      const page = reset ? 0 : currentPage;
+      const offset = page * pageSize;
+      
+      console.log('Fetching posts:', { page, offset, pageSize, reset });
+      
       const { data: postsData, error } = await supabaseClient
         .from('posts')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(20);
+        .range(offset, offset + pageSize - 1);
 
       if (error) throw error;
 
@@ -409,7 +423,26 @@ export default function Home() {
         type: post.type || 'single'
       })) || [];
 
-      setPosts(processedPosts);
+      if (reset) {
+        setPosts(processedPosts);
+        setCurrentPage(1);
+      } else {
+        setPosts(prevPosts => [...prevPosts, ...processedPosts]);
+        setCurrentPage(page + 1);
+      }
+      
+      // Check if we've reached the end
+      if (postsData && postsData.length < pageSize) {
+        setHasMorePosts(false);
+        setAllPostsLoaded(true);
+        console.log('All posts loaded');
+      }
+      
+      console.log('Posts loaded:', {
+        newPosts: processedPosts.length,
+        totalPosts: reset ? processedPosts.length : posts.length + processedPosts.length,
+        hasMore: postsData && postsData.length >= pageSize
+      });
     } catch (error) {
       console.error('Error fetching posts:', error);
     }
