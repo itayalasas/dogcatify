@@ -117,20 +117,22 @@ export default function MedicalHistoryShared() {
   // Fetch functions for catalogs
   const fetchVaccines = async () => {
     try {
-      console.log('Fetching vaccines for species:', pet?.species);
+      const species = pet?.species || 'dog';
+      console.log('Fetching vaccines for species:', species, '(pet data available:', !!pet, ')');
       
       const { data, error } = await supabaseClient
         .from('vaccines_catalog')
         .select('*')
         .eq('is_active', true)
-        .in('species', [pet?.species || 'dog', 'both'])
+        .in('species', [species, 'both'])
         .order('is_required', { ascending: false })
         .order('name', { ascending: true });
 
       console.log('Vaccines query result:', { 
         count: data?.length || 0, 
         error: error?.message,
-        firstVaccine: data?.[0]?.name 
+        firstVaccine: data?.[0]?.name,
+        querySpecies: [species, 'both']
       });
       
       if (error) {
