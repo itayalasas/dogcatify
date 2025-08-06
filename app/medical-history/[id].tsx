@@ -160,6 +160,42 @@ export default function MedicalHistoryShared() {
     }
   }, [id, token]);
 
+  // Fetch catalog data when modals open
+  useEffect(() => {
+    if (showVaccineModal && pet) {
+      fetchVaccines();
+    }
+  }, [showVaccineModal, pet]);
+
+  useEffect(() => {
+    if (showConditionModal && pet) {
+      fetchConditions();
+    }
+  }, [showConditionModal, pet]);
+
+  useEffect(() => {
+    if (showTreatmentModal) {
+      fetchTreatments();
+    }
+  }, [showTreatmentModal]);
+
+  useEffect(() => {
+    if (showAllergyModal && pet) {
+      fetchAllergies();
+    }
+  }, [showAllergyModal, pet]);
+
+  useEffect(() => {
+    if (showDewormerModal && pet) {
+      fetchDewormers();
+    }
+  }, [showDewormerModal, pet]);
+
+  useEffect(() => {
+    if (showVetModal) {
+      fetchVeterinarians();
+    }
+  }, [showVetModal]);
   const verifyTokenAndFetchData = async () => {
     try {
       console.log('=== VERIFYING TOKEN AND FETCHING DATA ===');
