@@ -62,6 +62,7 @@ export default function MedicalHistoryShared() {
   const [medicalRecords, setMedicalRecords] = useState<MedicalRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasValidToken, setHasValidToken] = useState(false);
+  const [tokenExpired, setTokenExpired] = useState(false);
   
   // Derived state for different record types
   const vaccineRecords = medicalRecords.filter(record => record.type === 'vaccine');
@@ -437,12 +438,21 @@ export default function MedicalHistoryShared() {
             });
             
             if (data.success) {
+              setTokenExpired(false);
               setPet(data.pet);
               setOwner(data.owner);
               setMedicalRecords(data.medicalRecords || []);
               setHasValidToken(true);
               console.log('=== DATA SET SUCCESSFULLY ===');
               return;
+            } else {
+              if (data.isExpired) {
+                console.log('Token expired, showing expiration message');
+                setTokenExpired(true);
+                setError('El enlace ha expirado por seguridad. Solicita un nuevo enlace al propietario de la mascota.');
+              } else {
+                setError(data.error || 'Error al cargar los datos');
+              }
             }
           } else {
             const errorText = await response.text();
@@ -1169,6 +1179,47 @@ export default function MedicalHistoryShared() {
       dewormer.name.toLowerCase().includes(dewormerSearch.toLowerCase())
     );
   };
+
+  const renderTokenExpiredMessage = () => (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Historia Clínica Veterinaria</Text>
+      </View>
+      
+      <View style={styles.content}>
+        <Card style={styles.expiredCard}>
+          <View style={styles.expiredIconContainer}>
+            <Text style={styles.expiredIcon}>🕒</Text>
+          </View>
+          
+          <Text style={styles.expiredTitle}>Enlace Expirado</Text>
+          <Text style={styles.expiredMessage}>
+            Este enlace de historia clínica ha expirado por motivos de seguridad.
+          </Text>
+          
+          <View style={styles.expiredInstructions}>
+            <Text style={styles.instructionsTitle}>Para acceder a la historia clínica:</Text>
+            <Text style={styles.instructionItem}>
+              1. Contacta al propietario de la mascota
+            </Text>
+            <Text style={styles.instructionItem}>
+              2. Solicita que genere un nuevo enlace
+            </Text>
+            <Text style={styles.instructionItem}>
+              3. Los enlaces expiran en 2 horas por seguridad
+            </Text>
+          </View>
+          
+          <View style={styles.securityNote}>
+            <Text style={styles.securityNoteText}>
+              🔒 Los enlaces temporales protegen la privacidad de los datos médicos
+            </Text>
+          </View>
+        </Card>
+      </View>
+    </View>
+  );
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -1177,6 +1228,10 @@ export default function MedicalHistoryShared() {
         </View>
       </SafeAreaView>
     );
+  }
+
+  if (tokenExpired) {
+    return renderTokenExpiredMessage();
   }
 
   if (!pet || !owner) {
@@ -3156,5 +3211,69 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
     lineHeight: 20,
+  },
+  expiredCard: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    margin: 20,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+  },
+  expiredIconContainer: {
+    marginBottom: 20,
+  },
+  expiredIcon: {
+    fontSize: 64,
+  },
+  expiredTitle: {
+    fontSize: 24,
+    fontFamily: 'Inter-Bold',
+    color: '#92400E',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  expiredMessage: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#92400E',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 24,
+  },
+  expiredInstructions: {
+    backgroundColor: '#FFFFFF',
+    padding: 20,
+    borderRadius: 12,
+    marginBottom: 20,
+    width: '100%',
+  },
+  instructionsTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#111827',
+    marginBottom: 12,
+  },
+  instructionItem: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+    marginBottom: 8,
+    paddingLeft: 8,
+  },
+  securityNote: {
+    backgroundColor: '#F0FDF4',
+    padding: 16,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#10B981',
+    width: '100%',
+  },
+  securityNoteText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#166534',
+    textAlign: 'center',
+    lineHeight: 16,
   },
 });
