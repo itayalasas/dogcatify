@@ -158,7 +158,6 @@ export default function MedicalHistoryShared() {
   const [showTreatmentModal, setShowTreatmentModal] = useState(false);
   const [showDewormerModal, setShowDewormerModal] = useState(false);
   const [showVetModal, setShowVetModal] = useState(false);
-  const [showTempVetModal, setShowTempVetModal] = useState(false);
 
   useEffect(() => {
     if (id) {
