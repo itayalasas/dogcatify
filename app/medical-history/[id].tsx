@@ -1082,21 +1082,6 @@ export default function MedicalHistoryShared() {
       dewormer.name.toLowerCase().includes(dewormerSearch.toLowerCase())
     );
   };
-
-  const getFilteredVeterinarians = () => {
-    return veterinarians.filter(vet =>
-      vet.business_name.toLowerCase().includes(veterinarianSearch.toLowerCase()) ||
-      vet.address?.toLowerCase().includes(veterinarianSearch.toLowerCase())
-    );
-  };
-
-  // Group records by type
-  const vaccineRecords = medicalRecords.filter(r => r.type === 'vaccine');
-  const illnessRecords = medicalRecords.filter(r => r.type === 'illness');
-  const allergyRecords = medicalRecords.filter(r => r.type === 'allergy');
-  const dewormingRecords = medicalRecords.filter(r => r.type === 'deworming');
-  const weightRecords = medicalRecords.filter(r => r.type === 'weight');
-
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
