@@ -1018,4 +1018,31 @@ const styles = StyleSheet.create({
   dot3: {
     opacity: 1,
   },
+  loadingMoreContainer: {
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+  loadingMoreText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+  },
+  endOfFeedContainer: {
+    paddingVertical: 30,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  endOfFeedText: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#2D6A6F',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  endOfFeedSubtext: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+  },
 });
