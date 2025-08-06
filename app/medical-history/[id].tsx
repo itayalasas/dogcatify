@@ -62,6 +62,7 @@ export default function MedicalHistoryShared() {
   const [medicalRecords, setMedicalRecords] = useState<MedicalRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasValidToken, setHasValidToken] = useState(false);
+  const [currentFormType, setCurrentFormType] = useState<string | null>(null);
   
   // Modal states
   const [showVaccineModal, setShowVaccineModal] = useState(false);
@@ -253,10 +254,13 @@ export default function MedicalHistoryShared() {
   const [loadingVeterinarians, setLoadingVeterinarians] = useState(false);
   
   // Modal states
+  const [showVaccineModal, setShowVaccineModal] = useState(false);
   const [showConditionModal, setShowConditionModal] = useState(false);
   const [showTreatmentModal, setShowTreatmentModal] = useState(false);
+  const [showAllergyModal, setShowAllergyModal] = useState(false);
   const [showDewormerModal, setShowDewormerModal] = useState(false);
   const [showVetModal, setShowVetModal] = useState(false);
+  const [showTempVetModal, setShowTempVetModal] = useState(false);
 
   useEffect(() => {
     if (id) {
