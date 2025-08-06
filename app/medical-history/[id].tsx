@@ -62,7 +62,10 @@ export default function MedicalHistoryShared() {
   const [medicalRecords, setMedicalRecords] = useState<MedicalRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasValidToken, setHasValidToken] = useState(false);
+  
+  // Form states for adding new records
   const [currentFormType, setCurrentFormType] = useState<string | null>(null);
+  const [formData, setFormData] = useState<any>({});
   
   // Modal states
   const [showVaccineModal, setShowVaccineModal] = useState(false);
@@ -70,8 +73,28 @@ export default function MedicalHistoryShared() {
   const [showAllergyModal, setShowAllergyModal] = useState(false);
   const [showDewormingModal, setShowDewormingModal] = useState(false);
   const [showWeightModal, setShowWeightModal] = useState(false);
+  const [showConditionModal, setShowConditionModal] = useState(false);
+  const [showTreatmentModal, setShowTreatmentModal] = useState(false);
+  const [showDewormerModal, setShowDewormerModal] = useState(false);
+  const [showVetModal, setShowVetModal] = useState(false);
   const [showTempVetModal, setShowTempVetModal] = useState(false);
+  
+  // Catalog data
+  const [vaccines, setVaccines] = useState<any[]>([]);
+  const [conditions, setConditions] = useState<any[]>([]);
+  const [treatments, setTreatments] = useState<any[]>([]);
+  const [allergies, setAllergies] = useState<any[]>([]);
+  const [dewormers, setDewormers] = useState<any[]>([]);
+  const [veterinarians, setVeterinarians] = useState<any[]>([]);
+  
+  // Form inputs
   const [tempVetName, setTempVetName] = useState('');
+  const [selectedVaccine, setSelectedVaccine] = useState<any>(null);
+  const [selectedCondition, setSelectedCondition] = useState<any>(null);
+  const [selectedTreatment, setSelectedTreatment] = useState<any>(null);
+  const [selectedAllergy, setSelectedAllergy] = useState<any>(null);
+  const [selectedDewormer, setSelectedDewormer] = useState<any>(null);
+  const [selectedVeterinarian, setSelectedVeterinarian] = useState<any>(null);
   
   // Fetch functions for catalogs
   const fetchVaccines = async () => {
@@ -180,14 +203,6 @@ export default function MedicalHistoryShared() {
   const [showDewormerSelection, setShowDewormerSelection] = useState(false);
   const [showVeterinarianSelection, setShowVeterinarianSelection] = useState(false);
   
-  // Catalog data
-  const [vaccines, setVaccines] = useState<any[]>([]);
-  const [conditions, setConditions] = useState<any[]>([]);
-  const [treatments, setTreatments] = useState<any[]>([]);
-  const [allergies, setAllergies] = useState<any[]>([]);
-  const [dewormers, setDewormers] = useState<any[]>([]);
-  const [veterinarians, setVeterinarians] = useState<any[]>([]);
-  
   // Search states
   const [vaccineSearch, setVaccineSearch] = useState('');
   const [conditionSearch, setConditionSearch] = useState('');
@@ -252,12 +267,6 @@ export default function MedicalHistoryShared() {
   const [loadingAllergies, setLoadingAllergies] = useState(false);
   const [loadingDewormers, setLoadingDewormers] = useState(false);
   const [loadingVeterinarians, setLoadingVeterinarians] = useState(false);
-  
-  // Modal states
-  const [showConditionModal, setShowConditionModal] = useState(false);
-  const [showTreatmentModal, setShowTreatmentModal] = useState(false);
-  const [showDewormerModal, setShowDewormerModal] = useState(false);
-  const [showVetModal, setShowVetModal] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -435,6 +444,146 @@ export default function MedicalHistoryShared() {
       console.error('Error fetching medical history directly:', error);
       throw error;
     }
+  };
+
+  const handleAddRecord = (type: string) => {
+    setCurrentFormType(type);
+    setFormData({});
+    
+    switch (type) {
+      case 'vaccine':
+        fetchVaccines();
+        setShowVaccineModal(true);
+        break;
+      case 'illness':
+        fetchConditions();
+        setShowConditionModal(true);
+        break;
+      case 'allergy':
+        fetchAllergies();
+        setShowAllergyModal(true);
+        break;
+      case 'deworming':
+        fetchDewormers();
+        setShowDewormerModal(true);
+        break;
+      default:
+        console.warn('Unknown record type:', type);
+    }
+  };
+
+  const handleSaveRecord = async () => {
+    if (!currentFormType || !formData.name) {
+      Alert.alert('Error', 'Por favor completa los campos obligatorios');
+      return;
+    }
+
+    try {
+      const recordData = {
+        pet_id: id,
+        user_id: owner?.id || '',
+        type: currentFormType,
+        ...formData,
+        created_at: new Date().toISOString()
+      };
+
+      // Call Edge Function to save record
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/save-medical-record`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          recordData,
+          token: token
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Error saving record');
+      }
+
+      Alert.alert('Éxito', 'Registro médico guardado correctamente');
+      
+      // Close modal and refresh data
+      closeAllModals();
+      fetchMedicalData();
+    } catch (error) {
+      console.error('Error saving medical record:', error);
+      Alert.alert('Error', 'No se pudo guardar el registro médico');
+    }
+  };
+
+  const closeAllModals = () => {
+    setShowVaccineModal(false);
+    setShowConditionModal(false);
+    setShowTreatmentModal(false);
+    setShowAllergyModal(false);
+    setShowDewormerModal(false);
+    setShowVetModal(false);
+    setShowTempVetModal(false);
+    setCurrentFormType(null);
+    setFormData({});
+    setSelectedVaccine(null);
+    setSelectedCondition(null);
+    setSelectedTreatment(null);
+    setSelectedAllergy(null);
+    setSelectedDewormer(null);
+    setSelectedVeterinarian(null);
+  };
+
+  const handleSelectVaccine = (vaccine: any) => {
+    setSelectedVaccine(vaccine);
+    setFormData(prev => ({ ...prev, name: vaccine.name }));
+    setShowVaccineModal(false);
+  };
+
+  const handleSelectCondition = (condition: any) => {
+    setSelectedCondition(condition);
+    setFormData(prev => ({ ...prev, name: condition.name }));
+    setShowConditionModal(false);
+    
+    // Load treatments for this condition
+    fetchTreatments(condition.id);
+  };
+
+  const handleSelectTreatment = (treatment: any) => {
+    setSelectedTreatment(treatment);
+    setFormData(prev => ({ ...prev, treatment: treatment.name }));
+    setShowTreatmentModal(false);
+  };
+
+  const handleSelectAllergy = (allergy: any) => {
+    setSelectedAllergy(allergy);
+    setFormData(prev => ({ ...prev, name: allergy.name }));
+    setShowAllergyModal(false);
+  };
+
+  const handleSelectDewormer = (dewormer: any) => {
+    setSelectedDewormer(dewormer);
+    setFormData(prev => ({ ...prev, product_name: dewormer.name }));
+    setShowDewormerModal(false);
+  };
+
+  const handleSelectVeterinarian = (vet: any) => {
+    setSelectedVeterinarian(vet);
+    setFormData(prev => ({ ...prev, veterinarian: vet.business_name }));
+    setShowVetModal(false);
+  };
+
+  const handleAddTempVet = () => {
+    if (!tempVetName.trim()) {
+      Alert.alert('Error', 'Por favor ingresa el nombre del veterinario');
+      return;
+    }
+    
+    setFormData(prev => ({ ...prev, veterinarian: tempVetName.trim() }));
+    setTempVetName('');
+    setShowTempVetModal(false);
   };
 
   // Load catalog data when modals open
@@ -1013,17 +1162,13 @@ export default function MedicalHistoryShared() {
         <Card style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>💉 Vacunas ({vaccineRecords.length})</Text>
-            {hasValidToken && (
-              <TouchableOpacity 
-                style={styles.addButton}
-                onPress={() => {
-                  setShowVaccineModal(true);
-                  loadVaccines();
-                }}
-              >
-                <Plus size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity 
+              style={styles.addButton}
+              onPress={() => handleAddRecord('vaccine')}
+            >
+              <Plus size={20} color="#FFFFFF" />
+              <Text style={styles.addButtonText}>Agregar</Text>
+            </TouchableOpacity>
           </View>
           
           {vaccineRecords.length === 0 ? (
@@ -1057,18 +1202,13 @@ export default function MedicalHistoryShared() {
         <Card style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>🏥 Enfermedades ({illnessRecords.length})</Text>
-            {hasValidToken && (
-              <TouchableOpacity 
-                style={styles.addButton}
-                onPress={() => {
-                  setShowIllnessModal(true);
-                  loadConditions();
-                  loadTreatments();
-                }}
-              >
-                <Plus size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity 
+              style={styles.addButton}
+              onPress={() => handleAddRecord('illness')}
+            >
+              <Plus size={20} color="#FFFFFF" />
+              <Text style={styles.addButtonText}>Agregar</Text>
+            </TouchableOpacity>
           </View>
           
           {illnessRecords.length === 0 ? (
@@ -1112,17 +1252,13 @@ export default function MedicalHistoryShared() {
         <Card style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>🚨 Alergias ({allergyRecords.length})</Text>
-            {hasValidToken && (
-              <TouchableOpacity 
-                style={styles.addButton}
-                onPress={() => {
-                  setShowAllergyModal(true);
-                  loadAllergies();
-                }}
-              >
-                <Plus size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity 
+              style={styles.addButton}
+              onPress={() => handleAddRecord('allergy')}
+            >
+              <Plus size={20} color="#FFFFFF" />
+              <Text style={styles.addButtonText}>Agregar</Text>
+            </TouchableOpacity>
           </View>
           
           {allergyRecords.length === 0 ? (
@@ -1158,17 +1294,13 @@ export default function MedicalHistoryShared() {
         <Card style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>💊 Desparasitación ({dewormingRecords.length})</Text>
-            {hasValidToken && (
-              <TouchableOpacity 
-                style={styles.addButton}
-                onPress={() => {
-                  setShowDewormingModal(true);
-                  loadDewormers();
-                }}
-              >
-                <Plus size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity 
+              style={styles.addButton}
+              onPress={() => handleAddRecord('deworming')}
+            >
+              <Plus size={20} color="#FFFFFF" />
+              <Text style={styles.addButtonText}>Agregar</Text>
+            </TouchableOpacity>
           </View>
           
           {dewormingRecords.length === 0 ? (
@@ -1229,6 +1361,254 @@ export default function MedicalHistoryShared() {
           )}
         </Card>
       </ScrollView>
+
+      {/* Vaccine Selection Modal */}
+      <Modal
+        visible={showVaccineModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowVaccineModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Seleccionar Vacuna</Text>
+              <TouchableOpacity onPress={() => setShowVaccineModal(false)}>
+                <X size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+            
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Buscar vacuna..."
+              onChangeText={(text) => {
+                // Filter vaccines based on search
+              }}
+            />
+            
+            <ScrollView style={styles.optionsList}>
+              {vaccines.map((vaccine) => (
+                <TouchableOpacity
+                  key={vaccine.id}
+                  style={styles.optionItem}
+                  onPress={() => handleSelectVaccine(vaccine)}
+                >
+                  <Text style={styles.optionText}>{vaccine.name}</Text>
+                  {vaccine.is_required && (
+                    <Text style={styles.requiredBadge}>Obligatoria</Text>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Condition Selection Modal */}
+      <Modal
+        visible={showConditionModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowConditionModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Seleccionar Enfermedad</Text>
+              <TouchableOpacity onPress={() => setShowConditionModal(false)}>
+                <X size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.optionsList}>
+              {conditions.map((condition) => (
+                <TouchableOpacity
+                  key={condition.id}
+                  style={styles.optionItem}
+                  onPress={() => handleSelectCondition(condition)}
+                >
+                  <Text style={styles.optionText}>{condition.name}</Text>
+                  <Text style={styles.categoryText}>{condition.category}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Treatment Selection Modal */}
+      <Modal
+        visible={showTreatmentModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowTreatmentModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Seleccionar Tratamiento</Text>
+              <TouchableOpacity onPress={() => setShowTreatmentModal(false)}>
+                <X size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.optionsList}>
+              {treatments.map((treatment) => (
+                <TouchableOpacity
+                  key={treatment.id}
+                  style={styles.optionItem}
+                  onPress={() => handleSelectTreatment(treatment)}
+                >
+                  <Text style={styles.optionText}>{treatment.name}</Text>
+                  <Text style={styles.categoryText}>{treatment.type}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Allergy Selection Modal */}
+      <Modal
+        visible={showAllergyModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAllergyModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Seleccionar Alergia</Text>
+              <TouchableOpacity onPress={() => setShowAllergyModal(false)}>
+                <X size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.optionsList}>
+              {allergies.map((allergy) => (
+                <TouchableOpacity
+                  key={allergy.id}
+                  style={styles.optionItem}
+                  onPress={() => handleSelectAllergy(allergy)}
+                >
+                  <Text style={styles.optionText}>{allergy.name}</Text>
+                  <Text style={styles.categoryText}>{allergy.category}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Dewormer Selection Modal */}
+      <Modal
+        visible={showDewormerModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowDewormerModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Seleccionar Desparasitante</Text>
+              <TouchableOpacity onPress={() => setShowDewormerModal(false)}>
+                <X size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.optionsList}>
+              {dewormers.map((dewormer) => (
+                <TouchableOpacity
+                  key={dewormer.id}
+                  style={styles.optionItem}
+                  onPress={() => handleSelectDewormer(dewormer)}
+                >
+                  <Text style={styles.optionText}>{dewormer.name}</Text>
+                  <Text style={styles.categoryText}>{dewormer.administration_method}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Veterinarian Selection Modal */}
+      <Modal
+        visible={showVetModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowVetModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Seleccionar Veterinario</Text>
+              <TouchableOpacity onPress={() => setShowVetModal(false)}>
+                <X size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.optionsList}>
+              {veterinarians.map((vet) => (
+                <TouchableOpacity
+                  key={vet.id}
+                  style={styles.optionItem}
+                  onPress={() => handleSelectVeterinarian(vet)}
+                >
+                  <Text style={styles.optionText}>{vet.business_name}</Text>
+                  <Text style={styles.categoryText}>{vet.address}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            
+            <TouchableOpacity 
+              style={styles.addTempButton}
+              onPress={() => {
+                setShowVetModal(false);
+                setShowTempVetModal(true);
+              }}
+            >
+              <Text style={styles.addTempButtonText}>+ Agregar veterinario temporal</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Temporary Veterinarian Modal */}
+      <Modal
+        visible={showTempVetModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowTempVetModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.tempVetModal}>
+            <Text style={styles.tempVetTitle}>Agregar Veterinario Temporal</Text>
+            
+            <TextInput
+              style={styles.tempVetInput}
+              placeholder="Nombre del veterinario o clínica"
+              value={tempVetName}
+              onChangeText={setTempVetName}
+            />
+            
+            <View style={styles.tempVetActions}>
+              <TouchableOpacity 
+                style={styles.tempVetCancel}
+                onPress={() => setShowTempVetModal(false)}
+              >
+                <Text style={styles.tempVetCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.tempVetSave}
+                onPress={handleAddTempVet}
+              >
+                <Text style={styles.tempVetSaveText}>Agregar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Vaccine Modal */}
       <Modal
@@ -2215,12 +2595,18 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   addButton: {
-    backgroundColor: '#2D6A6F',
-    borderRadius: 20,
-    width: 36,
-    height: 36,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#3B82F6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 4,
+  },
+  addButtonText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#FFFFFF',
   },
   emptyText: {
     fontSize: 14,
@@ -2305,24 +2691,126 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '90%',
-    paddingBottom: Platform.OS === 'web' ? 40 : 20,
+    padding: 20,
+    maxHeight: '80%',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    marginBottom: 20,
   },
   modalTitle: {
     fontSize: 18,
     fontFamily: 'Inter-Bold',
     color: '#111827',
   },
+  searchInput: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 16,
+    fontSize: 16,
+  },
+  optionsList: {
+    maxHeight: 400,
+  },
+  optionItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  optionText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  categoryText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+  },
+  requiredBadge: {
+    fontSize: 10,
+    fontFamily: 'Inter-Bold',
+    color: '#DC2626',
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  addTempButton: {
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  addTempButtonText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#3B82F6',
+  },
+  tempVetModal: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    margin: 20,
+  },
+  tempVetTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: '#111827',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  tempVetInput: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    marginBottom: 20,
+  },
+  tempVetActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  tempVetCancel: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  tempVetCancelText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+  },
+  tempVetSave: {
+    flex: 1,
+    backgroundColor: '#3B82F6',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  tempVetSaveText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#FFFFFF',
+  },
   modalForm: {
     padding: 20,
+    paddingTop: 16,
     maxHeight: 400,
   },
   modalActions: {
@@ -2506,13 +2994,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 12,
   },
-  searchInput: {
-    flex: 1,
-    marginLeft: 8,
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#111827',
-  },
   selectionList: {
     maxHeight: 400,
     padding: 20,
@@ -2537,14 +3018,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
     lineHeight: 20,
-  },
-  requiredBadge: {
-    backgroundColor: '#FEE2E2',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-    marginTop: 4,
   },
   requiredText: {
     fontSize: 12,
@@ -2615,20 +3088,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
-  tempVetModal: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
-  },
-  tempVetTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: '#111827',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
   tempVetSubtitle: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
@@ -2636,47 +3095,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
     lineHeight: 20,
-  },
-  tempVetInput: {
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#111827',
-    marginBottom: 20,
-  },
-  tempVetActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  tempVetCancel: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#D1D5DB',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  tempVetCancelText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Medium',
-    color: '#374151',
-  },
-  tempVetSave: {
-    flex: 1,
-    backgroundColor: '#2D6A6F',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  tempVetSaveText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Medium',
-    color: '#FFFFFF',
   },
 });
