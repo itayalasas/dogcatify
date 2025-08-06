@@ -59,6 +59,10 @@ export default function PetDetail() {
       fetchAlbums();
     }
   }, [refresh]);
+
+  const handleBackNavigation = () => {
+    router.push('/(tabs)/pets');
+  };
   
   const fetchPetDetails = async () => {
     try {
@@ -1032,7 +1036,7 @@ export default function PetDetail() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={handleBackNavigation} style={styles.backButton}>
           <ArrowLeft size={24} color="#111827" />
         </TouchableOpacity>
         <Text style={styles.title}>{pet.name}</Text>
