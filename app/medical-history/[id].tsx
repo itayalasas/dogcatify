@@ -575,17 +575,6 @@ export default function MedicalHistoryShared() {
     setShowVetModal(false);
   };
 
-  const handleAddTempVet = () => {
-    if (!tempVetName.trim()) {
-      Alert.alert('Error', 'Por favor ingresa el nombre del veterinario');
-      return;
-    }
-    
-    setFormData(prev => ({ ...prev, veterinarian: tempVetName.trim() }));
-    setTempVetName('');
-    setShowTempVetModal(false);
-  };
-
   // Load catalog data when modals open
   const loadVaccines = async () => {
     if (vaccines.length > 0) return;
