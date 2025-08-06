@@ -406,6 +406,12 @@ export default function MedicalHistoryShared() {
       fetchDewormers();
     }
   }, [showDewormerModal, pet]);
+  // Fetch nomenclators when pet data is available
+  useEffect(() => {
+    if (pet && pet.species) {
+      console.log('Pet data available, fetching nomenclators for species:', pet.species);
+    }
+  }, [pet]);
 
   useEffect(() => {
     if (showVetModal) {
