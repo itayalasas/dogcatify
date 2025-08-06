@@ -514,10 +514,24 @@ export default function Home() {
               console.log('Opening with Linking API');
               const { Linking } = require('react-native');
               const supported = await Linking.canOpenURL(promotion.ctaUrl);
+              if (supported) {
                 await Linking.openURL(promotion.ctaUrl);
               } else {
                 console.error('URL not supported:', promotion.ctaUrl);
                 Alert.alert('Error', 'No se puede abrir este enlace');
+              }
+            }
+          } catch (error) {
+            console.error('Error opening URL:', error);
+            Alert.alert('Error', 'No se pudo abrir el enlace');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error handling promotion press:', error);
+    }
+  };
+
   // Manejar redirección cuando no hay usuario - FUERA del render condicional
   useEffect(() => {
     if (!currentUser) {
@@ -546,6 +560,13 @@ export default function Home() {
         style={styles.content} 
         showsVerticalScrollIndicator={false}
         refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={fetchFeedData}
+            colors={['#2D6A6F']}
+            tintColor="#2D6A6F"
+          />
+        }
       >
         <MedicalAlertsWidget />
         
@@ -569,6 +590,22 @@ export default function Home() {
                   promotion={item.data}
                   onPress={() => handlePromotionPress(item.data)}
                   onLike={handlePromotionLike}
+                />
+              );
+            } else {
+              return (
+                <PostCard
+                  key={`post-${item.data.id}-${index}`}
+                  post={item.data}
+                  onLike={handleLike}
+                  onComment={handleComment}
+                  onShare={handleShare}
+                  currentUserId={currentUser?.id}
+                />
+              );
+            }
+          })
+        )}
       </ScrollView>
     </SafeAreaView>
   );
