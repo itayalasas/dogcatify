@@ -520,7 +520,6 @@ export default function Home() {
                 console.error('URL not supported:', promotion.ctaUrl);
                 Alert.alert('Error', 'No se puede abrir este enlace');
               }
-              }
             }
           } catch (error) {
             console.error('Error opening URL:', error);
