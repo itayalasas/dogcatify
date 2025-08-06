@@ -63,6 +63,8 @@ export default function MedicalHistoryShared() {
   const [loading, setLoading] = useState(true);
   const [hasValidToken, setHasValidToken] = useState(false);
   const [tokenExpired, setTokenExpired] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [dataLoaded, setDataLoaded] = useState(false);
   
   // Derived state for different record types
   const vaccineRecords = medicalRecords.filter(record => record.type === 'vaccine');
@@ -118,7 +120,6 @@ export default function MedicalHistoryShared() {
   const fetchVaccines = async () => {
     try {
       const species = pet?.species || 'dog';
-      console.log('Fetching vaccines for species:', species, '(pet data available:', !!pet, ')');
       console.log('Fetching vaccines for species:', species, '(pet data available:', !!pet, ')');
       
       const { data, error } = await supabaseClient
@@ -406,12 +407,6 @@ export default function MedicalHistoryShared() {
       fetchDewormers();
     }
   }, [showDewormerModal, pet]);
-  // Fetch nomenclators when pet data is available
-  useEffect(() => {
-    if (pet && pet.species) {
-      console.log('Pet data available, fetching nomenclators for species:', pet.species);
-    }
-  }, [pet]);
 
   useEffect(() => {
     if (showVetModal) {
@@ -472,14 +467,21 @@ export default function MedicalHistoryShared() {
                 setError('El enlace ha expirado por seguridad. Solicita un nuevo enlace al propietario de la mascota.');
               } else {
                 setError(data.error || 'Error al cargar los datos');
+              }
+            }
+          }
+        } catch (edgeError) {
+          console.error('Edge Function failed, trying direct access:', edgeError);
+          await fetchMedicalHistoryDirectly();
+        }
+      } else {
+        await fetchMedicalHistoryDirectly();
+      }
+        
         setDataLoaded(true);
         
         // Fetch veterinarians immediately since they don't depend on pet species
         await fetchVeterinarians();
-        }
-      }
-      
-      // Fallback: Direct database access (limited by RLS)
     } catch (error) {
       console.error('Error in verifyTokenAndFetchData:', error);
       Alert.alert('Error', 'No se pudo cargar la historia clínica');
@@ -693,15 +695,14 @@ export default function MedicalHistoryShared() {
         .from('vaccines_catalog')
         .select('*')
         .eq('is_active', true)
-        .in('species', [species, 'both'])
+        .in('species', [pet?.species || 'dog', 'both'])
         .order('is_required', { ascending: false })
         .order('name', { ascending: true });
       
       if (error) throw error;
       setVaccines(data || []);
     } catch (error) {
-        firstVaccine: data?.[0]?.name,
-        querySpecies: [species, 'both']
+      console.error('Error loading vaccines:', error);
     }
   };
 
