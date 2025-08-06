@@ -119,6 +119,7 @@ export default function MedicalHistoryShared() {
     try {
       const species = pet?.species || 'dog';
       console.log('Fetching vaccines for species:', species, '(pet data available:', !!pet, ')');
+      console.log('Fetching vaccines for species:', species, '(pet data available:', !!pet, ')');
       
       const { data, error } = await supabaseClient
         .from('vaccines_catalog')
@@ -686,14 +687,15 @@ export default function MedicalHistoryShared() {
         .from('vaccines_catalog')
         .select('*')
         .eq('is_active', true)
-        .in('species', [pet?.species || 'dog', 'both'])
+        .in('species', [species, 'both'])
         .order('is_required', { ascending: false })
         .order('name', { ascending: true });
       
       if (error) throw error;
       setVaccines(data || []);
     } catch (error) {
-      console.error('Error loading vaccines:', error);
+        firstVaccine: data?.[0]?.name,
+        querySpecies: [species, 'both']
     }
   };
 
