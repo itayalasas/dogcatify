@@ -123,7 +123,7 @@ export default function MedicalHistoryShared() {
       console.log('Fetching vaccines for species:', species, '(pet data available:', !!pet, ')');
       console.log('Fetching vaccines for species:', species, '(pet data available:', !!pet, ')');
       
-        .select('*')
+      const { data, error } = await supabaseClient
         .from('vaccines_catalog')
         .select('*')
         .eq('is_active', true)
