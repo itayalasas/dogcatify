@@ -302,23 +302,19 @@ export default function MedicalHistoryShared() {
     
     setLoadingVaccines(true);
     try {
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+      const { data, error } = await supabaseClient
+        .from('vaccines_catalog')
+        .select('*')
+        .eq('is_active', true)
+        .in('species', [pet?.species || 'dog', 'both'])
+        .order('is_required', { ascending: false })
+        .order('name', { ascending: true });
       
-      const response = await fetch(`${supabaseUrl}/rest/v1/vaccines_catalog?is_active=eq.true&species=in.(${pet?.species || 'dog'},both)&order=is_required.desc,name.asc`, {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setVaccines(data);
-        console.log('Vaccines loaded:', data.length);
-      } else {
-        console.error('Error fetching vaccines:', response.status);
-      }
+      if (error) throw error;
+      setVaccines(data || []);
+      console.log('Vaccines loaded:', data.length);
+    } catch (error) {
+      console.error('Error loading vaccines:', error);
     } finally {
       setLoadingVaccines(false);
     }
@@ -329,23 +325,18 @@ export default function MedicalHistoryShared() {
     
     setLoadingConditions(true);
     try {
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+      const { data, error } = await supabaseClient
+        .from('medical_conditions')
+        .select('*')
+        .eq('is_active', true)
+        .in('species', [pet?.species || 'dog', 'both'])
+        .order('name', { ascending: true });
       
-      const response = await fetch(`${supabaseUrl}/rest/v1/medical_conditions?is_active=eq.true&species=in.(${pet?.species || 'dog'},both)&order=name.asc`, {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setConditions(data);
-        console.log('Conditions loaded:', data.length);
-      } else {
-        console.error('Error fetching conditions:', response.status);
-      }
+      if (error) throw error;
+      setConditions(data || []);
+      console.log('Conditions loaded:', data.length);
+    } catch (error) {
+      console.error('Error loading conditions:', error);
     } finally {
       setLoadingConditions(false);
     }
@@ -356,23 +347,17 @@ export default function MedicalHistoryShared() {
     
     setLoadingTreatments(true);
     try {
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+      const { data, error } = await supabaseClient
+        .from('medical_treatments')
+        .select('*')
+        .eq('is_active', true)
+        .order('name', { ascending: true });
       
-      const response = await fetch(`${supabaseUrl}/rest/v1/medical_treatments?is_active=eq.true&order=name.asc`, {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setTreatments(data);
-        console.log('Treatments loaded:', data.length);
-      } else {
-        console.error('Error fetching treatments:', response.status);
-      }
+      if (error) throw error;
+      setTreatments(data || []);
+      console.log('Treatments loaded:', data.length);
+    } catch (error) {
+      console.error('Error loading treatments:', error);
     } finally {
       setLoadingTreatments(false);
     }
@@ -383,23 +368,19 @@ export default function MedicalHistoryShared() {
     
     setLoadingAllergies(true);
     try {
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+      const { data, error } = await supabaseClient
+        .from('allergies_catalog')
+        .select('*')
+        .eq('is_active', true)
+        .in('species', [pet?.species || 'dog', 'both'])
+        .order('is_common', { ascending: false })
+        .order('name', { ascending: true });
       
-      const response = await fetch(`${supabaseUrl}/rest/v1/allergies_catalog?is_active=eq.true&species=in.(${pet?.species || 'dog'},both)&order=is_common.desc,name.asc`, {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setAllergies(data);
-        console.log('Allergies loaded:', data.length);
-      } else {
-        console.error('Error fetching allergies:', response.status);
-      }
+      if (error) throw error;
+      setAllergies(data || []);
+      console.log('Allergies loaded:', data.length);
+    } catch (error) {
+      console.error('Error loading allergies:', error);
     } finally {
       setLoadingAllergies(false);
     }
@@ -410,23 +391,18 @@ export default function MedicalHistoryShared() {
     
     setLoadingDewormers(true);
     try {
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+      const { data, error } = await supabaseClient
+        .from('dewormers_catalog')
+        .select('*')
+        .eq('is_active', true)
+        .in('species', [pet?.species || 'dog', 'both'])
+        .order('name', { ascending: true });
       
-      const response = await fetch(`${supabaseUrl}/rest/v1/dewormers_catalog?is_active=eq.true&species=in.(${pet?.species || 'dog'},both)&order=name.asc`, {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setDewormers(data);
-        console.log('Dewormers loaded:', data.length);
-      } else {
-        console.error('Error fetching dewormers:', response.status);
-      }
+      if (error) throw error;
+      setDewormers(data || []);
+      console.log('Dewormers loaded:', data.length);
+    } catch (error) {
+      console.error('Error loading dewormers:', error);
     } finally {
       setLoadingDewormers(false);
     }
@@ -437,23 +413,19 @@ export default function MedicalHistoryShared() {
     
     setLoadingVeterinarians(true);
     try {
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+      const { data, error } = await supabaseClient
+        .from('partners')
+        .select('*')
+        .eq('business_type', 'veterinary')
+        .eq('is_verified', true)
+        .eq('is_active', true)
+        .order('business_name', { ascending: true });
       
-      const response = await fetch(`${supabaseUrl}/rest/v1/partners?business_type=eq.veterinary&is_verified=eq.true&is_active=eq.true&order=business_name.asc`, {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setVeterinarians(data);
-        console.log('Veterinarians loaded:', data.length);
-      } else {
-        console.error('Error fetching veterinarians:', response.status);
-      }
+      if (error) throw error;
+      setVeterinarians(data || []);
+      console.log('Veterinarians loaded:', data.length);
+    } catch (error) {
+      console.error('Error loading veterinarians:', error);
     } finally {
       setLoadingVeterinarians(false);
     }
