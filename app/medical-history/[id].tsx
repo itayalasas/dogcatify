@@ -105,6 +105,7 @@ export default function MedicalHistoryShared() {
   
   // Form inputs
   const [tempVetName, setTempVetName] = useState('');
+  const [veterinarianSearchQuery, setVeterinarianSearchQuery] = useState('');
   const [selectedVaccine, setSelectedVaccine] = useState<any>(null);
   const [selectedCondition, setSelectedCondition] = useState<any>(null);
   const [selectedTreatment, setSelectedTreatment] = useState<any>(null);
