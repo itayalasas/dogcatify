@@ -114,297 +114,38 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [initialLoading, setInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMorePosts, setHasMorePosts] = useState(true);
-  const [currentPage, setCurrentPage] = useState(0);
-  const [allPostsLoaded, setAllPostsLoaded] = useState(false);
   const { t } = useLanguage();
   const { currentUser } = useAuth();
-  const [realtimeSubscription, setRealtimeSubscription] = useState<any>(null);
 
   useEffect(() => {
     if (currentUser) {
       fetchFeedData();
-      setupRealtimeSubscriptions();
     }
-    
-    return () => {
-      // Cleanup subscriptions on unmount
-      if (realtimeSubscription) {
-        realtimeSubscription.unsubscribe();
-      }
-    };
   }, [currentUser]);
 
-  const setupRealtimeSubscriptions = () => {
-    if (!currentUser) return;
-    
-    console.log('Setting up real-time subscriptions for feed updates...');
-    
-    // Subscribe to posts changes (for album posts)
-    const subscription = supabaseClient
-      .channel('feed-updates')
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'posts'
-        }, 
-        (payload) => {
-          console.log('Posts table changed:', payload);
-          handlePostsChange(payload);
-        }
-      )
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'pet_albums'
-        }, 
-        (payload) => {
-          console.log('Pet albums table changed:', payload);
-          handleAlbumsChange(payload);
-        }
-      )
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'promotions'
-        }, 
-        (payload) => {
-          console.log('Promotions table changed:', payload);
-          handlePromotionsChange(payload);
-        }
-      )
-      .subscribe();
-    
-    setRealtimeSubscription(subscription);
-  };
-
-  const handlePostsChange = (payload: any) => {
-    const { eventType, new: newRecord, old: oldRecord } = payload;
-    
-    switch (eventType) {
-      case 'INSERT':
-        // New post added - refresh feed to include it
-        console.log('New post added, refreshing feed...');
-        fetchFeedData();
-        break;
-        
-      case 'DELETE':
-        // Post deleted - remove from local state
-        console.log('Post deleted, removing from feed...');
-        setPosts(prevPosts => prevPosts.filter(post => post.id !== oldRecord.id));
-        break;
-        
-      case 'UPDATE':
-        // Post updated - update local state
-        console.log('Post updated, updating in feed...');
-        setPosts(prevPosts => 
-          prevPosts.map(post => 
-            post.id === newRecord.id 
-              ? {
-                  ...post,
-                  content: newRecord.content,
-                  likes: newRecord.likes || [],
-                  albumImages: newRecord.album_images || []
-                }
-              : post
-          )
-        );
-        break;
-    }
-  };
-
-  const handleAlbumsChange = async (payload: any) => {
-    const { eventType, new: newRecord, old: oldRecord } = payload;
-    
-    switch (eventType) {
-      case 'UPDATE':
-        // Album updated - check if sharing status changed
-        const wasShared = oldRecord?.is_shared;
-        const isNowShared = newRecord?.is_shared;
-        
-        console.log('Album updated:', {
-          albumId: newRecord.id,
-          wasShared,
-          isNowShared
-        });
-        
-        if (wasShared && !isNowShared) {
-          // Album was unshared - remove related posts from feed
-          console.log('Album unshared, removing related posts...');
-          await removeAlbumPostsFromFeed(newRecord.id);
-        } else if (!wasShared && isNowShared) {
-          // Album was shared - create new post in feed
-          console.log('Album shared, creating new post...');
-          await createPostFromSharedAlbum(newRecord);
-        }
-        break;
-        
-      case 'DELETE':
-        // Album deleted - remove related posts from feed
-        console.log('Album deleted, removing related posts...');
-        await removeAlbumPostsFromFeed(oldRecord.id);
-        break;
-    }
-  };
-
-  const handlePromotionsChange = (payload: any) => {
-    const { eventType, new: newRecord, old: oldRecord } = payload;
-    
-    switch (eventType) {
-      case 'INSERT':
-        // New promotion added
-        console.log('New promotion added, refreshing...');
-        fetchPromotions();
-        break;
-        
-      case 'DELETE':
-        // Promotion deleted
-        console.log('Promotion deleted, removing from feed...');
-        setPromotions(prevPromotions => 
-          prevPromotions.filter(promo => promo.id !== oldRecord.id)
-        );
-        break;
-        
-      case 'UPDATE':
-        // Promotion updated
-        console.log('Promotion updated, updating in feed...');
-        setPromotions(prevPromotions => 
-          prevPromotions.map(promo => 
-            promo.id === newRecord.id 
-              ? {
-                  ...promo,
-                  title: newRecord.title,
-                  description: newRecord.description,
-                  imageURL: newRecord.image_url,
-                  ctaText: newRecord.cta_text,
-                  ctaUrl: newRecord.cta_url,
-                  isActive: newRecord.is_active,
-                  likes: newRecord.likes || []
-                }
-              : promo
-          )
-        );
-        break;
-    }
-  };
-
-  const removeAlbumPostsFromFeed = async (albumId: string) => {
-    try {
-      // Delete posts related to this album using album_id
-      const { error } = await supabaseClient
-        .from('posts')
-        .delete()
-        .eq('album_id', albumId);
-      
-      if (error) {
-        console.error('Error deleting album posts:', error);
-      } else {
-        console.log('Album posts removed from feed');
-        // Remove from local state
-        setPosts(prevPosts => prevPosts.filter(post => post.album_id !== albumId));
-      }
-    } catch (error) {
-      console.error('Error removing album posts from feed:', error);
-    }
-  };
-
-  const createPostFromSharedAlbum = async (albumData: any) => {
-    try {
-      // Get pet data
-      const { data: petData, error: petError } = await supabaseClient
-        .from('pets')
-        .select('*')
-        .eq('id', albumData.pet_id)
-        .single();
-      
-      if (petError || !petData) {
-        console.error('Error fetching pet data:', petError);
-        return;
-      }
-      
-      // Get user data for author info
-      const { data: userData, error: userError } = await supabaseClient
-        .from('profiles')
-        .select('display_name, photo_url')
-        .eq('id', albumData.user_id)
-        .single();
-      
-      if (userError) {
-        console.error('Error fetching user data:', userError);
-      }
-      
-      // Create post from album
-      const postData = {
-        user_id: albumData.user_id,
-        pet_id: albumData.pet_id,
-        content: albumData.description || `Álbum compartido: ${albumData.title} 📸`,
-        image_url: albumData.images?.[0] || null,
-        album_images: albumData.images || [],
-        type: 'album',
-        author: {
-          name: userData?.display_name || 'Usuario',
-          avatar: userData?.photo_url || 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=100'
-        },
-        pet: {
-          name: petData.name,
-          species: petData.species === 'dog' ? 'Perro' : 'Gato'
-        },
-        likes: [],
-        created_at: new Date().toISOString()
-      };
-      
-      const { error: postError } = await supabaseClient
-        .from('posts')
-        .insert(postData);
-      
-      if (postError) {
-        console.error('Error creating post from shared album:', postError);
-      } else {
-        console.log('Post created from shared album');
-        // The real-time subscription will handle adding it to the feed
-      }
-    } catch (error) {
-      console.error('Error creating post from shared album:', error);
-    }
-  };
   const fetchFeedData = async () => {
     try {
-      // Reset pagination when refreshing
-      setCurrentPage(0);
-      setHasMorePosts(true);
-      setAllPostsLoaded(false);
       await Promise.all([
-        fetchPosts(true), // true = reset
+        fetchPosts(),
         fetchPromotions()
       ]);
     } catch (error) {
       console.error('Error fetching feed data:', error);
     } finally {
       setLoading(false);
-      // Add a minimum loading time for better UX
       setTimeout(() => {
         setInitialLoading(false);
       }, 1500);
     }
   };
 
-  const fetchPosts = async (reset: boolean = false) => {
+  const fetchPosts = async () => {
     try {
-      const pageSize = 10;
-      const page = reset ? 0 : currentPage;
-      const offset = page * pageSize;
-      
-      console.log('Fetching posts:', { page, offset, pageSize, reset });
-      
       const { data: postsData, error } = await supabaseClient
         .from('posts')
         .select('*')
         .order('created_at', { ascending: false })
-        .range(offset, offset + pageSize - 1);
+        .limit(20);
 
       if (error) throw error;
 
@@ -423,26 +164,7 @@ export default function Home() {
         type: post.type || 'single'
       })) || [];
 
-      if (reset) {
-        setPosts(processedPosts);
-        setCurrentPage(1);
-      } else {
-        setPosts(prevPosts => [...prevPosts, ...processedPosts]);
-        setCurrentPage(page + 1);
-      }
-      
-      // Check if we've reached the end
-      if (postsData && postsData.length < pageSize) {
-        setHasMorePosts(false);
-        setAllPostsLoaded(true);
-        console.log('All posts loaded');
-      }
-      
-      console.log('Posts loaded:', {
-        newPosts: processedPosts.length,
-        totalPosts: reset ? processedPosts.length : posts.length + processedPosts.length,
-        hasMore: postsData && postsData.length >= pageSize
-      });
+      setPosts(processedPosts);
     } catch (error) {
       console.error('Error fetching posts:', error);
     }
@@ -792,45 +514,10 @@ export default function Home() {
               console.log('Opening with Linking API');
               const { Linking } = require('react-native');
               const supported = await Linking.canOpenURL(promotion.ctaUrl);
-              if (supported) {
                 await Linking.openURL(promotion.ctaUrl);
               } else {
                 console.error('URL not supported:', promotion.ctaUrl);
                 Alert.alert('Error', 'No se puede abrir este enlace');
-              }
-            }
-          } catch (error) {
-            console.error('Error opening external link:', error);
-            Alert.alert('Error', 'No se pudo abrir el enlace');
-          }
-        } else {
-          console.warn('Invalid URL format:', promotion.ctaUrl);
-          Alert.alert('Error', 'Formato de enlace inválido');
-        }
-      } else if (promotion.partnerId) {
-        // Fallback: Navigate to partner profile if no CTA URL
-        console.log('No CTA URL, navigating to partner:', promotion.partnerId);
-        router.push(`/services/partner/${promotion.partnerId}`);
-      } else {
-        // No action defined
-        console.log('No action defined for promotion');
-        Alert.alert('Información', 'Esta promoción no tiene enlace configurado');
-      }
-      
-      console.log('=== END PROMOTION CLICK DEBUG ===');
-    } catch (error) {
-      console.error('Error handling promotion press:', error);
-      Alert.alert('Error', `Error al procesar la promoción: ${error.message}`);
-    }
-  };
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    setFollowStatesLoaded(false); // Reset follow states en refresh
-    await fetchFeedData();
-    setRefreshing(false);
-  };
-
   // Manejar redirección cuando no hay usuario - FUERA del render condicional
   useEffect(() => {
     if (!currentUser) {
@@ -859,8 +546,6 @@ export default function Home() {
         style={styles.content} 
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
       >
         <MedicalAlertsWidget />
         
@@ -884,21 +569,6 @@ export default function Home() {
                   promotion={item.data}
                   onPress={() => handlePromotionPress(item.data)}
                   onLike={handlePromotionLike}
-                />
-              );
-            } else {
-              return (
-                <PostCard
-                  key={`post-${item.data.id}-${index}`}
-                  post={item.data}
-                  onLike={handleLike}
-                  onComment={handleComment}
-                  onShare={handleShare}
-                />
-              );
-            }
-          })
-        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -1017,32 +687,5 @@ const styles = StyleSheet.create({
   },
   dot3: {
     opacity: 1,
-  },
-  loadingMoreContainer: {
-    paddingVertical: 20,
-    alignItems: 'center',
-  },
-  loadingMoreText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-  },
-  endOfFeedContainer: {
-    paddingVertical: 30,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  endOfFeedText: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#2D6A6F',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  endOfFeedSubtext: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    textAlign: 'center',
   },
 });
