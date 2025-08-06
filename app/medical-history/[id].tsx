@@ -69,6 +69,8 @@ export default function MedicalHistoryShared() {
   const [showAllergyModal, setShowAllergyModal] = useState(false);
   const [showDewormingModal, setShowDewormingModal] = useState(false);
   const [showWeightModal, setShowWeightModal] = useState(false);
+  const [showTempVetModal, setShowTempVetModal] = useState(false);
+  const [tempVetName, setTempVetName] = useState('');
   
   // Selection modals
   const [showVaccineSelection, setShowVaccineSelection] = useState(false);
