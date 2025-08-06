@@ -298,9 +298,8 @@ export default function MedicalHistoryShared() {
 
   // Load catalog data when modals open
   const loadVaccines = async () => {
-    if (vaccines.length > 0) return; // Already loaded
+    if (vaccines.length > 0) return;
     
-    setLoadingVaccines(true);
     try {
       const { data, error } = await supabaseClient
         .from('vaccines_catalog')
@@ -312,18 +311,14 @@ export default function MedicalHistoryShared() {
       
       if (error) throw error;
       setVaccines(data || []);
-      console.log('Vaccines loaded:', data.length);
     } catch (error) {
       console.error('Error loading vaccines:', error);
-    } finally {
-      setLoadingVaccines(false);
     }
   };
 
   const loadConditions = async () => {
-    if (conditions.length > 0) return; // Already loaded
+    if (conditions.length > 0) return;
     
-    setLoadingConditions(true);
     try {
       const { data, error } = await supabaseClient
         .from('medical_conditions')
@@ -334,18 +329,14 @@ export default function MedicalHistoryShared() {
       
       if (error) throw error;
       setConditions(data || []);
-      console.log('Conditions loaded:', data.length);
     } catch (error) {
       console.error('Error loading conditions:', error);
-    } finally {
-      setLoadingConditions(false);
     }
   };
 
   const loadTreatments = async () => {
-    if (treatments.length > 0) return; // Already loaded
+    if (treatments.length > 0) return;
     
-    setLoadingTreatments(true);
     try {
       const { data, error } = await supabaseClient
         .from('medical_treatments')
@@ -355,18 +346,14 @@ export default function MedicalHistoryShared() {
       
       if (error) throw error;
       setTreatments(data || []);
-      console.log('Treatments loaded:', data.length);
     } catch (error) {
       console.error('Error loading treatments:', error);
-    } finally {
-      setLoadingTreatments(false);
     }
   };
 
   const loadAllergies = async () => {
-    if (allergies.length > 0) return; // Already loaded
+    if (allergies.length > 0) return;
     
-    setLoadingAllergies(true);
     try {
       const { data, error } = await supabaseClient
         .from('allergies_catalog')
@@ -378,18 +365,14 @@ export default function MedicalHistoryShared() {
       
       if (error) throw error;
       setAllergies(data || []);
-      console.log('Allergies loaded:', data.length);
     } catch (error) {
       console.error('Error loading allergies:', error);
-    } finally {
-      setLoadingAllergies(false);
     }
   };
 
   const loadDewormers = async () => {
-    if (dewormers.length > 0) return; // Already loaded
+    if (dewormers.length > 0) return;
     
-    setLoadingDewormers(true);
     try {
       const { data, error } = await supabaseClient
         .from('dewormers_catalog')
@@ -400,18 +383,14 @@ export default function MedicalHistoryShared() {
       
       if (error) throw error;
       setDewormers(data || []);
-      console.log('Dewormers loaded:', data.length);
     } catch (error) {
       console.error('Error loading dewormers:', error);
-    } finally {
-      setLoadingDewormers(false);
     }
   };
 
   const loadVeterinarians = async () => {
-    if (veterinarians.length > 0) return; // Already loaded
+    if (veterinarians.length > 0) return;
     
-    setLoadingVeterinarians(true);
     try {
       const { data, error } = await supabaseClient
         .from('partners')
@@ -423,11 +402,8 @@ export default function MedicalHistoryShared() {
       
       if (error) throw error;
       setVeterinarians(data || []);
-      console.log('Veterinarians loaded:', data.length);
     } catch (error) {
       console.error('Error loading veterinarians:', error);
-    } finally {
-      setLoadingVeterinarians(false);
     }
   };
 
@@ -747,6 +723,152 @@ export default function MedicalHistoryShared() {
     setTempVetName('');
     setShowTempVetModal(false);
     setShowVeterinarianSelection(false);
+  };
+
+  // Helper functions for displaying catalog data
+  const getTypeIcon = (type: string) => {
+    const icons = {
+      core: '🛡️',
+      non_core: '💉',
+      lifestyle: '🏃',
+      medication: '💊',
+      therapy: '🏥',
+      surgery: '🔪',
+      diet: '🥗',
+      supplement: '🧪',
+      topical: '🧴',
+      injection: '💉',
+      other: '📋'
+    };
+    return icons[type] || '💉';
+  };
+
+  const getTypeName = (type: string) => {
+    const names = {
+      core: 'Esencial',
+      non_core: 'Recomendada',
+      lifestyle: 'Estilo de vida',
+      medication: 'Medicamento',
+      therapy: 'Terapia',
+      surgery: 'Cirugía',
+      diet: 'Dieta',
+      supplement: 'Suplemento',
+      topical: 'Tópico',
+      injection: 'Inyección',
+      other: 'Otro'
+    };
+    return names[type] || 'Tratamiento';
+  };
+
+  const getTypeColor = (type: string) => {
+    const colors = {
+      core: '#DC2626',
+      non_core: '#3B82F6',
+      lifestyle: '#10B981',
+      medication: '#3B82F6',
+      therapy: '#10B981',
+      surgery: '#EF4444',
+      diet: '#F59E0B',
+      supplement: '#8B5CF6',
+      topical: '#10B981',
+      injection: '#EF4444',
+      other: '#6B7280'
+    };
+    return colors[type] || '#6B7280';
+  };
+
+  const getCategoryIcon = (category: string) => {
+    const icons = {
+      infectious: '🦠',
+      parasitic: '🪱',
+      genetic: '🧬',
+      behavioral: '🧠',
+      digestive: '🍽️',
+      respiratory: '🫁',
+      skin: '🩹',
+      orthopedic: '🦴',
+      neurological: '🧠',
+      cardiac: '❤️',
+      urinary: '💧',
+      reproductive: '🐣',
+      endocrine: '⚖️',
+      oncological: '🎗️',
+      other: '📋',
+      food: '🍽️',
+      environmental: '🌿',
+      contact: '✋',
+      medication: '💊',
+      flea: '🦟'
+    };
+    return icons[category] || '📋';
+  };
+
+  const getCategoryName = (category: string) => {
+    const names = {
+      infectious: 'Infecciosa',
+      parasitic: 'Parasitaria',
+      genetic: 'Genética',
+      behavioral: 'Comportamental',
+      digestive: 'Digestiva',
+      respiratory: 'Respiratoria',
+      skin: 'Piel',
+      orthopedic: 'Ortopédica',
+      neurological: 'Neurológica',
+      cardiac: 'Cardíaca',
+      urinary: 'Urinaria',
+      reproductive: 'Reproductiva',
+      endocrine: 'Endocrina',
+      oncological: 'Oncológica',
+      other: 'Otra',
+      food: 'Alimentaria',
+      environmental: 'Ambiental',
+      contact: 'Contacto',
+      medication: 'Medicamento',
+      flea: 'Pulgas'
+    };
+    return names[category] || 'Sin categoría';
+  };
+
+  const getCategoryColor = (category: string) => {
+    const colors = {
+      food: '#F59E0B',
+      environmental: '#10B981',
+      contact: '#3B82F6',
+      medication: '#EF4444',
+      flea: '#F59E0B',
+      other: '#6B7280'
+    };
+    return colors[category] || '#6B7280';
+  };
+
+  const getMethodIcon = (method: string) => {
+    const icons = {
+      oral: '💊',
+      topical: '🧴',
+      injection: '💉',
+      chewable: '🍖'
+    };
+    return icons[method] || '💊';
+  };
+
+  const getMethodName = (method: string) => {
+    const names = {
+      oral: 'Oral',
+      topical: 'Tópico',
+      injection: 'Inyección',
+      chewable: 'Masticable'
+    };
+    return names[method] || 'Oral';
+  };
+
+  const getMethodColor = (method: string) => {
+    const colors = {
+      oral: '#3B82F6',
+      topical: '#10B981',
+      injection: '#EF4444',
+      chewable: '#F59E0B'
+    };
+    return colors[method] || '#6B7280';
   };
 
   // Utility functions
