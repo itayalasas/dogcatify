@@ -70,6 +70,15 @@ export default function MedicalHistoryShared() {
   const dewormingRecords = medicalRecords.filter(record => record.type === 'deworming');
   const weightRecords = medicalRecords.filter(record => record.type === 'weight');
   
+  // Filter functions for modals
+  const getFilteredVeterinarians = () => {
+    if (!veterinarianSearchQuery.trim()) return veterinarians;
+    return veterinarians.filter(vet =>
+      vet.business_name.toLowerCase().includes(veterinarianSearchQuery.toLowerCase()) ||
+      vet.address?.toLowerCase().includes(veterinarianSearchQuery.toLowerCase())
+    );
+  };
+
   // Form states for adding new records
   const [currentFormType, setCurrentFormType] = useState<string | null>(null);
   const [formData, setFormData] = useState<any>({});
