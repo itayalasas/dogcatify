@@ -143,6 +143,30 @@ export default function MedicalHistoryShared() {
   
   const [saving, setSaving] = useState(false);
   const [showTempVetModal, setShowTempVetModal] = useState(false);
+  
+  // Catalog data states
+  const [vaccines, setVaccines] = useState<any[]>([]);
+  const [conditions, setConditions] = useState<any[]>([]);
+  const [treatments, setTreatments] = useState<any[]>([]);
+  const [allergies, setAllergies] = useState<any[]>([]);
+  const [dewormers, setDewormers] = useState<any[]>([]);
+  const [veterinarians, setVeterinarians] = useState<any[]>([]);
+  
+  // Search states
+  const [vaccineSearch, setVaccineSearch] = useState('');
+  const [conditionSearch, setConditionSearch] = useState('');
+  const [treatmentSearch, setTreatmentSearch] = useState('');
+  const [allergySearch, setAllergySearch] = useState('');
+  const [dewormerSearch, setDewormerSearch] = useState('');
+  const [veterinarianSearch, setVeterinarianSearch] = useState('');
+  
+  // Loading states for catalogs
+  const [loadingVaccines, setLoadingVaccines] = useState(false);
+  const [loadingConditions, setLoadingConditions] = useState(false);
+  const [loadingTreatments, setLoadingTreatments] = useState(false);
+  const [loadingAllergies, setLoadingAllergies] = useState(false);
+  const [loadingDewormers, setLoadingDewormers] = useState(false);
+  const [loadingVeterinarians, setLoadingVeterinarians] = useState(false);
   const [tempVetName, setTempVetName] = useState('');
   const [currentFormType, setCurrentFormType] = useState<string>('');
 
@@ -540,14 +564,22 @@ export default function MedicalHistoryShared() {
         user_id: pet?.owner_id || '',
         type: 'weight',
         weight: parseFloat(weightForm.weight),
+        console.log('Treatments loaded:', data.length);
         weight_unit: weightForm.weightUnit,
+      } else {
+        console.error('Error fetching treatments:', response.status);
         date: formatDate(weightForm.date),
         notes: weightForm.notes || null,
         created_at: new Date().toISOString()
+    } finally {
+      setLoadingTreatments(false);
       };
 
       await saveRecord(recordData);
       setShowWeightModal(false);
+    if (allergies.length > 0) return; // Already loaded
+    
+    setLoadingAllergies(true);
       resetWeightForm();
     } catch (error) {
       console.error('Error saving weight:', error);
@@ -559,11 +591,22 @@ export default function MedicalHistoryShared() {
 
   const saveRecord = async (recordData: any) => {
     try {
+        console.log('Allergies loaded:', data.length);
       const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+      } else {
+        console.error('Error fetching allergies:', response.status);
       const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
       
+    if (vaccines.length > 0) return; // Already loaded
+    } finally {
+      setLoadingAllergies(false);
+    
+    setLoadingVaccines(true);
       const response = await fetch(`${supabaseUrl}/functions/v1/save-medical-record`, {
         method: 'POST',
+    if (dewormers.length > 0) return; // Already loaded
+    
+    setLoadingDewormers(true);
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${supabaseKey}`,
@@ -575,26 +618,42 @@ export default function MedicalHistoryShared() {
         }),
       });
 
+        console.log('Dewormers loaded:', data.length);
+        console.log('Vaccines loaded:', data.length);
+      } else {
+        console.error('Error fetching dewormers:', response.status);
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`Save failed: ${response.status} - ${errorText}`);
+    } finally {
+      setLoadingDewormers(false);
       }
 
       const result = await response.json();
       
+    if (veterinarians.length > 0) return; // Already loaded
+    
+    setLoadingVeterinarians(true);
       if (!result.success) {
         throw new Error(result.error || 'Failed to save record');
       }
 
       // Refresh data
       await verifyTokenAndFetchData();
+      } else {
+        console.error('Error fetching vaccines:', response.status);
       Alert.alert('Éxito', 'Registro guardado correctamente');
     } catch (error) {
       console.error('Error saving record:', error);
+        console.log('Veterinarians loaded:', data.length);
       throw error;
+      } else {
+        console.error('Error fetching veterinarians:', response.status);
     }
   };
 
+    } finally {
+      setLoadingVeterinarians(false);
   // Reset form functions
   const resetVaccineForm = () => {
     setVaccineForm({
@@ -749,10 +808,15 @@ export default function MedicalHistoryShared() {
   const formatDisplayDate = (dateString: string): string => {
     if (!dateString) return 'No especificada';
     
+    } finally {
+      setLoadingVaccines(false);
     if (dateString.includes('/')) {
       return dateString;
     }
     
+    if (conditions.length > 0) return; // Already loaded
+    
+    setLoadingConditions(true);
     try {
       const date = new Date(dateString);
       return date.toLocaleDateString('es-ES', {
@@ -763,7 +827,10 @@ export default function MedicalHistoryShared() {
     } catch {
       return dateString;
     }
+        console.log('Conditions loaded:', data.length);
   };
+      } else {
+        console.error('Error fetching conditions:', response.status);
 
   // Filter functions
   const getFilteredVaccines = () => {
@@ -1597,10 +1664,15 @@ export default function MedicalHistoryShared() {
               <TouchableOpacity 
                 style={[styles.saveButton, (!weightForm.weight || saving) && styles.disabledButton]}
                 onPress={saveWeight}
+    } finally {
+      setLoadingConditions(false);
                 disabled={!weightForm.weight || saving}
               >
                 <Text style={styles.saveButtonText}>
                   {saving ? 'Guardando...' : 'Guardar'}
+    if (treatments.length > 0) return; // Already loaded
+    
+    setLoadingTreatments(true);
                 </Text>
               </TouchableOpacity>
             </View>
