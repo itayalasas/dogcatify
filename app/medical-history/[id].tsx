@@ -364,6 +364,17 @@ export default function MedicalHistoryShared() {
     }
   }, [id, token]);
 
+  // Fetch nomenclators after pet data is available
+  useEffect(() => {
+    if (pet && pet.species) {
+      console.log('Pet data available, fetching nomenclators for species:', pet.species);
+      fetchVaccines();
+      fetchConditions();
+      fetchTreatments();
+      fetchDewormers();
+      fetchAllergies();
+    }
+  }, [pet]);
   // Fetch catalog data when modals open
   useEffect(() => {
     if (showVaccineModal && pet) {
@@ -454,22 +465,14 @@ export default function MedicalHistoryShared() {
                 setError('El enlace ha expirado por seguridad. Solicita un nuevo enlace al propietario de la mascota.');
               } else {
                 setError(data.error || 'Error al cargar los datos');
-              }
-            }
-          } else {
-            const errorText = await response.text();
-            console.error('Edge Function error:', response.status, errorText);
-            throw new Error(`Edge Function error: ${response.status}`);
-          }
-        } catch (edgeError) {
-          console.error('Error calling Edge Function:', edgeError);
-          console.log('Falling back to direct database access...');
+        setDataLoaded(true);
+        
+        // Fetch veterinarians immediately since they don't depend on pet species
+        await fetchVeterinarians();
         }
       }
       
       // Fallback: Direct database access (limited by RLS)
-      await fetchMedicalHistoryDirectly();
-      
     } catch (error) {
       console.error('Error in verifyTokenAndFetchData:', error);
       Alert.alert('Error', 'No se pudo cargar la historia clínica');
