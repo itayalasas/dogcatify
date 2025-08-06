@@ -72,6 +72,105 @@ export default function MedicalHistoryShared() {
   const [showTempVetModal, setShowTempVetModal] = useState(false);
   const [tempVetName, setTempVetName] = useState('');
   
+  // Fetch functions for catalogs
+  const fetchVaccines = async () => {
+    try {
+      const { data, error } = await supabaseClient
+        .from('vaccines_catalog')
+        .select('*')
+        .eq('is_active', true)
+        .in('species', [pet?.species || 'dog', 'both'])
+        .order('is_required', { ascending: false })
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+      setVaccines(data || []);
+    } catch (error) {
+      console.error('Error fetching vaccines:', error);
+    }
+  };
+
+  const fetchConditions = async () => {
+    try {
+      const { data, error } = await supabaseClient
+        .from('medical_conditions')
+        .select('*')
+        .eq('is_active', true)
+        .in('species', [pet?.species || 'dog', 'both'])
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+      setConditions(data || []);
+    } catch (error) {
+      console.error('Error fetching conditions:', error);
+    }
+  };
+
+  const fetchTreatments = async () => {
+    try {
+      const { data, error } = await supabaseClient
+        .from('medical_treatments')
+        .select('*')
+        .eq('is_active', true)
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+      setTreatments(data || []);
+    } catch (error) {
+      console.error('Error fetching treatments:', error);
+    }
+  };
+
+  const fetchAllergies = async () => {
+    try {
+      const { data, error } = await supabaseClient
+        .from('allergies_catalog')
+        .select('*')
+        .eq('is_active', true)
+        .in('species', [pet?.species || 'dog', 'both'])
+        .order('is_common', { ascending: false })
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+      setAllergies(data || []);
+    } catch (error) {
+      console.error('Error fetching allergies:', error);
+    }
+  };
+
+  const fetchDewormers = async () => {
+    try {
+      const { data, error } = await supabaseClient
+        .from('dewormers_catalog')
+        .select('*')
+        .eq('is_active', true)
+        .in('species', [pet?.species || 'dog', 'both'])
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+      setDewormers(data || []);
+    } catch (error) {
+      console.error('Error fetching dewormers:', error);
+    }
+  };
+
+  const fetchVeterinarians = async () => {
+    try {
+      const { data, error } = await supabaseClient
+        .from('partners')
+        .select('*')
+        .eq('business_type', 'veterinary')
+        .eq('is_verified', true)
+        .eq('is_active', true)
+        .order('business_name', { ascending: true });
+
+      if (error) throw error;
+      setVeterinarians(data || []);
+    } catch (error) {
+      console.error('Error fetching veterinarians:', error);
+    }
+  };
+
   // Selection modals
   const [showVaccineSelection, setShowVaccineSelection] = useState(false);
   const [showConditionSelection, setShowConditionSelection] = useState(false);
