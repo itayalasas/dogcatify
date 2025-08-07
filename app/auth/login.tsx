@@ -72,7 +72,6 @@ export default function Login() {
 
     setLoading(true);
     clearAuthError();
-    setShowEmailConfirmation(false);
 
     try {
       console.log('Attempting login with credentials:', loginEmail);
@@ -183,25 +182,24 @@ export default function Login() {
             leftIcon={<Mail size={20} color="#6B7280" />}
           />
 
-          <View style={styles.passwordContainer}>
-            <Input
-              label={t('password')}
-              placeholder={t('password')}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              leftIcon={<Lock size={20} color="#6B7280" />}
-              rightIcon={
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                  {showPassword ? (
-                    <EyeOff size={20} color="#6B7280" />
-                  ) : (
-                    <Eye size={20} color="#6B7280" />
-                  )}
-                </TouchableOpacity>
-              }
-            />
-          </View>
+          <Input
+            label={t('password')}
+            placeholder={t('password')}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+            leftIcon={<Lock size={20} color="#6B7280" />}
+            rightIcon={
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                {showPassword ? (
+                  <EyeOff size={20} color="#6B7280" />
+                ) : (
+                  <Eye size={20} color="#6B7280" />
+                )}
+              </TouchableOpacity>
+            }
+          />
+
           {isBiometricSupported && (
             <View style={styles.saveCredentialsContainer}>
               <TouchableOpacity 
@@ -224,23 +222,6 @@ export default function Login() {
             loading={loading}
             disabled={loading}
             size="large"
-            />
-          </View>
-
-          {isBiometricSupported && (
-            <View style={styles.saveCredentialsContainer}>
-              <TouchableOpacity 
-                style={styles.saveCredentialsRow} 
-                onPress={() => setSaveCredentials(!saveCredentials)}
-              >
-                <View style={[styles.checkbox, saveCredentials && styles.checkedCheckbox]}>
-                  {saveCredentials && <Text style={styles.checkmark}>✓</Text>}
-                </View>
-                <Text style={styles.saveCredentialsText}>
-                  Guardar credenciales con {biometricType || 'biometría'}
-                </Text>
-              </TouchableOpacity>
-            </View>
           />
 
           <View style={styles.forgotPasswordContainer}>
@@ -307,7 +288,7 @@ export default function Login() {
       </Modal>
     </>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -347,9 +328,6 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 400,
     alignSelf: 'center',
-  },
-  passwordContainer: {
-    position: 'relative',
   },
   saveCredentialsContainer: {
     marginBottom: 20,
@@ -478,138 +456,5 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     width: '100%',
-  },
-});
-            />
-          </View>
-        )}
-
-        <Button
-          title={t('signIn')}
-          onPress={() => handleLogin()}
-          loading={loading}
-          disabled={loading}
-          size="large"
-        />
-
-        <View style={styles.forgotPasswordContainer}>
-          <Link href="/auth/forgot-password" style={styles.forgotPasswordLink}>
-            {t('forgotPassword')}
-          </Link>
-        </View>
-      </View>
-
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          {t('dontHaveAccount')}{' '}
-          <Link href="/auth/register" style={styles.link}>
-            {t('signUp')}
-          </Link>
-        </Text>
-      </View>
-    </ScrollView>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    paddingTop: 30,
-  },
-  content: {
-    flexGrow: 1,
-    padding: 20,
-    paddingTop: 20,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  logo: {
-    width: 140,
-    height: 140,
-    resizeMode: 'contain',
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 28,
-    fontFamily: 'Inter-Bold',
-    color: '#2D6A6F',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    fontFamily: 'Inter-Regular',
-  },
-  form: {
-    width: '100%',
-    maxWidth: 400,
-    alignSelf: 'center',
-  },
-  passwordContainer: {
-    position: 'relative',
-  },
-  confirmationContainer: {
-    backgroundColor: '#EBF8FF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#3B82F6',
-  },
-  confirmationTitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#1E40AF',
-    marginBottom: 8,
-  },
-  confirmationText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#1E40AF',
-    marginBottom: 8,
-    lineHeight: 20,
-  },
-  confirmationEmail: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    color: '#1E40AF',
-    marginBottom: 8,
-  },
-  confirmationInstructions: {
-    fontSize: 13,
-    fontFamily: 'Inter-Regular',
-    color: '#1E40AF',
-    marginBottom: 16,
-    lineHeight: 18,
-  },
-  resendButton: {
-    backgroundColor: '#3B82F6',
-  },
-  forgotPasswordContainer: {
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  forgotPasswordLink: {
-    color: '#3B82F6',
-    fontSize: 16,
-    fontFamily: 'Inter-Medium',
-  },
-  footer: {
-    alignItems: 'center',
-    marginTop: 32,
-  },
-  footerText: {
-    fontSize: 16,
-    color: '#6B7280',
-    fontFamily: 'Inter-Regular',
-  },
-  link: {
-    color: '#3B82F6',
-    fontFamily: 'Inter-SemiBold',
   },
 });
