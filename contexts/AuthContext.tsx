@@ -413,9 +413,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       if (data.user) {
-        // Check email confirmation using our custom system
-        const { isEmailConfirmed: checkEmailConfirmed } = await import('../utils/emailConfirmation');
-        const emailConfirmed = await checkEmailConfirmed(data.user.id);
+        // Check email confirmation using both systems
+        console.log('Checking email confirmation for user:', data.user.id);
+        
+        let emailConfirmed = false;
+        
+        try {
+          // First check our custom confirmation system
+          const { data: confirmationData, error: confirmationError } = await supabaseClient
+            .from('email_confirmations')
+            .select('is_confirmed')
+            .eq('user_id', data.user.id)
+            .eq('type', 'signup')
+            .eq('is_confirmed', true)
+            .single();
+          
+          if (confirmationData && !confirmationError) {
+            console.log('Email confirmed via custom system');
+            emailConfirmed = true;
+          } else {
+            console.log('No custom confirmation found, checking Supabase auth...');
+            
+            // Fallback to Supabase auth confirmation
+            if (data.user.email_confirmed_at) {
+              console.log('Email confirmed via Supabase auth');
+              emailConfirmed = true;
+              
+              // Sync with our custom system
+              try {
+                await supabaseClient
+                  .from('profiles')
+                  .update({
+                    email_confirmed: true,
+                    email_confirmed_at: data.user.email_confirmed_at,
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('id', data.user.id);
+              } catch (syncError) {
+                console.warn('Could not sync email confirmation:', syncError);
+              }
+            }
+          }
+        } catch (checkError) {
+          console.error('Error checking email confirmation:', checkError);
+          // Final fallback to Supabase auth
+          emailConfirmed = !!data.user.email_confirmed_at;
+        }
         
         if (!emailConfirmed) {
           console.warn('AuthContext - Email not confirmed for user:', email);
