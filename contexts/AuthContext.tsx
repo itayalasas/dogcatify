@@ -84,7 +84,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               .select('*')
               .eq('type', 'signup')
               .eq('user_id', session.user.id)
-              .eq('is_confirmed', true)
               .single();
             
             console.log('Confirmation query result:', {
@@ -103,18 +102,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               });
             }
             
-            // STRICT VALIDATION: Must have confirmed record for THIS specific user
-            if (!confirmationData || 
-                confirmationError || 
-                confirmationData.user_id !== session.user.id || 
-                confirmationData.is_confirmed !== true) {
+           // STRICT VALIDATION: Must have confirmed record for THIS specific user
+           if (!confirmationData || 
+               confirmationError || 
+               confirmationData.user_id !== session.user.id || 
+               !confirmationData.is_confirmed) {
               
               console.log('=== EMAIL NOT CONFIRMED - BLOCKING ACCESS ===');
               console.log('Reason:', {
                 noData: !confirmationData,
                 hasError: !!confirmationError,
                 userIdMismatch: confirmationData?.user_id !== session.user.id,
-                notConfirmed: confirmationData?.is_confirmed !== true
+               notConfirmed: !confirmationData?.is_confirmed
               });
               
               setIsEmailConfirmed(false);
