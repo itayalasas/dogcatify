@@ -114,21 +114,10 @@ export default function HelpSupport() {
           ]
         );
       }
-      Alert.alert(
-        'Contacto por WhatsApp',
+    } catch (error) {
       Alert.alert(
         'Contacto por WhatsApp',
         `Hubo un problema al abrir WhatsApp.\n\n📱 Puedes contactarnos directamente:\n+${phoneNumber}\n\n💬 Mensaje sugerido:\n"${message}"`,
-        
-        [
-          {
-            text: 'Llamar',
-            onPress: () => Linking.openURL(`tel:+59892519111`)
-          },
-          { text: 'Entendido' }
-        ]
-      );
-    }
         [
           {
             text: 'Llamar',
