@@ -53,7 +53,7 @@ const petColors = [
 ];
 
 export default function AddPet() {
-  const { currentUser } = useAuth();
+  const { currentUser, checkTokenValidity } = useAuth();
   const { t } = useLanguage();
   const params = useLocalSearchParams<{ 
     species?: PetSpecies; 
@@ -291,6 +291,17 @@ export default function AddPet() {
   };
 
   const handleSubmit = async () => {
+    // Check token validity before proceeding
+    const isTokenValid = await checkTokenValidity();
+    if (!isTokenValid) {
+      Alert.alert(
+        'Sesión expirada',
+        'Tu sesión ha expirado. Por favor inicia sesión nuevamente.',
+        [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
+      );
+      return;
+    }
+    
     if (!name.trim() || !species || !breed.trim() || !age.trim() || !weight.trim() || !gender) {
       Alert.alert('Error', 'Por favor completa todos los campos obligatorios');
       return;
@@ -392,6 +403,15 @@ export default function AddPet() {
           
           if (checkError) {
             console.error('Error checking existing weight records:', checkError);
+            // Check if this is a JWT error
+            if (checkError.message?.includes('JWT') || checkError.message?.includes('expired')) {
+              Alert.alert(
+                'Sesión expirada',
+                'Tu sesión expiró durante el proceso. La mascota se creó correctamente, pero inicia sesión nuevamente.',
+                [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
+              );
+              return;
+            }
           } else if (existingWeightRecords && existingWeightRecords.length > 0) {
             console.log('Weight records already exist for this pet, skipping creation');
           } else {
@@ -417,6 +437,15 @@ export default function AddPet() {
             
             if (weightError) {
               console.error('Error creating initial weight record:', weightError);
+              // Check if this is a JWT error
+              if (weightError.message?.includes('JWT') || weightError.message?.includes('expired')) {
+                Alert.alert(
+                  'Sesión expirada',
+                  'Tu sesión expiró durante el proceso. La mascota se creó correctamente, pero inicia sesión nuevamente.',
+                  [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
+                );
+                return;
+              }
             } else {
               console.log('Initial weight record created successfully');
             }
@@ -433,10 +462,29 @@ export default function AddPet() {
         );
       } else {
         console.log('Error creating pet:', error);
+        // Check if this is a JWT error
+        if (error && (error.message?.includes('JWT') || error.message?.includes('expired'))) {
+          Alert.alert(
+            'Sesión expirada',
+            'Tu sesión ha expirado. Por favor inicia sesión nuevamente.',
+            [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
+          );
+          return;
+        }
         Alert.alert('Error', error.message || 'Error al agregar la mascota');
       }
     } catch (error) {
       console.error('Error in handleSubmit:', error);
+      // Check if this is a JWT error
+      if (error && typeof error === 'object' && 'message' in error && 
+          (error.message.includes('JWT') || error.message.includes('expired'))) {
+        Alert.alert(
+          'Sesión expirada',
+          'Tu sesión ha expirado. Por favor inicia sesión nuevamente.',
+          [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
+        );
+        return;
+      }
       Alert.alert('Error', 'Error al procesar la solicitud');
     } finally {
       setIsLoading(false);

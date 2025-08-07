@@ -16,8 +16,98 @@ export const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true,
     flowType: 'pkce',
   },
+  global: {
+    headers: {
+      'X-Client-Info': 'dogcatify-mobile',
+    },
+  },
 });
 
+// Add global error handler for API calls
+const originalFrom = supabaseClient.from;
+supabaseClient.from = function(table: string) {
+  const query = originalFrom.call(this, table);
+  
+  // Override the query methods to add error handling
+  const originalSelect = query.select;
+  const originalInsert = query.insert;
+  const originalUpdate = query.update;
+  const originalDelete = query.delete;
+  
+  query.select = function(...args: any[]) {
+    const result = originalSelect.apply(this, args);
+    return addErrorHandling(result);
+  };
+  
+  query.insert = function(...args: any[]) {
+    const result = originalInsert.apply(this, args);
+    return addErrorHandling(result);
+  };
+  
+  query.update = function(...args: any[]) {
+    const result = originalUpdate.apply(this, args);
+    return addErrorHandling(result);
+  };
+  
+  query.delete = function(...args: any[]) {
+    const result = originalDelete.apply(this, args);
+    return addErrorHandling(result);
+  };
+  
+  return query;
+};
+
+// Add error handling to detect JWT expiration
+const addErrorHandling = (queryBuilder: any) => {
+  const originalThen = queryBuilder.then;
+  
+  queryBuilder.then = function(onFulfilled?: any, onRejected?: any) {
+    return originalThen.call(this, 
+      (result: any) => {
+        // Check for JWT errors in successful responses
+        if (result.error) {
+          handleSupabaseError(result.error);
+        }
+        return onFulfilled ? onFulfilled(result) : result;
+      },
+      (error: any) => {
+        handleSupabaseError(error);
+        return onRejected ? onRejected(error) : Promise.reject(error);
+      }
+    );
+  };
+  
+  return queryBuilder;
+};
+
+// Handle Supabase errors globally
+const handleSupabaseError = (error: any) => {
+  if (error && typeof error === 'object') {
+    const errorMessage = error.message || '';
+    
+    // Check for JWT expiration errors
+    if (errorMessage.includes('JWT') && 
+        (errorMessage.includes('expired') || 
+         errorMessage.includes('invalid') ||
+         errorMessage.includes('malformed'))) {
+      
+      console.log('JWT error detected in API call:', errorMessage);
+      
+      // Emit a custom event that the AuthContext can listen to
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('jwt-expired'));
+      }
+    }
+  }
+};
+
+// Listen for JWT expiration events (for web)
+if (typeof window !== 'undefined') {
+  window.addEventListener('jwt-expired', () => {
+    console.log('JWT expired event received');
+    // This will be handled by the AuthContext
+  });
+}
 // User profile functions
 export const getUserProfile = async (userId: string) => {
   try {
