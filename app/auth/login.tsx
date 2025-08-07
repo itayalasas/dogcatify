@@ -202,7 +202,6 @@ export default function Login() {
               }
             />
           </View>
-
           {isBiometricSupported && (
             <View style={styles.saveCredentialsContainer}>
               <TouchableOpacity 
