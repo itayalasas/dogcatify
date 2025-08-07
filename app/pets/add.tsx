@@ -345,14 +345,14 @@ export default function AddPet() {
         name: name.trim(),
         species,
         breed: breed.trim(),
-        age: parseFloat(age) || 0,
+        age: Number(age),
         age_display: {
-          value: parseFloat(age) || 0,
+          value: Number(age),
           unit: ageUnit
         },
-        weight: parseFloat(weight) || 0,
+        weight: Number(weight),
         weight_display: {
-          value: parseFloat(weight) || 0,
+          value: Number(weight),
           unit: weightUnit
         },
         color: color.trim() || null,
@@ -363,7 +363,7 @@ export default function AddPet() {
         medical_notes: description.trim() || null,
         owner_id: currentUser.id,
         photo_url: photoURL,
-        breed_info: breedInfo ? JSON.parse(JSON.stringify(breedInfo)) : null,
+        breed_info: breedInfo,
         personality: [],
       };
 
