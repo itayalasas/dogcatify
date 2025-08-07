@@ -118,7 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               });
               
               setIsEmailConfirmed(false);
-              setAuthError('Debes confirmar tu correo electrónico antes de acceder a la aplicación.');
+              setAuthError(`EMAIL_NOT_CONFIRMED:${session.user.email}`);
               await supabaseClient.auth.signOut();
               return;
             }

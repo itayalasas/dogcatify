@@ -82,24 +82,71 @@ export default function Login() {
   // Show auth error if it exists
   React.useEffect(() => {
     if (authError) {
-      Alert.alert(
-        'Error de cuenta',
-        authError,
-        [
-          { 
-            text: 'Crear nueva cuenta', 
-            onPress: () => {
-              clearAuthError();
-              router.push('/auth/register');
+      // Check if this is an email confirmation error
+      if (authError.startsWith('EMAIL_NOT_CONFIRMED:')) {
+        const userEmail = authError.split(':')[1];
+        Alert.alert(
+          'Correo electrónico no confirmado',
+          `Debes confirmar tu correo electrónico antes de acceder a la aplicación.\n\nEmail: ${userEmail}\n\nRevisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace de confirmación.`,
+          [
+            { 
+              text: 'Reenviar correo', 
+              onPress: async () => {
+                try {
+                  setLoading(true);
+                  const { resendConfirmationEmail } = await import('../../utils/emailConfirmation');
+                  const result = await resendConfirmationEmail(userEmail);
+                  
+                  if (!result.success) {
+                    throw new Error(result.error || 'Error al reenviar confirmación');
+                  }
+                  
+                  Alert.alert(
+                    '✅ Correo Reenviado', 
+                    `Se ha enviado un nuevo correo de confirmación a ${userEmail}.\n\nPor favor revisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace de confirmación.\n\nEl enlace expira en 24 horas.`,
+                    [{ text: 'Entendido' }]
+                  );
+                } catch (resendError) {
+                  console.error('Error resending confirmation email:', resendError);
+                  Alert.alert(
+                    '❌ Error al Reenviar', 
+                    resendError.message || 'No se pudo reenviar el correo de confirmación.',
+                    [{ text: 'Entendido' }]
+                  );
+                } finally {
+                  setLoading(false);
+                }
+                clearAuthError();
+              }
+            },
+            { 
+              text: 'Entendido', 
+              onPress: () => clearAuthError(),
+              style: 'cancel'
             }
-          },
-          { 
-            text: 'Entendido', 
-            onPress: () => clearAuthError(),
-            style: 'cancel'
-          }
-        ]
-      );
+          ]
+        );
+      } else {
+        // Other auth errors
+        Alert.alert(
+          'Error de cuenta',
+          authError,
+          [
+            { 
+              text: 'Crear nueva cuenta', 
+              onPress: () => {
+                clearAuthError();
+                router.push('/auth/register');
+              }
+            },
+            { 
+              text: 'Entendido', 
+              onPress: () => clearAuthError(),
+              style: 'cancel'
+            }
+          ]
+        );
+      }
     }
   }, [authError]);
 
@@ -193,8 +240,8 @@ export default function Login() {
         const result = await login(email, password);
         
         if (result) {
-          // Show biometric setup option ONLY after successful login AND email confirmation
-          if (isBiometricSupported && !isBiometricEnabled && email && password) {
+          // Show biometric setup option ONLY after successful login (email is already confirmed if we reach here)
+          if (isBiometricSupported && !isBiometricEnabled && email && password && !authError) {
             setShowBiometricOption(true);
           } else {
             // Redirect based on user type after successful login
