@@ -36,6 +36,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [authError, setAuthError] = useState<string | null>(null);
   const [tokenCheckInterval, setTokenCheckInterval] = useState<NodeJS.Timeout | null>(null);
 
+  const updateCurrentUser = (updatedUser: User) => {
+    setCurrentUser(updatedUser);
+  };
+
   useEffect(() => {
     let mounted = true;
     
@@ -643,7 +647,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     login,
     register,
     logout,
-    updateCurrentUser: (updatedUser: User) => setCurrentUser(updatedUser),
+    updateCurrentUser,
     isEmailConfirmed,
     authError,
     clearAuthError,

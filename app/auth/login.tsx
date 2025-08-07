@@ -194,7 +194,7 @@ export default function Login() {
         
         if (result) {
           // Show biometric setup option ONLY after successful login AND email confirmation
-          if (isBiometricSupported && !isBiometricEnabled && email && password && isEmailConfirmed) {
+          if (isBiometricSupported && !isBiometricEnabled && email && password) {
             setShowBiometricOption(true);
           } else {
             // Redirect based on user type after successful login
