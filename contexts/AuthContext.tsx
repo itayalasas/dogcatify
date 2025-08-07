@@ -128,72 +128,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setIsEmailConfirmed(true);
             setAuthError(null); // Clear any previous auth errors
             
-            let profile;
-            try {
-              profile = await getUserProfile(session.user.id);
-            } catch (profileError: any) {
-              // Handle case where user exists in auth.users but not in profiles (deleted account)
-              if (profileError.code === 'PGRST116' && profileError.message?.includes('0 rows')) {
-                console.log('AuthContext - User exists in auth but not in profiles (deleted account)');
-                // Sign out the user and throw error
-                await supabaseClient.auth.signOut();
-                setAuthError('Esta cuenta fue eliminada previamente. Por favor crea una nueva cuenta o contacta con soporte.');
-                return;
-              }
-              throw profileError;
-            }
-            if (profile) {
-              if (!mounted) return;
-              console.log('AuthContext - User profile loaded:', profile.display_name);
-              setCurrentUser({
-                id: session.user.id,
-                email: session.user.email!,
-                displayName: profile.display_name || '',
-                photoURL: profile.photo_url,
-                isOwner: profile.is_owner || true,
-                isPartner: profile.is_partner || false,
-                location: profile.location,
-                bio: profile.bio,
-                phone: profile.phone,
-                createdAt: new Date(profile.created_at),
-                followers: profile.followers,
-                following: profile.following,
-                followersCount: profile.followers?.length || 0,
-                followingCount: profile.following?.length || 0,
-              });
-            } else {
-              // Create user profile if it doesn't exist
-              console.log('AuthContext - Creating new user profile for:', session.user.email);
-              if (!mounted) return;
-              const newUser: Omit<User, 'id'> = {
-                email: session.user.email || '',
-                displayName: session.user.user_metadata?.display_name || '',
-                photoURL: session.user.user_metadata?.photo_url,
-                isOwner: true,
-                isPartner: false,
-                createdAt: new Date(),
-                followers: [],
-                following: [],
-                followersCount: 0,
-                followingCount: 0,
-              };
-              
-              // Create the profile in the database
-              await updateUserProfile(session.user.id, {
-                display_name: newUser.displayName,
-                photo_url: newUser.photoURL,
-                is_owner: newUser.isOwner,
-                is_partner: newUser.isPartner,
-                location: newUser.location,
-                bio: newUser.bio,
-                phone: newUser.phone,
-              });
-              
-              setCurrentUser({
-                id: session.user.id,
-                ...newUser,
-              });
-            }
+            // Load user profile after email confirmation is validated
+            await loadUserProfile(session.user.id, session.user.email!);
           } catch (error: any) {
             console.error('Error loading user profile after login:', error);
             
@@ -214,6 +150,82 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
+    // Helper function to load user profile
+    const loadUserProfile = async (userId: string, userEmail: string) => {
+      try {
+        let profile;
+        try {
+          profile = await getUserProfile(userId);
+        } catch (profileError: any) {
+          // Handle case where user exists in auth.users but not in profiles (deleted account)
+          if (profileError.code === 'PGRST116' && profileError.message?.includes('0 rows')) {
+            console.log('AuthContext - User exists in auth but not in profiles (deleted account)');
+            // Sign out the user and throw error
+            await supabaseClient.auth.signOut();
+            setAuthError('Esta cuenta fue eliminada previamente. Por favor crea una nueva cuenta o contacta con soporte.');
+            return;
+          }
+          throw profileError;
+        }
+        
+        if (profile) {
+          if (!mounted) return;
+          console.log('AuthContext - User profile loaded:', profile.display_name);
+          setCurrentUser({
+            id: userId,
+            email: userEmail,
+            displayName: profile.display_name || '',
+            photoURL: profile.photo_url,
+            isOwner: profile.is_owner || true,
+            isPartner: profile.is_partner || false,
+            location: profile.location,
+            bio: profile.bio,
+            phone: profile.phone,
+            createdAt: new Date(profile.created_at),
+            followers: profile.followers,
+            following: profile.following,
+            followersCount: profile.followers?.length || 0,
+            followingCount: profile.following?.length || 0,
+          });
+        } else {
+          // Create user profile if it doesn't exist
+          console.log('AuthContext - Creating new user profile for:', userEmail);
+          if (!mounted) return;
+          const newUser: Omit<User, 'id'> = {
+            email: userEmail,
+            displayName: '',
+            photoURL: undefined,
+            isOwner: true,
+            isPartner: false,
+            createdAt: new Date(),
+            followers: [],
+            following: [],
+            followersCount: 0,
+            followingCount: 0,
+          };
+          
+          // Create the profile in the database
+          await updateUserProfile(userId, {
+            display_name: newUser.displayName,
+            photo_url: newUser.photoURL,
+            is_owner: newUser.isOwner,
+            is_partner: newUser.isPartner,
+            location: newUser.location,
+            bio: newUser.bio,
+            phone: newUser.phone,
+          });
+          
+          setCurrentUser({
+            id: userId,
+            ...newUser,
+          });
+        }
+      } catch (error) {
+        console.error('Error loading user profile:', error);
+        throw error;
+      }
+    };
+
     // Initial session check
     const checkSession = async () => {
       try {
@@ -227,41 +239,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (session?.user) {
           try {
-            let profile;
-            try {
-              profile = await getUserProfile(session.user.id);
-            } catch (profileError: any) {
-              // Handle case where user exists in auth.users but not in profiles (deleted account)
-              if (profileError.code === 'PGRST116' && profileError.message?.includes('0 rows')) {
-                console.log('AuthContext - Initial check: User exists in auth but not in profiles (deleted account)');
-                // Sign out the user and show error
-                await supabaseClient.auth.signOut();
-                setAuthError('Esta cuenta fue eliminada previamente. Por favor crea una nueva cuenta o contacta con soporte.');
-                return;
-              }
-              throw profileError;
+            // Check email confirmation for initial session
+            console.log('AuthContext - Initial session: Checking email confirmation for user:', session.user.email);
+            
+            const { data: confirmationData, error: confirmationError } = await supabaseClient
+              .from('email_confirmations')
+              .select('*')
+              .eq('type', 'signup')
+              .eq('user_id', session.user.id)
+              .single();
+            
+            if (!confirmationData || 
+                confirmationError || 
+                confirmationData.user_id !== session.user.id || 
+                confirmationData.is_confirmed !== true) {
+              
+              console.log('AuthContext - Initial session: Email not confirmed, signing out');
+              setIsEmailConfirmed(false);
+              setAuthError(`EMAIL_NOT_CONFIRMED:${session.user.email}`);
+              await supabaseClient.auth.signOut();
+              return;
             }
             
-            if (!mounted) return;
-            if (profile) {
-              console.log('AuthContext - Initial profile loaded:', profile.display_name);
-              setCurrentUser({
-                id: session.user.id,
-                email: session.user.email!,
-                displayName: profile.display_name || '',
-                photoURL: profile.photo_url,
-                isOwner: profile.is_owner || true,
-                isPartner: profile.is_partner || false,
-                location: profile.location,
-                bio: profile.bio,
-                phone: profile.phone,
-                createdAt: new Date(profile.created_at),
-                followers: profile.followers,
-                following: profile.following,
-                followersCount: profile.followers?.length || 0,
-                followingCount: profile.following?.length || 0,
-              });
-            }
+            console.log('AuthContext - Initial session: Email confirmed, loading profile');
+            setIsEmailConfirmed(true);
+            await loadUserProfile(session.user.id, session.user.email!);
           } catch (error) {
             console.error('AuthContext - Error loading profile:', error);
           }
