@@ -467,57 +467,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       if (data.user) {
-        // Check email confirmation using both systems
-        console.log('Checking email confirmation for user:', data.user.id);
+        // STRICT EMAIL CONFIRMATION VALIDATION - Check our custom system ONLY
+        console.log('=== STRICT EMAIL CONFIRMATION CHECK ===');
+        console.log('User ID:', data.user.id);
+        console.log('User email:', data.user.email);
         
-        let emailConfirmed = false;
+        // Check ONLY our custom confirmation system
+        const { data: confirmationData, error: confirmationError } = await supabaseClient
+          .from('email_confirmations')
+          .select('*')
+          .eq('user_id', data.user.id)
+          .eq('type', 'signup')
+          .single();
         
-        // First check our custom confirmation system (primary)
-        try {
-          const { data: confirmationData, error: confirmationError } = await supabaseClient
-            .from('email_confirmations')
-            .select('is_confirmed')
-            .eq('user_id', data.user.id)
-            .eq('type', 'signup')
-            .eq('is_confirmed', true)
-            .single();
+        console.log('Confirmation query result:', {
+          hasData: !!confirmationData,
+          error: confirmationError?.message,
+          errorCode: confirmationError?.code,
+          isConfirmed: confirmationData?.is_confirmed
+        });
+        
+        // STRICT VALIDATION: Must have confirmed record in our system
+        if (confirmationError || 
+            !confirmationData || 
+            confirmationData.user_id !== data.user.id || 
+            confirmationData.is_confirmed !== true) {
           
-          if (confirmationData && !confirmationError) {
-            console.log('Login - Email confirmed via custom system');
-            emailConfirmed = true;
-          }
-        } catch (customError) {
-          console.log('Login - No custom confirmation found:', customError.message);
-        }
-        
-        // If not confirmed via custom system, check Supabase auth (fallback)
-        if (!emailConfirmed && data.user.email_confirmed_at) {
-          console.log('Login - Email confirmed via Supabase auth');
-          emailConfirmed = true;
+          console.log('=== EMAIL NOT CONFIRMED - BLOCKING LOGIN ===');
+          console.log('Blocking reason:', {
+            hasError: !!confirmationError,
+            noData: !confirmationData,
+            userIdMismatch: confirmationData?.user_id !== data.user.id,
+            notConfirmed: confirmationData?.is_confirmed !== true,
+            actualConfirmedValue: confirmationData?.is_confirmed
+          });
           
-          // Sync with our custom system
-          try {
-            await supabaseClient
-              .from('profiles')
-              .update({
-                email_confirmed: true,
-                email_confirmed_at: data.user.email_confirmed_at,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', data.user.id);
-          } catch (syncError) {
-            console.warn('Could not sync email confirmation:', syncError);
-          }
-        }
-        
-        // STRICT VALIDATION: Email must be confirmed by at least one system
-        if (!emailConfirmed) {
-          console.warn('Login - Email NOT confirmed for user:', email);
           setIsEmailConfirmed(false);
-          throw new Error('Debes confirmar tu correo electrónico antes de iniciar sesión.');
+          setAuthError(`EMAIL_NOT_CONFIRMED:${data.user.email}`);
+          
+          // Sign out the user immediately
+          await supabaseClient.auth.signOut();
+          
+          throw new Error('Debes confirmar tu correo electrónico antes de iniciar sesión. Revisa tu bandeja de entrada.');
         }
         
-        console.log('Login - Email confirmation validated successfully');
+        console.log('=== EMAIL CONFIRMED - LOGIN ALLOWED ===');
         setIsEmailConfirmed(emailConfirmed);
         try {
           // Check if user profile exists
