@@ -359,6 +359,14 @@ export default function Login() {
             'El correo electrónico o la contraseña son incorrectos. Por favor verifica tus datos e intenta nuevamente.',
             [{ text: 'Entendido', style: 'default' }]
           );
+        } else {
+          Alert.alert(
+            'Error de inicio de sesión',
+            error.message || 'Ocurrió un error inesperado. Por favor intenta nuevamente.',
+            [{ text: 'Entendido', style: 'default' }]
+          );
+        }
+      }
     } catch (error: any) {
       console.error('Login error:', error);
     } finally {
