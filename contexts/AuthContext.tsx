@@ -113,7 +113,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 notConfirmed: confirmationData?.is_confirmed !== true
               });
               
-              setAuthError('Debes confirmar tu correo electrónico antes de acceder a la aplicación. Revisa tu bandeja de entrada.');
+              setIsEmailConfirmed(false);
+              setAuthError('Debes confirmar tu correo electrónico antes de acceder a la aplicación.');
               await supabaseClient.auth.signOut();
               return;
             }
@@ -121,6 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.log('=== EMAIL CONFIRMED - ACCESS GRANTED ===');
             console.log('Confirmation validated for user:', session.user.email);
             setIsEmailConfirmed(true);
+            setAuthError(null); // Clear any previous auth errors
             
             let profile;
             try {
@@ -506,7 +508,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!emailConfirmed) {
           console.warn('Login - Email NOT confirmed for user:', email);
           setIsEmailConfirmed(false);
-          throw new Error('Email not confirmed');
+          throw new Error('Debes confirmar tu correo electrónico antes de iniciar sesión.');
         }
         
         console.log('Login - Email confirmation validated successfully');
