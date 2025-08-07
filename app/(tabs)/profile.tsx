@@ -526,6 +526,20 @@ export default function Profile() {
             </View>
             <ChevronRight size={16} color="#6B7280" />
           </TouchableOpacity>
+
+          {/* Debug option - only show in development */}
+          {__DEV__ && (
+            <TouchableOpacity 
+              style={styles.menuOption} 
+              onPress={() => router.push('/test-token-expiration')}
+            >
+              <View style={styles.menuOptionLeft}>
+                <Shield size={20} color="#F59E0B" />
+                <Text style={styles.menuOptionText}>🧪 Test Token Expiration</Text>
+              </View>
+              <ChevronRight size={16} color="#F59E0B" />
+            </TouchableOpacity>
+          )}
         </Card>
 
         {/* Advanced Settings */}
