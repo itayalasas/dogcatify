@@ -217,7 +217,7 @@ export default function Login() {
                 </Text>
               </TouchableOpacity>
             </View>
-          />
+          )}
 
           <Button
             title={t('signIn')}
@@ -225,6 +225,23 @@ export default function Login() {
             loading={loading}
             disabled={loading}
             size="large"
+            />
+          </View>
+
+          {isBiometricSupported && (
+            <View style={styles.saveCredentialsContainer}>
+              <TouchableOpacity 
+                style={styles.saveCredentialsRow} 
+                onPress={() => setSaveCredentials(!saveCredentials)}
+              >
+                <View style={[styles.checkbox, saveCredentials && styles.checkedCheckbox]}>
+                  {saveCredentials && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+                <Text style={styles.saveCredentialsText}>
+                  Guardar credenciales con {biometricType || 'biometría'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           />
 
           <View style={styles.forgotPasswordContainer}>
