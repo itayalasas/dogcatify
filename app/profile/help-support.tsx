@@ -118,7 +118,9 @@ export default function HelpSupport() {
       Alert.alert(
         'Contacto por WhatsApp',
         `Hubo un problema al abrir WhatsApp.\n\n📱 Puedes contactarnos directamente:\n+${phoneNumber}\n\n💬 Mensaje sugerido:\n"${message}"`,
-  };
+      )
+      };
+  }
 
   const handleReportBug = () => {
     Alert.alert(
