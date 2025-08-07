@@ -130,11 +130,6 @@ export default function HelpSupport() {
       );
     }
   };
-    } catch (error) {
-      console.error('Error opening WhatsApp:', error);
-      Alert.alert('Error', 'No se pudo abrir WhatsApp');
-    }
-  };
 
   const handleReportBug = () => {
     Alert.alert(
