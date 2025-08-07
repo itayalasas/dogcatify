@@ -90,7 +90,6 @@ export default function RootLayout() {
                   <Stack.Screen name="medical-history/[id]" />
                   <Stack.Screen name="pets/medical-history-preview" />
                   <Stack.Screen name="pets/share-medical-history" />
-                  <Stack.Screen name="test-token-expiration" />
                   <Stack.Screen name="+not-found" />
                 </Stack>
               </ErrorBoundary>
