@@ -196,6 +196,12 @@ export const generateSecureMedicalHistoryUrl = async (
   userId: string
 ): Promise<{ success: boolean; url?: string; token?: string; expiresAt?: Date; error?: string }> => {
   try {
+    // Check session validity before starting
+    const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+    if (sessionError || !session) {
+      return { success: false, error: 'Sesión no válida. Por favor inicia sesión nuevamente.' };
+    }
+
     const tokenResult = await createMedicalHistoryToken(petId, userId);
     
     if (!tokenResult.success || !tokenResult.token) {
@@ -214,6 +220,12 @@ export const generateSecureMedicalHistoryUrl = async (
       expiresAt: tokenResult.expiresAt
     };
   } catch (error) {
+    
+    // Check if this is a session error
+    if (error?.message?.includes('JWT') || error?.message?.includes('expired') || error?.message?.includes('session')) {
+      return { success: false, error: 'Tu sesión ha expirado. Por favor inicia sesión nuevamente.' };
+    }
+    
     console.error('Error generating secure medical history URL:', error);
     return { success: false, error: 'Failed to generate secure URL' };
   }
