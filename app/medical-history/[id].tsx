@@ -379,6 +379,7 @@ export default function MedicalHistoryShared() {
       
       // Call the Edge Function directly for web access
       const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
       const apiUrl = `${supabaseUrl}/functions/v1/medical-history/${id}${token ? `?token=${token}` : ''}`;
       
       console.log('Fetching from Edge Function:', apiUrl);
@@ -387,6 +388,8 @@ export default function MedicalHistoryShared() {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`,
+          'apikey': supabaseAnonKey,
         },
       });
       

@@ -11,6 +11,7 @@ serve(async (req: Request) => {
   console.log('=== MEDICAL HISTORY FUNCTION START ===');
   console.log('Request method:', req.method);
   console.log('Request URL:', req.url);
+  console.log('Request headers:', Object.fromEntries(req.headers.entries()));
   
   // Handle CORS preflight request
   if (req.method === 'OPTIONS') {
