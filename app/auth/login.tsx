@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import { router } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBiometric } from '../../contexts/BiometricContext';
 import { Lock, Mail, Eye, EyeOff } from 'lucide-react-native';
-import { resendConfirmationEmail } from '@/utils/emailConfirmation';
+import { resendConfirmationEmail } from '../../utils/emailConfirmation';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -27,7 +27,7 @@ export default function LoginScreen() {
   const [resendingEmail, setResendingEmail] = useState(false);
 
   const { login, currentUser } = useAuth();
-  const { isBiometricSupported, isBiometricEnabled, enableBiometric } = useBiometric();
+  const { isBiometricSupported, isBiometricEnabled, enableBiometric, authenticateWithBiometric } = useBiometric();
 
   useEffect(() => {
     if (currentUser) {
@@ -35,8 +35,33 @@ export default function LoginScreen() {
     }
   }, [currentUser]);
 
-  const handleLogin = async () => {
-    if (!email || !password) {
+  // Check for biometric authentication on component mount
+  useEffect(() => {
+    const checkBiometricLogin = async () => {
+      if (isBiometricEnabled && isBiometricSupported) {
+        try {
+          const credentials = await authenticateWithBiometric();
+          if (credentials) {
+            setEmail(credentials.email);
+            setPassword(credentials.password);
+            // Auto-login with biometric credentials
+            handleLogin(credentials.email, credentials.password);
+          }
+        } catch (error) {
+          console.log('Biometric authentication cancelled or failed');
+        }
+      }
+    };
+
+    // Small delay to ensure component is mounted
+    setTimeout(checkBiometricLogin, 500);
+  }, [isBiometricEnabled, isBiometricSupported]);
+
+  const handleLogin = async (emailParam?: string, passwordParam?: string) => {
+    const loginEmail = emailParam || email;
+    const loginPassword = passwordParam || password;
+
+    if (!loginEmail || !loginPassword) {
       Alert.alert('Error', 'Por favor completa todos los campos');
       return;
     }
@@ -46,14 +71,14 @@ export default function LoginScreen() {
     setShowEmailConfirmation(false);
 
     try {
-      console.log('Attempting login with credentials:', email);
-      const result = await login(email, password);
+      console.log('Attempting login with credentials:', loginEmail);
+      const result = await login(loginEmail, loginPassword);
       
-      if (result.success) {
-        console.log('Login - Email confirmation validated successfully');
+      if (result) {
+        console.log('Login successful - Email confirmation validated');
         
         // Show biometric setup only if login was successful and no auth errors
-        if (result && isBiometricSupported && !isBiometricEnabled && email && password) {
+        if (isBiometricSupported && !isBiometricEnabled && loginEmail && loginPassword) {
           Alert.alert(
             'Habilitar acceso rápido',
             '¿Quieres usar tu Face ID para iniciar sesión más rápido la próxima vez?',
@@ -63,7 +88,7 @@ export default function LoginScreen() {
                 text: 'Habilitar',
                 onPress: async () => {
                   try {
-                    await enableBiometric(email, password);
+                    await enableBiometric(loginEmail, loginPassword);
                   } catch (error) {
                     console.error('Error enabling biometric:', error);
                   }
@@ -73,17 +98,21 @@ export default function LoginScreen() {
           );
         }
       } else {
-        // Handle different error types
-        if (result.error === 'email_not_confirmed') {
-          setShowEmailConfirmation(true);
-          setAuthError('Tu correo electrónico no ha sido confirmado. Por favor revisa tu bandeja de entrada.');
-        } else {
-          setAuthError(result.error || 'Error al iniciar sesión');
-        }
+        // Handle login failure - check for email confirmation error
+        setAuthError('Credenciales inválidas o email no confirmado');
+        setShowEmailConfirmation(true);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
-      setAuthError('Error al iniciar sesión. Verifica tus credenciales.');
+      
+      // Check for email confirmation error
+      if (error.message?.includes('Email not confirmed') || 
+          error.message?.includes('confirmar tu correo')) {
+        setShowEmailConfirmation(true);
+        setAuthError('Tu correo electrónico no ha sido confirmado. Por favor revisa tu bandeja de entrada.');
+      } else {
+        setAuthError('Error al iniciar sesión. Verifica tus credenciales.');
+      }
     } finally {
       setLoading(false);
     }
@@ -200,7 +229,7 @@ export default function LoginScreen() {
 
           <TouchableOpacity
             style={[styles.loginButton, loading && styles.loginButtonDisabled]}
-            onPress={handleLogin}
+            onPress={() => handleLogin()}
             disabled={loading}
           >
             {loading ? (
