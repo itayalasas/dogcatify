@@ -215,18 +215,19 @@ export const resendConfirmationEmail = async (email: string): Promise<{ success:
       return { success: false, error: 'El email ya está confirmado' };
     }
 
+    // Also check our custom confirmation system
+    const { data: customConfirmation, error: customError } = await supabaseClient
+      .from('email_confirmations')
+      .select('is_confirmed')
+      .eq('user_id', userData.id)
+      .eq('type', 'signup')
+      .single();
+    
+    if (customConfirmation && customConfirmation.is_confirmed === true) {
+      return { success: false, error: 'El email ya está confirmado' };
+    }
+
    // Check if there's already a confirmed token for this user
-   const { data: existingConfirmed, error: existingError } = await supabaseClient
-     .from('email_confirmations')
-     .select('is_confirmed')
-     .eq('user_id', userData.id)
-     .eq('type', 'signup')
-     .eq('is_confirmed', true)
-     .single();
-   
-   if (existingConfirmed && !existingError) {
-     return { success: false, error: 'El email ya está confirmado' };
-   }
 
     // Invalidate any existing tokens for this user
     // Use service client to bypass RLS
