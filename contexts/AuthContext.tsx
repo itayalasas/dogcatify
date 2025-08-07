@@ -75,17 +75,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             try {
               const { data: confirmationData, error: confirmationError } = await supabaseClient
                 .from('email_confirmations')
-                .select('is_confirmed, user_id')
+                .select('*')
                 .eq('type', 'signup')
                 .eq('user_id', session.user.id)
                 .eq('is_confirmed', true)
                 .single();
               
-              if (confirmationData && !confirmationError && confirmationData.user_id === session.user.id) {
+              if (confirmationData && !confirmationError && 
+                  confirmationData.user_id === session.user.id && 
+                  confirmationData.is_confirmed === true) {
                 console.log('AuthContext - Email confirmed via custom system');
                 emailConfirmed = true;
               } else {
-                console.log('AuthContext - No valid custom confirmation found for this user_id');
+                console.log('AuthContext - No valid custom confirmation found for this user_id:', {
+                  hasData: !!confirmationData,
+                  error: confirmationError?.message,
+                  userId: session.user.id,
+                  isConfirmed: confirmationData?.is_confirmed
+                });
               }
             } catch (customError) {
               console.log('AuthContext - No custom confirmation found:', customError.message);
