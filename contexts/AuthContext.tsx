@@ -106,14 +106,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
            if (!confirmationData || 
                confirmationError || 
                confirmationData.user_id !== session.user.id || 
-               !confirmationData.is_confirmed) {
+               confirmationData.is_confirmed !== true) {
               
               console.log('=== EMAIL NOT CONFIRMED - BLOCKING ACCESS ===');
               console.log('Reason:', {
                 noData: !confirmationData,
                 hasError: !!confirmationError,
                 userIdMismatch: confirmationData?.user_id !== session.user.id,
-               notConfirmed: !confirmationData?.is_confirmed
+               notConfirmed: confirmationData?.is_confirmed !== true,
+               actualValue: confirmationData?.is_confirmed
               });
               
               setIsEmailConfirmed(false);
