@@ -193,8 +193,8 @@ export default function Login() {
         const result = await login(email, password);
         
         if (result) {
-          // Show biometric setup option after successful login
-          if (isBiometricSupported && !isBiometricEnabled && email && password) {
+          // Show biometric setup option ONLY after successful login AND email confirmation
+          if (isBiometricSupported && !isBiometricEnabled && email && password && isEmailConfirmed) {
             setShowBiometricOption(true);
           } else {
             // Redirect based on user type after successful login
@@ -326,23 +326,17 @@ export default function Login() {
               }
             ]
           );
-        } else if (error.message.includes('Email not confirmed')) {
+        } else if (error.message.includes('Email not confirmed') || 
+                   error.message.includes('confirma tu correo')) {
           Alert.alert(
             'Correo electrónico no confirmado',
-            'Debes confirmar tu correo electrónico antes de iniciar sesión. Revisa tu bandeja de entrada y haz clic en el enlace de confirmación.',
+            'Debes confirmar tu correo electrónico antes de iniciar sesión.\n\nRevisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace de confirmación.',
             [
               { 
                 text: 'Reenviar correo', 
                 onPress: async () => {
-                  // Mostrar loading en el botón
-                  Alert.alert(
-                    'Reenviando correo...',
-                    'Por favor espera mientras enviamos un nuevo correo de confirmación.',
-                    [],
-                    { cancelable: false }
-                  );
-                  
                   try {
+                    setLoading(true);
                     const { resendConfirmationEmail } = await import('../../utils/emailConfirmation');
                     const result = await resendConfirmationEmail(email);
                     
@@ -350,7 +344,6 @@ export default function Login() {
                       throw new Error(result.error || 'Error al reenviar confirmación');
                     }
                     
-                    // Cerrar el loading y mostrar éxito
                     Alert.alert(
                       '✅ Correo Reenviado', 
                       `Se ha enviado un nuevo correo de confirmación a ${email}.\n\nPor favor revisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace de confirmación.\n\nEl enlace expira en 24 horas.`,
@@ -363,6 +356,8 @@ export default function Login() {
                       resendError.message || 'No se pudo reenviar el correo de confirmación. Por favor verifica tu conexión e intenta más tarde.',
                       [{ text: 'Entendido', style: 'default' }]
                     );
+                  } finally {
+                    setLoading(false);
                   }
                 }
               },
@@ -532,8 +527,8 @@ export default function Login() {
           </TouchableOpacity>
         )}
 
-        {/* Biometric Setup Option */}
-        {showBiometricOption && isBiometricSupported && !isBiometricEnabled && (
+        {/* Biometric Setup Option - ONLY show if email is confirmed */}
+        {showBiometricOption && isBiometricSupported && !isBiometricEnabled && isEmailConfirmed && (
           <View style={styles.biometricSetup}>
             <Text style={styles.biometricSetupTitle} numberOfLines={2}>
               🔒 Habilitar acceso rápido
