@@ -12,8 +12,8 @@ import {
   ScrollView,
 } from 'react-native';
 import { router } from 'expo-router';
-import { AuthContext } from '@/contexts/AuthContext';
-import { BiometricContext } from '@/contexts/BiometricContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { useBiometric } from '../../contexts/BiometricContext';
 import { Lock, Mail, Eye, EyeOff } from 'lucide-react-native';
 import { resendConfirmationEmail } from '@/utils/emailConfirmation';
 
@@ -26,14 +26,14 @@ export default function LoginScreen() {
   const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
   const [resendingEmail, setResendingEmail] = useState(false);
 
-  const { login, user } = useContext(AuthContext);
-  const { isBiometricSupported, isBiometricEnabled, enableBiometric } = useContext(BiometricContext);
+  const { login, currentUser } = useAuth();
+  const { isBiometricSupported, isBiometricEnabled, enableBiometric } = useBiometric();
 
   useEffect(() => {
-    if (user) {
+    if (currentUser) {
       router.replace('/(tabs)');
     }
-  }, [user]);
+  }, [currentUser]);
 
   const handleLogin = async () => {
     if (!email || !password) {
