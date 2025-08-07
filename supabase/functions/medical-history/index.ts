@@ -335,12 +335,18 @@ serve(async (req: Request) => {
             line-height: 1.6;
             color: #333;
             background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            overflow-x: hidden;
+            overflow-y: auto;
         }
         .container {
             max-width: 800px;
             margin: 0 auto;
             background-color: white;
             min-height: 100vh;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
         }
         .header {
             background: linear-gradient(135deg, #2D6A6F 0%, #1e4a4f 100%);
@@ -359,6 +365,8 @@ serve(async (req: Request) => {
         }
         .content {
             padding: 30px;
+            overflow-y: auto;
+            max-height: none;
         }
         .debug-info {
             background-color: #f0f9ff;
@@ -502,6 +510,37 @@ serve(async (req: Request) => {
             font-size: 12px;
             color: #6c757d;
             margin-bottom: 5px;
+        }
+        @media print {
+            body { 
+                margin: 0; 
+                background-color: white;
+                overflow: visible;
+            }
+            .container {
+                box-shadow: none;
+                max-width: none;
+            }
+        }
+        @media (max-width: 768px) {
+            .content {
+                padding: 20px;
+                overflow-y: auto;
+            }
+            .pet-profile {
+                flex-direction: column;
+                text-align: center;
+            }
+            .pet-image {
+                margin-right: 0;
+                margin-bottom: 15px;
+            }
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+            .weight-grid {
+                grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            }
         }
     </style>
 </head>
