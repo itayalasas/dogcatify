@@ -203,7 +203,7 @@ export const resendConfirmationEmail = async (email: string): Promise<{ success:
     // Find user by email
     const { data: userData, error: userError } = await supabaseClient
       .from('profiles')
-      .select('id, display_name, email_confirmed')
+      .select('id, display_name')
       .eq('email', email)
       .single();
 
@@ -211,23 +211,7 @@ export const resendConfirmationEmail = async (email: string): Promise<{ success:
       return { success: false, error: 'Usuario no encontrado' };
     }
 
-    if (userData.email_confirmed) {
-      return { success: false, error: 'El email ya está confirmado' };
-    }
-
-    // Also check our custom confirmation system
-    const { data: customConfirmation, error: customError } = await supabaseClient
-      .from('email_confirmations')
-      .select('is_confirmed')
-      .eq('user_id', userData.id)
-      .eq('type', 'signup')
-      .single();
-    
-    if (customConfirmation && customConfirmation.is_confirmed === true) {
-      return { success: false, error: 'El email ya está confirmado' };
-    }
-
-   // Check if there's already a confirmed token for this user
+    console.log('Resending confirmation email for user:', userData.id);
 
     // Invalidate any existing tokens for this user
     // Use service client to bypass RLS
@@ -251,6 +235,7 @@ export const resendConfirmationEmail = async (email: string): Promise<{ success:
       confirmationUrl
     );
 
+    console.log('Confirmation email resent successfully');
     return { success: true };
   } catch (error) {
     console.error('Error resending confirmation email:', error);
