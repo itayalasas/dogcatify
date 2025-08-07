@@ -60,7 +60,12 @@
     "web": {
       "favicon": "./assets/images/logo.jpg",
       "bundler": "metro",
-      "output": "static"
+      "output": "static",
+      "build": {
+        "babel": {
+          "include": ["@expo/vector-icons"]
+        }
+      }
     },
     "runtimeVersion": {
       "policy": "sdkVersion"
