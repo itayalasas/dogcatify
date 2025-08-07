@@ -345,9 +345,9 @@ export default function AddPet() {
         name: name.trim(),
         species,
         breed: breed.trim(),
-        age: parseInt(age),
+        age: parseFloat(age),
         age_display: {
-          value: parseInt(age),
+          value: parseFloat(age),
           unit: ageUnit
         },
         weight: parseFloat(weight),
