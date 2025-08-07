@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Alert } from 'react-native';
 import { router } from 'expo-router';
-import { ArrowLeft, Shield, Clock, AlertTriangle } from 'lucide-react-native';
+import { ArrowLeft, Shield, Clock, TriangleAlert as AlertTriangle } from 'lucide-react-native';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../contexts/AuthContext';
