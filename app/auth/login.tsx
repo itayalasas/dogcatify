@@ -528,7 +528,7 @@ export default function Login() {
         )}
 
         {/* Biometric Setup Option - ONLY show if email is confirmed */}
-        {showBiometricOption && isBiometricSupported && !isBiometricEnabled && isEmailConfirmed && (
+        {showBiometricOption && isBiometricSupported && !isBiometricEnabled && (
           <View style={styles.biometricSetup}>
             <Text style={styles.biometricSetupTitle} numberOfLines={2}>
               🔒 Habilitar acceso rápido
