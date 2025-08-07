@@ -1,39 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from 'react-native';
-import { router } from 'expo-router';
+import { View, Text, StyleSheet, ScrollView, Alert, Image, TouchableOpacity } from 'react-native';
+import { Link, router } from 'expo-router';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
+import { Input } from '../../components/ui/Input';
+import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useBiometric } from '../../contexts/BiometricContext';
-import { Lock, Mail, Eye, EyeOff } from 'lucide-react-native';
 import { resendConfirmationEmail } from '../../utils/emailConfirmation';
 
-export default function LoginScreen() {
+export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
   const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
   const [resendingEmail, setResendingEmail] = useState(false);
-
-  const { login, currentUser } = useAuth();
-  const { isBiometricSupported, isBiometricEnabled, enableBiometric, authenticateWithBiometric } = useBiometric();
-
-  useEffect(() => {
-    if (currentUser) {
-      router.replace('/(tabs)');
-    }
-  }, [currentUser]);
+  const { login, authError, clearAuthError } = useAuth();
+  const { t } = useLanguage();
+  const { 
+    isBiometricSupported, 
+    isBiometricEnabled, 
+    biometricType, 
+    enableBiometric,
+    authenticateWithBiometric
+  } = useBiometric();
 
   // Check for biometric authentication on component mount
   useEffect(() => {
@@ -57,17 +48,30 @@ export default function LoginScreen() {
     setTimeout(checkBiometricLogin, 500);
   }, [isBiometricEnabled, isBiometricSupported]);
 
+  // Handle auth errors from context
+  useEffect(() => {
+    if (authError) {
+      if (authError.startsWith('EMAIL_NOT_CONFIRMED:')) {
+        const userEmail = authError.split(':')[1];
+        if (userEmail) {
+          setEmail(userEmail);
+        }
+        setShowEmailConfirmation(true);
+      }
+    }
+  }, [authError]);
+
   const handleLogin = async (emailParam?: string, passwordParam?: string) => {
     const loginEmail = emailParam || email;
     const loginPassword = passwordParam || password;
 
     if (!loginEmail || !loginPassword) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
+      Alert.alert(t('error'), t('fillAllFields'));
       return;
     }
 
     setLoading(true);
-    setAuthError(null);
+    clearAuthError();
     setShowEmailConfirmation(false);
 
     try {
@@ -75,13 +79,13 @@ export default function LoginScreen() {
       const result = await login(loginEmail, loginPassword);
       
       if (result) {
-        console.log('Login successful - Email confirmation validated');
+        console.log('Login successful');
         
-        // Show biometric setup only if login was successful and no auth errors
+        // Show biometric setup only if login was successful
         if (isBiometricSupported && !isBiometricEnabled && loginEmail && loginPassword) {
           Alert.alert(
             'Habilitar acceso rápido',
-            '¿Quieres usar tu Face ID para iniciar sesión más rápido la próxima vez?',
+            `¿Quieres usar tu ${biometricType || 'biometría'} para iniciar sesión más rápido la próxima vez?`,
             [
               { text: 'Ahora no', style: 'cancel' },
               {
@@ -89,6 +93,10 @@ export default function LoginScreen() {
                 onPress: async () => {
                   try {
                     await enableBiometric(loginEmail, loginPassword);
+                    Alert.alert(
+                      'Biometría habilitada',
+                      `${biometricType || 'La autenticación biométrica'} ha sido configurada correctamente.`
+                    );
                   } catch (error) {
                     console.error('Error enabling biometric:', error);
                   }
@@ -97,22 +105,12 @@ export default function LoginScreen() {
             ]
           );
         }
-      } else {
-        // Handle login failure - check for email confirmation error
-        setAuthError('Credenciales inválidas o email no confirmado');
-        setShowEmailConfirmation(true);
+        
+        router.replace('/(tabs)');
       }
     } catch (error: any) {
       console.error('Login error:', error);
-      
-      // Check for email confirmation error
-      if (error.message?.includes('Email not confirmed') || 
-          error.message?.includes('confirmar tu correo')) {
-        setShowEmailConfirmation(true);
-        setAuthError('Tu correo electrónico no ha sido confirmado. Por favor revisa tu bandeja de entrada.');
-      } else {
-        setAuthError('Error al iniciar sesión. Verifica tus credenciales.');
-      }
+      Alert.alert(t('error'), error.message);
     } finally {
       setLoading(false);
     }
@@ -131,10 +129,11 @@ export default function LoginScreen() {
         Alert.alert(
           'Correo enviado',
           'Se ha enviado un nuevo correo de confirmación. Revisa tu bandeja de entrada.',
-          [{ text: 'Entendido', style: 'default' }]
+          [{ text: 'Entendido', onPress: () => {
+            setShowEmailConfirmation(false);
+            clearAuthError();
+          }}]
         );
-        setShowEmailConfirmation(false);
-        setAuthError(null);
       } else {
         Alert.alert('Error', result.error || 'No se pudo reenviar el correo');
       }
@@ -147,280 +146,194 @@ export default function LoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.header}>
-          <Text style={styles.title}>¡Bienvenido de vuelta!</Text>
-          <Text style={styles.subtitle}>
-            Inicia sesión para conectar con tu comunidad de mascotas
-          </Text>
-        </View>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.header}>
+        <Image 
+          source={require('../../assets/images/logo.jpg')} 
+          style={styles.logo} 
+        />
+        <Text style={styles.title}>{t('welcomeBack')}</Text>
+        <Text style={styles.subtitle}>{t('signInSubtitle')}</Text>
+      </View>
 
-        <View style={styles.form}>
-          <View style={styles.inputContainer}>
-            <Mail size={20} color="#666" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Correo electrónico"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
+      <View style={styles.form}>
+        <Input
+          label={t('email')}
+          placeholder={t('email')}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          leftIcon={<Mail size={20} color="#6B7280" />}
+        />
 
-          <View style={styles.inputContainer}>
-            <Lock size={20} color="#666" style={styles.inputIcon} />
-            <TextInput
-              style={[styles.input, styles.passwordInput]}
-              placeholder="Contraseña"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <TouchableOpacity
-              style={styles.eyeIcon}
-              onPress={() => setShowPassword(!showPassword)}
-            >
-              {showPassword ? (
-                <EyeOff size={20} color="#666" />
-              ) : (
-                <Eye size={20} color="#666" />
-              )}
-            </TouchableOpacity>
-          </View>
-
-          {authError && (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>{authError}</Text>
-            </View>
-          )}
-
-          {showEmailConfirmation && (
-            <View style={styles.confirmationContainer}>
-              <Text style={styles.confirmationTitle}>Correo electrónico no confirmado</Text>
-              <Text style={styles.confirmationText}>
-                Debes confirmar tu correo electrónico antes de acceder a la aplicación.
-              </Text>
-              <Text style={styles.confirmationEmail}>Email: {email}</Text>
-              <Text style={styles.confirmationInstructions}>
-                Revisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace de confirmación.
-              </Text>
-              
-              <TouchableOpacity
-                style={styles.resendButton}
-                onPress={handleResendEmail}
-                disabled={resendingEmail}
-              >
-                {resendingEmail ? (
-                  <ActivityIndicator size="small" color="#fff" />
+        <View style={styles.passwordContainer}>
+          <Input
+            label={t('password')}
+            placeholder={t('password')}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+            leftIcon={<Lock size={20} color="#6B7280" />}
+            rightIcon={
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                {showPassword ? (
+                  <EyeOff size={20} color="#6B7280" />
                 ) : (
-                  <Text style={styles.resendButtonText}>REENVIAR CORREO</Text>
+                  <Eye size={20} color="#6B7280" />
                 )}
               </TouchableOpacity>
-            </View>
-          )}
-
-          <TouchableOpacity
-            style={[styles.loginButton, loading && styles.loginButtonDisabled]}
-            onPress={() => handleLogin()}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.loginButtonText}>Iniciar sesión</Text>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.forgotPassword}
-            onPress={() => router.push('/auth/forgot-password')}
-          >
-            <Text style={styles.forgotPasswordText}>¿Olvidaste tu contraseña?</Text>
-          </TouchableOpacity>
+            }
+          />
         </View>
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>¿No tienes una cuenta? </Text>
-          <TouchableOpacity onPress={() => router.push('/auth/register')}>
-            <Text style={styles.registerLink}>Regístrate</Text>
-          </TouchableOpacity>
+        {showEmailConfirmation && (
+          <View style={styles.confirmationContainer}>
+            <Text style={styles.confirmationTitle}>Correo electrónico no confirmado</Text>
+            <Text style={styles.confirmationText}>
+              Debes confirmar tu correo electrónico antes de acceder a la aplicación.
+            </Text>
+            <Text style={styles.confirmationEmail}>Email: {email}</Text>
+            <Text style={styles.confirmationInstructions}>
+              Revisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace de confirmación.
+            </Text>
+            
+            <Button
+              title={resendingEmail ? 'Enviando...' : 'Reenviar correo de confirmación'}
+              onPress={handleResendEmail}
+              loading={resendingEmail}
+              size="medium"
+              style={styles.resendButton}
+            />
+          </View>
+        )}
+
+        <Button
+          title={t('signIn')}
+          onPress={() => handleLogin()}
+          loading={loading}
+          disabled={loading}
+          size="large"
+        />
+
+        <View style={styles.forgotPasswordContainer}>
+          <Link href="/auth/forgot-password" style={styles.forgotPasswordLink}>
+            {t('forgotPassword')}
+          </Link>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </View>
+
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>
+          {t('dontHaveAccount')}{' '}
+          <Link href="/auth/register" style={styles.link}>
+            {t('signUp')}
+          </Link>
+        </Text>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#FFFFFF',
+    paddingTop: 30,
   },
-  scrollContainer: {
+  content: {
     flexGrow: 1,
-    justifyContent: 'center',
-    padding: 24,
+    padding: 20,
+    paddingTop: 20,
   },
   header: {
     alignItems: 'center',
     marginBottom: 32,
   },
+  logo: {
+    width: 140,
+    height: 140,
+    resizeMode: 'contain',
+    marginBottom: 16,
+  },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#2d3748',
-    marginBottom: 8,
+    fontFamily: 'Inter-Bold',
+    color: '#2D6A6F',
     textAlign: 'center',
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#718096',
+    color: '#6B7280',
     textAlign: 'center',
-    lineHeight: 24,
+    fontFamily: 'Inter-Regular',
   },
   form: {
-    marginBottom: 32,
+    width: '100%',
+    maxWidth: 400,
+    alignSelf: 'center',
   },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    marginBottom: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 4,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  inputIcon: {
-    marginRight: 12,
-  },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: '#2d3748',
-    paddingVertical: 16,
-  },
-  passwordInput: {
-    paddingRight: 40,
-  },
-  eyeIcon: {
-    position: 'absolute',
-    right: 16,
-    padding: 4,
-  },
-  errorContainer: {
-    backgroundColor: '#fed7d7',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-  },
-  errorText: {
-    color: '#c53030',
-    fontSize: 14,
-    textAlign: 'center',
+  passwordContainer: {
+    position: 'relative',
   },
   confirmationContainer: {
-    backgroundColor: '#e6fffa',
+    backgroundColor: '#EBF8FF',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#38b2ac',
+    borderColor: '#3B82F6',
   },
   confirmationTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#2c7a7b',
+    fontFamily: 'Inter-SemiBold',
+    color: '#1E40AF',
     marginBottom: 8,
   },
   confirmationText: {
     fontSize: 14,
-    color: '#2c7a7b',
+    fontFamily: 'Inter-Regular',
+    color: '#1E40AF',
     marginBottom: 8,
     lineHeight: 20,
   },
   confirmationEmail: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#2c7a7b',
+    fontFamily: 'Inter-SemiBold',
+    color: '#1E40AF',
     marginBottom: 8,
   },
   confirmationInstructions: {
     fontSize: 13,
-    color: '#2c7a7b',
+    fontFamily: 'Inter-Regular',
+    color: '#1E40AF',
     marginBottom: 16,
     lineHeight: 18,
   },
   resendButton: {
-    backgroundColor: '#38b2ac',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    backgroundColor: '#3B82F6',
+  },
+  forgotPasswordContainer: {
     alignItems: 'center',
+    marginTop: 16,
   },
-  resendButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  loginButton: {
-    backgroundColor: '#4299e1',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginBottom: 16,
-    shadowColor: '#4299e1',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  loginButtonDisabled: {
-    backgroundColor: '#a0aec0',
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  loginButtonText: {
-    color: '#fff',
+  forgotPasswordLink: {
+    color: '#3B82F6',
     fontSize: 16,
-    fontWeight: '600',
-  },
-  forgotPassword: {
-    alignItems: 'center',
-  },
-  forgotPasswordText: {
-    color: '#4299e1',
-    fontSize: 14,
+    fontFamily: 'Inter-Medium',
   },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 32,
   },
   footerText: {
-    color: '#718096',
-    fontSize: 14,
+    fontSize: 16,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
   },
-  registerLink: {
-    color: '#4299e1',
-    fontSize: 14,
-    fontWeight: '600',
+  link: {
+    color: '#3B82F6',
+    fontFamily: 'Inter-SemiBold',
   },
 });
