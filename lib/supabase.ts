@@ -93,21 +93,12 @@ const handleSupabaseError = (error: any) => {
       
       console.log('JWT error detected in API call:', errorMessage);
       
-      // Emit a custom event that the AuthContext can listen to
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('jwt-expired'));
-      }
+      // For React Native, we'll handle this through the AuthContext directly
+      // The AuthContext already has periodic token checking
     }
   }
 };
 
-// Listen for JWT expiration events (for web)
-if (typeof window !== 'undefined') {
-  window.addEventListener('jwt-expired', () => {
-    console.log('JWT expired event received');
-    // This will be handled by the AuthContext
-  });
-}
 // User profile functions
 export const getUserProfile = async (userId: string) => {
   try {
