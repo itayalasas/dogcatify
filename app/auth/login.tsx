@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, Image, TouchableOpacity, Modal } from 'react-native';
 import { Link, router } from 'expo-router';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 import { Input } from '../../components/ui/Input';
@@ -14,8 +14,10 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
   const [resendingEmail, setResendingEmail] = useState(false);
+  const [saveCredentials, setSaveCredentials] = useState(false);
+  const [showEmailConfirmationModal, setShowEmailConfirmationModal] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState('');
   const { login, authError, clearAuthError } = useAuth();
   const { t } = useLanguage();
   const { 
@@ -53,10 +55,8 @@ export default function Login() {
     if (authError) {
       if (authError.startsWith('EMAIL_NOT_CONFIRMED:')) {
         const userEmail = authError.split(':')[1];
-        if (userEmail) {
-          setEmail(userEmail);
-        }
-        setShowEmailConfirmation(true);
+        setPendingEmail(userEmail || email);
+        setShowEmailConfirmationModal(true);
       }
     }
   }, [authError]);
@@ -81,8 +81,18 @@ export default function Login() {
       if (result) {
         console.log('Login successful');
         
+        // Save credentials if user opted to save them
+        if (saveCredentials && isBiometricSupported) {
+          try {
+            await enableBiometric(loginEmail, loginPassword);
+            console.log('Credentials saved with biometric authentication');
+          } catch (error) {
+            console.error('Error saving credentials:', error);
+          }
+        }
+        
         // Show biometric setup only if login was successful
-        if (isBiometricSupported && !isBiometricEnabled && loginEmail && loginPassword) {
+        if (isBiometricSupported && !isBiometricEnabled && !saveCredentials && loginEmail && loginPassword) {
           Alert.alert(
             'Habilitar acceso rápido',
             `¿Quieres usar tu ${biometricType || 'biometría'} para iniciar sesión más rápido la próxima vez?`,
@@ -117,20 +127,20 @@ export default function Login() {
   };
 
   const handleResendEmail = async () => {
-    if (!email) {
+    if (!pendingEmail) {
       Alert.alert('Error', 'Por favor ingresa tu correo electrónico');
       return;
     }
 
     setResendingEmail(true);
     try {
-      const result = await resendConfirmationEmail(email);
+      const result = await resendConfirmationEmail(pendingEmail);
       if (result.success) {
         Alert.alert(
           'Correo enviado',
           'Se ha enviado un nuevo correo de confirmación. Revisa tu bandeja de entrada.',
           [{ text: 'Entendido', onPress: () => {
-            setShowEmailConfirmation(false);
+            setShowEmailConfirmationModal(false);
             clearAuthError();
           }}]
         );
@@ -145,65 +155,315 @@ export default function Login() {
     }
   };
 
+  const handleCloseEmailModal = () => {
+    setShowEmailConfirmationModal(false);
+    clearAuthError();
+  };
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <Image 
-          source={require('../../assets/images/logo.jpg')} 
-          style={styles.logo} 
-        />
-        <Text style={styles.title}>{t('welcomeBack')}</Text>
-        <Text style={styles.subtitle}>{t('signInSubtitle')}</Text>
-      </View>
-
-      <View style={styles.form}>
-        <Input
-          label={t('email')}
-          placeholder={t('email')}
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          leftIcon={<Mail size={20} color="#6B7280" />}
-        />
-
-        <View style={styles.passwordContainer}>
-          <Input
-            label={t('password')}
-            placeholder={t('password')}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPassword}
-            leftIcon={<Lock size={20} color="#6B7280" />}
-            rightIcon={
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                {showPassword ? (
-                  <EyeOff size={20} color="#6B7280" />
-                ) : (
-                  <Eye size={20} color="#6B7280" />
-                )}
-              </TouchableOpacity>
-            }
+    <>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <View style={styles.header}>
+          <Image 
+            source={require('../../assets/images/logo.jpg')} 
+            style={styles.logo} 
           />
+          <Text style={styles.title}>{t('welcomeBack')}</Text>
+          <Text style={styles.subtitle}>{t('signInSubtitle')}</Text>
         </View>
 
-        {showEmailConfirmation && (
-          <View style={styles.confirmationContainer}>
-            <Text style={styles.confirmationTitle}>Correo electrónico no confirmado</Text>
-            <Text style={styles.confirmationText}>
-              Debes confirmar tu correo electrónico antes de acceder a la aplicación.
+        <View style={styles.form}>
+          <Input
+            label={t('email')}
+            placeholder={t('email')}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            leftIcon={<Mail size={20} color="#6B7280" />}
+          />
+
+          <View style={styles.passwordContainer}>
+            <Input
+              label={t('password')}
+              placeholder={t('password')}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              leftIcon={<Lock size={20} color="#6B7280" />}
+              rightIcon={
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                  {showPassword ? (
+                    <EyeOff size={20} color="#6B7280" />
+                  ) : (
+                    <Eye size={20} color="#6B7280" />
+                  )}
+                </TouchableOpacity>
+              }
+            />
+          </View>
+
+          {isBiometricSupported && (
+            <View style={styles.saveCredentialsContainer}>
+              <TouchableOpacity 
+                style={styles.saveCredentialsRow} 
+                onPress={() => setSaveCredentials(!saveCredentials)}
+              >
+                <View style={[styles.checkbox, saveCredentials && styles.checkedCheckbox]}>
+                  {saveCredentials && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+                <Text style={styles.saveCredentialsText}>
+                  Guardar credenciales con {biometricType || 'biometría'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          />
+
+          <Button
+            title={t('signIn')}
+            onPress={() => handleLogin()}
+            loading={loading}
+            disabled={loading}
+            size="large"
+          />
+
+          <View style={styles.forgotPasswordContainer}>
+            <Link href="/auth/forgot-password" style={styles.forgotPasswordLink}>
+              {t('forgotPassword')}
+            </Link>
+          </View>
+        </View>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            {t('dontHaveAccount')}{' '}
+            <Link href="/auth/register" style={styles.link}>
+              {t('signUp')}
+            </Link>
+          </Text>
+        </View>
+      </ScrollView>
+
+      {/* Email Confirmation Modal */}
+      <Modal
+        visible={showEmailConfirmationModal}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCloseEmailModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>📧 Confirma tu correo</Text>
+            </View>
+            
+            <Text style={styles.modalText}>
+              Para continuar, debes confirmar tu correo electrónico.
             </Text>
-            <Text style={styles.confirmationEmail}>Email: {email}</Text>
-            <Text style={styles.confirmationInstructions}>
+            
+            <View style={styles.emailContainer}>
+              <Text style={styles.emailLabel}>Email:</Text>
+              <Text style={styles.emailValue}>{pendingEmail}</Text>
+            </View>
+            
+            <Text style={styles.modalInstructions}>
               Revisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace de confirmación.
             </Text>
             
-            <Button
-              title={resendingEmail ? 'Enviando...' : 'Reenviar correo de confirmación'}
-              onPress={handleResendEmail}
-              loading={resendingEmail}
-              size="medium"
-              style={styles.resendButton}
+            <View style={styles.modalActions}>
+              <Button
+                title="Cancelar"
+                onPress={handleCloseEmailModal}
+                variant="outline"
+                size="large"
+                style={styles.modalButton}
+              />
+              <Button
+                title={resendingEmail ? 'Enviando...' : 'Reenviar correo'}
+                onPress={handleResendEmail}
+                loading={resendingEmail}
+                size="large"
+                style={styles.modalButton}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    paddingTop: 30,
+  },
+  content: {
+    flexGrow: 1,
+    padding: 20,
+    paddingTop: 20,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  logo: {
+    width: 140,
+    height: 140,
+    resizeMode: 'contain',
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 28,
+    fontFamily: 'Inter-Bold',
+    color: '#2D6A6F',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    fontFamily: 'Inter-Regular',
+  },
+  form: {
+    width: '100%',
+    maxWidth: 400,
+    alignSelf: 'center',
+  },
+  passwordContainer: {
+    position: 'relative',
+  },
+  saveCredentialsContainer: {
+    marginBottom: 20,
+  },
+  saveCredentialsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    borderRadius: 4,
+    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  checkedCheckbox: {
+    backgroundColor: '#2D6A6F',
+    borderColor: '#2D6A6F',
+  },
+  checkmark: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  saveCredentialsText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+    flex: 1,
+  },
+  forgotPasswordContainer: {
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  forgotPasswordLink: {
+    color: '#3B82F6',
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+  },
+  footer: {
+    alignItems: 'center',
+    marginTop: 32,
+  },
+  footerText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+  },
+  link: {
+    color: '#3B82F6',
+    fontFamily: 'Inter-SemiBold',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
+    color: '#2D6A6F',
+    textAlign: 'center',
+  },
+  modalText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+    textAlign: 'center',
+    marginBottom: 16,
+    lineHeight: 24,
+  },
+  emailContainer: {
+    backgroundColor: '#F0F9FF',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#3B82F6',
+  },
+  emailLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#1E40AF',
+    marginBottom: 4,
+  },
+  emailValue: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1E40AF',
+  },
+  modalInstructions: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  modalActions: {
+    flexDirection: 'column',
+    gap: 12,
+  },
+  modalButton: {
+    width: '100%',
+  },
+});
             />
           </View>
         )}
