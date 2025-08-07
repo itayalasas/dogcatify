@@ -367,7 +367,7 @@ export default function Login() {
           );
         }
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Login error:', error);
     } finally {
       setLoading(false);
