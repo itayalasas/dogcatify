@@ -430,7 +430,7 @@ export default function AddPet() {
         Alert.alert(
           'Mascota agregada',
           'Tu mascota ha sido agregada correctamente',
-          [{ text: 'OK', onPress: () => router.replace('/(tabs)/pets') }]
+          [{ text: 'OK', onPress: () => router.push('/(tabs)/pets') }]
         );
       } else {
         console.log('Error creating pet:', error);
