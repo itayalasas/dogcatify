@@ -345,14 +345,14 @@ export default function AddPet() {
         name: name.trim(),
         species,
         breed: breed.trim(),
-        age: parseFloat(age),
+        age: Number(age),
         age_display: {
-          value: parseFloat(age),
+          value: Number(age),
           unit: ageUnit
         },
-        weight: parseFloat(weight),
+        weight: Number(weight),
         weight_display: {
-          value: parseFloat(weight),
+          value: Number(weight),
           unit: weightUnit
         },
         color: color.trim() || null,
@@ -365,7 +365,6 @@ export default function AddPet() {
         photo_url: photoURL,
         breed_info: breedInfo || null,
         personality: [],
-        created_at: new Date().toISOString()
       };
 
       console.log('Pet data:', petData);
