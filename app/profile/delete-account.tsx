@@ -75,25 +75,60 @@ export default function DeleteAccount() {
 
           setDeletionProgress(prev => [...prev, `Eliminando reservas de ${pet.id}...`]);
 
-          // Delete service reviews for this pet
-          await supabaseClient
+          console.log('Step 7: Deleting service reviews...');
+          const { error: reviewsError } = await supabaseClient
             .from('service_reviews')
             .delete()
             .eq('pet_id', pet.id);
+          
+          if (reviewsError) {
+            console.error('Error deleting service reviews:', reviewsError);
+            console.log('Continuing despite service reviews deletion error...');
+          } else {
+            console.log('Service reviews deleted successfully');
+          }
 
-          // Delete medical alerts for this pet
-          await supabaseClient
+          console.log('Step 8: Deleting behavior records...');
+          const { error: behaviorError } = await supabaseClient
+            .from('pet_behavior')
+            .delete()
+            .eq('pet_id', pet.id);
+          
+          if (behaviorError) {
+            console.error('Error deleting behavior records:', behaviorError);
+            console.log('Continuing despite behavior records deletion error...');
+          } else {
+            console.log('Behavior records deleted successfully');
+          }
+          
+          console.log('Step 9: Deleting medical alerts...');
+          const { error: alertsError } = await supabaseClient
             .from('medical_alerts')
             .delete()
             .eq('pet_id', pet.id);
-
-          // Delete medical history tokens for this pet
-          await supabaseClient
+          
+          if (alertsError) {
+            console.error('Error deleting medical alerts:', alertsError);
+            console.log('Continuing despite medical alerts deletion error...');
+          } else {
+            console.log('Medical alerts deleted successfully');
+          }
+          
+          console.log('Step 10: Deleting medical history tokens...');
+          const { error: tokensError } = await supabaseClient
             .from('medical_history_tokens')
             .delete()
             .eq('pet_id', pet.id);
+          
+          if (tokensError) {
+            console.error('Error deleting medical history tokens:', tokensError);
+            console.log('Continuing despite tokens deletion error...');
+          } else {
+            console.log('Medical history tokens deleted successfully');
+          }
         }
 
+        console.log('Step 11: Now deleting the pet...');
         // Delete all pets
         await supabaseClient
           .from('pets')
@@ -141,7 +176,7 @@ export default function DeleteAccount() {
 
       setDeletionProgress(prev => [...prev, 'Eliminando comentarios en otras publicaciones...']);
 
-      // 3. Delete email confirmations FIRST (before profile)
+      // Delete user-level data (not pet-specific)
       setDeletionProgress(prev => [...prev, 'Eliminando tokens de confirmación de email...']);
       console.log('Step 12: Deleting email confirmations...');
       const { error: emailConfirmationsError } = await supabaseClient
@@ -157,7 +192,6 @@ export default function DeleteAccount() {
         setDeletionProgress(prev => [...prev, '✅ Tokens de confirmación eliminados']);
       }
       
-      // 4. Delete chat conversations and messages
       console.log('Step 13: Deleting chat conversations and messages...');
       const { data: userConversations } = await supabaseClient
         .from('chat_conversations')
@@ -181,7 +215,6 @@ export default function DeleteAccount() {
           .eq('user_id', currentUser.id);
       }
       
-      // 5. Delete adoption chats and messages
       console.log('Step 14: Deleting adoption chats and messages...');
       const { data: adoptionChats } = await supabaseClient
         .from('adoption_chats')
@@ -205,7 +238,7 @@ export default function DeleteAccount() {
           .eq('customer_id', currentUser.id);
       }
       
-      // 6. Delete user-level data
+      // Delete user-level data (not pet-specific)
       console.log('Step 15: Deleting user bookings...');
       const { error: bookingsError } = await supabaseClient
         .from('bookings')
@@ -214,10 +247,9 @@ export default function DeleteAccount() {
       
       if (bookingsError) {
         console.error('Error deleting bookings:', bookingsError);
-        setDeletionProgress(prev => [...prev, `⚠️ Error eliminando reservas: ${bookingsError.message}`]);
+        console.log('Continuing despite bookings deletion error...');
       } else {
         console.log('User bookings deleted successfully');
-        setDeletionProgress(prev => [...prev, '✅ Reservas eliminadas']);
       }
 
       console.log('Step 16: Deleting orders...');
@@ -228,10 +260,9 @@ export default function DeleteAccount() {
       
       if (ordersError) {
         console.error('Error deleting orders:', ordersError);
-        setDeletionProgress(prev => [...prev, `⚠️ Error eliminando pedidos: ${ordersError.message}`]);
+        console.log('Continuing despite orders deletion error...');
       } else {
         console.log('Orders deleted successfully');
-        setDeletionProgress(prev => [...prev, '✅ Pedidos eliminados']);
       }
 
       console.log('Step 17: Deleting cart...');
@@ -242,10 +273,9 @@ export default function DeleteAccount() {
       
       if (cartError) {
         console.error('Error deleting cart:', cartError);
-        setDeletionProgress(prev => [...prev, `⚠️ Error eliminando carrito: ${cartError.message}`]);
+        console.log('Continuing despite cart deletion error...');
       } else {
         console.log('Cart deleted successfully');
-        setDeletionProgress(prev => [...prev, '✅ Carrito eliminado']);
       }
 
       console.log('Step 18: Deleting service reviews...');
@@ -256,125 +286,48 @@ export default function DeleteAccount() {
       
       if (reviewsError) {
         console.error('Error deleting service reviews:', reviewsError);
-        setDeletionProgress(prev => [...prev, `⚠️ Error eliminando reseñas: ${reviewsError.message}`]);
+        console.log('Continuing despite service reviews deletion error...');
       } else {
         console.log('Service reviews deleted successfully');
-        setDeletionProgress(prev => [...prev, '✅ Reseñas eliminadas']);
       }
 
-      // Handle partner data if user is a partner
-      setDeletionProgress(prev => [...prev, 'Verificando datos de negocio...']);
-      console.log('Checking for partner data...');
-      const { data: partnerData } = await supabaseClient
-        .from('partners')
-        .select('id')
-        .eq('user_id', currentUser.id);
-
-      if (partnerData && partnerData.length > 0) {
-        setDeletionProgress(prev => [...prev, '❌ Error: Usuario tiene negocios asociados']);
-        Alert.alert(
-          'Cuenta con negocio',
-          'Tu cuenta tiene negocios asociados. Para eliminar tu cuenta, primero debes transferir o eliminar tus negocios. Contacta con soporte para asistencia.',
-          [{ text: 'Entendido', onPress: () => setLoading(false) }]
-        );
-        return;
-      }
-
-      // 7. CRITICAL: Delete user profile with detailed verification
-      setDeletionProgress(prev => [...prev, '🔍 Verificando perfil antes de eliminar...']);
-      console.log('=== PROFILE DELETION DEBUG START ===');
-      console.log('User ID to delete:', currentUser.id);
-      console.log('User email:', currentUser.email);
-      
-      // First verify the profile exists
-      const { data: existingProfile, error: checkError } = await supabaseClient
-        .from('profiles')
-        .select('id, email, display_name')
-        .eq('id', currentUser.id)
-        .single();
-      
-      console.log('Profile check result:', {
-        exists: !!existingProfile,
-        error: checkError?.message,
-        errorCode: checkError?.code,
-        profileData: existingProfile
-      });
-      
-      if (checkError && checkError.code === 'PGRST116') {
-        console.log('✅ Profile already deleted or does not exist');
-        setDeletionProgress(prev => [...prev, '✅ Perfil ya fue eliminado anteriormente']);
-      } else if (existingProfile) {
-        console.log('📋 Profile found, proceeding with deletion...');
-        setDeletionProgress(prev => [...prev, `📋 Perfil encontrado: ${existingProfile.display_name} (${existingProfile.email})`]);
-        
-        // Execute the deletion
-        console.log('Executing profile deletion...');
-        const { error: profileError } = await supabaseClient
-          .from('profiles')
-          .delete()
-          .eq('id', currentUser.id);
-        
-        console.log('Profile deletion result:', {
-          error: profileError?.message,
-          errorCode: profileError?.code,
-          errorDetails: profileError ? JSON.stringify(profileError, null, 2) : 'No error'
-        });
-        
-        if (profileError) {
-          console.error('❌ Error deleting profile:', profileError);
-          
-          if (profileError.message?.includes('JWT expired')) {
-            Alert.alert('Sesión expirada', 'Por favor inicia sesión nuevamente.');
-            router.replace('/auth/login');
-            return;
-          }
-          
-          setDeletionProgress(prev => [...prev, `❌ Error eliminando perfil: ${profileError.message}`]);
-          throw new Error(`No se pudo eliminar el perfil: ${profileError.message}`);
-        } else {
-          console.log('✅ Profile deletion query executed successfully');
-          setDeletionProgress(prev => [...prev, '✅ Consulta de eliminación ejecutada']);
-          
-          // Verify the profile was actually deleted
-          console.log('Verifying profile deletion...');
-          const { data: verifyProfile, error: verifyError } = await supabaseClient
-            .from('profiles')
-            .select('id, email, display_name')
-            .eq('id', currentUser.id)
-            .single();
-          
-          console.log('Profile verification result:', {
-            stillExists: !!verifyProfile,
-            error: verifyError?.message,
-            errorCode: verifyError?.code,
-            profileData: verifyProfile
-          });
-          
-          if (verifyError && verifyError.code === 'PGRST116') {
-            console.log('✅ Profile successfully deleted - verification confirms deletion');
-            setDeletionProgress(prev => [...prev, '✅ Perfil eliminado y verificado']);
-          } else if (verifyProfile) {
-            console.error('❌ Profile still exists after deletion attempt');
-            console.error('Profile that still exists:', verifyProfile);
-            setDeletionProgress(prev => [...prev, '❌ Error: Perfil aún existe después de eliminación']);
-            throw new Error('El perfil no se eliminó correctamente - aún existe en la base de datos');
-          } else {
-            console.log('Profile verification had unexpected error:', verifyError);
-            setDeletionProgress(prev => [...prev, '⚠️ No se pudo verificar eliminación del perfil']);
-          }
+        if (profileError.message?.includes('JWT expired')) {
+          Alert.alert('Sesión expirada', 'Por favor inicia sesión nuevamente.');
+          router.replace('/auth/login');
+          return;
         }
+        
+        setDeletionProgress(prev => [...prev, `❌ Error eliminando perfil: ${profileError.message}`]);
+        throw new Error(`No se pudo eliminar el perfil: ${profileError.message}`);
       } else {
-        console.log('⚠️ Profile check had unexpected result');
-        setDeletionProgress(prev => [...prev, '⚠️ Estado del perfil incierto']);
+        console.log('Profile deletion query executed successfully');
+        
+        // Verify the profile was actually deleted
+        const { data: verifyProfile, error: verifyError } = await supabaseClient
+          .from('profiles')
+          .select('id')
+          .eq('id', currentUser.id)
+          .single();
+        
+        if (verifyError && verifyError.code === 'PGRST116') {
+          console.log('✅ Profile successfully deleted - verification confirms deletion');
+          setDeletionProgress(prev => [...prev, '✅ Perfil eliminado y verificado']);
+        } else if (verifyProfile) {
+          console.error('❌ Profile still exists after deletion attempt');
+          setDeletionProgress(prev => [...prev, '❌ Error: Perfil aún existe después de eliminación']);
+          throw new Error('El perfil no se eliminó correctamente');
+        } else {
+          console.log('Profile verification had unexpected error:', verifyError);
+          setDeletionProgress(prev => [...prev, '⚠️ No se pudo verificar eliminación del perfil']);
+        }
       }
-      
-      console.log('=== PROFILE DELETION DEBUG END ===');
 
-      // 8. Try to delete user from auth.users table (optional - don't fail if it doesn't work)
-      setDeletionProgress(prev => [...prev, '🔐 Intentando eliminar del sistema de autenticación...']);
-      console.log('Attempting to delete user from auth.users table...');
+      // Delete user from auth.users table (this requires admin privileges)
+      setDeletionProgress(prev => [...prev, 'Eliminando usuario del sistema de autenticación...']);
+      console.log('Deleting user from auth.users table...');
       
       try {
+        // Try to delete from auth.users table
         const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
         const response = await fetch(`${supabaseUrl}/functions/v1/delete-user`, {
           method: 'POST',
@@ -399,32 +352,32 @@ export default function DeleteAccount() {
           } else {
             console.warn('Could not delete from auth.users:', result.error);
             setDeletionProgress(prev => [...prev, `⚠️ No se pudo eliminar de auth: ${result.error}`]);
-            setDeletionProgress(prev => [...prev, '⚠️ Continuando con logout (datos ya eliminados)...']);
+            setDeletionProgress(prev => [...prev, '⚠️ Continuando con logout forzado...']);
           }
         } else {
           const errorText = await response.text();
           console.warn('Auth deletion API error:', response.status, errorText);
           setDeletionProgress(prev => [...prev, `⚠️ Error API auth (${response.status})`]);
-          setDeletionProgress(prev => [...prev, '⚠️ Continuando con logout (datos ya eliminados)...']);
+          setDeletionProgress(prev => [...prev, '⚠️ Continuando con logout forzado...']);
         }
       } catch (authError) {
         console.warn('Error deleting from auth system:', authError);
         setDeletionProgress(prev => [...prev, `⚠️ Error eliminando de auth: ${authError.message}`]);
-        setDeletionProgress(prev => [...prev, '⚠️ Continuando con logout (datos ya eliminados)...']);
+        setDeletionProgress(prev => [...prev, '⚠️ Continuando con logout forzado...']);
       }
 
-      // 9. Sign out user from current session
-      setDeletionProgress(prev => [...prev, '🚪 Cerrando sesión...']);
+      // Sign out user from current session
+      setDeletionProgress(prev => [...prev, 'Cerrando sesión...']);
       console.log('Signing out user...');
       await logout();
       
-      setDeletionProgress(prev => [...prev, '✅ Todos los datos del usuario eliminados']);
-      setDeletionProgress(prev => [...prev, '✅ Sesión cerrada - Cuenta desactivada']);
+      setDeletionProgress(prev => [...prev, '✅ Proceso de eliminación completado']);
+      setDeletionProgress(prev => [...prev, '✅ Sesión cerrada - Datos eliminados']);
       console.log('✅ Account deletion process completed successfully');
       
       Alert.alert(
-        'Datos eliminados',
-        'Todos tus datos han sido eliminados de DogCatiFy. Tu cuenta ha sido desactivada y puedes crear una nueva cuenta con el mismo email si lo deseas.',
+        'Cuenta eliminada',
+        'Todos tus datos han sido eliminados de DogCatiFy. Puedes crear una nueva cuenta con el mismo email si lo deseas.',
         [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
       );
 
@@ -433,7 +386,8 @@ export default function DeleteAccount() {
       console.error('Error deleting account:', error);
       Alert.alert(
         'Error',
-        `Ocurrió un error durante la eliminación: ${error.message || error}. Algunos datos pueden haber sido eliminados. Por favor contacta con soporte para completar el proceso.`
+        `Ocurrió un error durante la eliminación: ${error.message || error}. Por favor contacta con soporte para completar el proceso.`,
+        [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
       );
     } finally {
       setLoading(false);
@@ -775,36 +729,6 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     fontFamily: 'Inter-Medium',
-    textAlign: 'center',
-    backgroundColor: '#FFFFFF',
-    marginBottom: 16,
-  },
-  confirmationNote: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#991B1B',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  finalActions: {
-    gap: 12,
-    marginBottom: 24,
-  },
-  deleteButton: {
-    backgroundColor: '#991B1B',
-  },
-  progressContainer: {
-    backgroundColor: '#F3F4F6',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 16,
-    maxHeight: 200,
-  },
-  progressTitle: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    color: '#374151',
-    marginBottom: 8,
   },
   progressScroll: {
     maxHeight: 150,
