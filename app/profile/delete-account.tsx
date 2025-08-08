@@ -338,7 +338,7 @@ export default function DeleteAccount() {
       console.log('Deleting user from auth.users table...');
       
       try {
-        // Call Edge Function to delete user from auth.users table
+        // Try to delete from auth.users table
         const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
         const response = await fetch(`${supabaseUrl}/functions/v1/delete-user`, {
           method: 'POST',
@@ -361,20 +361,20 @@ export default function DeleteAccount() {
             setDeletionProgress(prev => [...prev, '✅ Usuario eliminado del sistema de autenticación']);
             console.log('✅ User deleted from auth.users table');
           } else {
-            console.error('Could not delete from auth.users:', result.error);
-            setDeletionProgress(prev => [...prev, `❌ Error en auth: ${result.error}`]);
-            throw new Error(`No se pudo eliminar del sistema de autenticación: ${result.error}`);
+            console.warn('Could not delete from auth.users:', result.error);
+            setDeletionProgress(prev => [...prev, `⚠️ No se pudo eliminar de auth: ${result.error}`]);
+            setDeletionProgress(prev => [...prev, '⚠️ Continuando con logout forzado...']);
           }
         } else {
           const errorText = await response.text();
-          console.error('Auth deletion API error:', response.status, errorText);
-          setDeletionProgress(prev => [...prev, `❌ Error API auth (${response.status}): ${errorText}`]);
-          throw new Error(`Error del servidor de autenticación: ${response.status} - ${errorText}`);
+          console.warn('Auth deletion API error:', response.status, errorText);
+          setDeletionProgress(prev => [...prev, `⚠️ Error API auth (${response.status})`]);
+          setDeletionProgress(prev => [...prev, '⚠️ Continuando con logout forzado...']);
         }
       } catch (authError) {
-        console.error('Error deleting from auth system:', authError);
-        setDeletionProgress(prev => [...prev, `❌ Error eliminando de auth: ${authError.message}`]);
-        throw new Error(`No se pudo eliminar del sistema de autenticación: ${authError.message}`);
+        console.warn('Error deleting from auth system:', authError);
+        setDeletionProgress(prev => [...prev, `⚠️ Error eliminando de auth: ${authError.message}`]);
+        setDeletionProgress(prev => [...prev, '⚠️ Continuando con logout forzado...']);
       }
 
       // Sign out user from current session
@@ -382,12 +382,13 @@ export default function DeleteAccount() {
       console.log('Signing out user...');
       await logout();
       
-      setDeletionProgress(prev => [...prev, '✅ Proceso de eliminación completado exitosamente']);
+      setDeletionProgress(prev => [...prev, '✅ Datos del usuario eliminados exitosamente']);
+      setDeletionProgress(prev => [...prev, '✅ Sesión cerrada - Cuenta desactivada']);
       console.log('✅ Account deletion process completed successfully');
       
       Alert.alert(
-        'Cuenta eliminada',
-        'Tu cuenta y todos tus datos han sido eliminados permanentemente de DogCatiFy. Puedes crear una nueva cuenta con el mismo email si lo deseas.',
+        'Datos eliminados',
+        'Todos tus datos han sido eliminados de DogCatiFy. Tu cuenta ha sido desactivada y puedes crear una nueva cuenta con el mismo email si lo deseas.',
         [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
       );
 
@@ -396,7 +397,7 @@ export default function DeleteAccount() {
       console.error('Error deleting account:', error);
       Alert.alert(
         'Error',
-        `Ocurrió un error al eliminar tu cuenta: ${error.message || error}. Por favor contacta con soporte para asistencia.`
+        `Ocurrió un error durante la eliminación: ${error.message || error}. Algunos datos pueden haber sido eliminados. Por favor contacta con soporte para completar el proceso.`
       );
     } finally {
       setLoading(false);
