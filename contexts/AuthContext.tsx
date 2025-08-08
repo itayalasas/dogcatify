@@ -337,21 +337,18 @@ export default function DeleteAccount() {
       console.log('Deleting user from auth.users table...');
       
       try {
-        setDeletionProgress(prev => [...prev, `⚠️ Error API auth (${response.status})`]);
-        await supabaseClient.auth.signOut();
-        setCurrentUser(null);
-        setSession(null);
-        setIsEmailConfirmed(false);
-        setDeletionProgress(prev => [...prev, '⚠️ Continuando con logout forzado...']);
-      } catch (authError) {
-        console.warn('Error deleting from auth system:', authError);
-        setDeletionProgress(prev => [...prev, `⚠️ Error eliminando de auth: ${authError.message}`]);
-        setDeletionProgress(prev => [...prev, '⚠️ Continuando con logout forzado...']);
-      }
-
-      // Sign out user from current session
-      setDeletionProgress(prev => [...prev, 'Cerrando sesión...']);
-      console.log('Signing out user...');
+        // Try to delete from auth.users table
+        const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+        const response = await fetch(`${supabaseUrl}/functions/v1/delete-user`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            userId: currentUser.id
+          }),
+        });
       await logout();
       
       setDeletionProgress(prev => [...prev, '✅ Proceso de eliminación completado']);
