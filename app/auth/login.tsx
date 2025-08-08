@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Modal, Platform, Animated } from 'react-native';
 import { Link, router } from 'expo-router';
-import { Mail, Lock, Eye, EyeOff, Fingerprint, AlertCircle, X, CheckCircle } from 'lucide-react-native';
+import { Mail, Lock, Eye, EyeOff, Fingerprint, CircleAlert as AlertCircle, X, CircleCheck as CheckCircle } from 'lucide-react-native';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../contexts/AuthContext';
