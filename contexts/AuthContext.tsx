@@ -512,7 +512,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         
         console.log('=== EMAIL CONFIRMED - LOGIN ALLOWED ===');
-        setIsEmailConfirmed(emailConfirmed);
+        setIsEmailConfirmed(true);
         try {
           // Check if user profile exists
           const profile = await getUserProfile(data.user.id);
