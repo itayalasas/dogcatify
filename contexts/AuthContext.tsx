@@ -637,15 +637,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('AuthContext - Attempting registration for:', email);
       
+      // Simplificar signUp para evitar comportamientos automáticos
       const { data, error } = await supabaseClient.auth.signUp({
         email,
-        password,
-        options: {
-          emailRedirectTo: undefined,
-          data: {
-            display_name: displayName,
-          },
-        }
+        password
       });
       
       if (error) {
@@ -656,6 +651,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('AuthContext - Registration successful');
       
       if (data.user) {
+        // Crear perfil manualmente después del registro
+        try {
+          await updateUserProfile(data.user.id, {
+            display_name: displayName,
+            email: email,
+            is_owner: true,
+            is_partner: false,
+            email_confirmed: false,
+            created_at: new Date().toISOString()
+          });
+          console.log('User profile created successfully');
+        } catch (profileError) {
+          console.error('Error creating user profile:', profileError);
+          // Continue with registration even if profile creation fails
+        }
+        
         console.log('Creating custom email confirmation token for user:', data.user.id);
         
         // Create our custom email confirmation token
@@ -675,7 +686,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('Custom confirmation email sent successfully');
       }
       
-      // Sign out AFTER sending email to prevent modal
+      // Sign out inmediatamente para evitar cualquier modal automático
       await supabaseClient.auth.signOut();
       
       console.log('Registration completed successfully, user needs to confirm email');
