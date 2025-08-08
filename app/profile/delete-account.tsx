@@ -291,47 +291,36 @@ export default function DeleteAccount() {
         console.log('Service reviews deleted successfully');
       }
 
-      // Handle partner data if user is a partner
-      setDeletionProgress(prev => [...prev, 'Verificando datos de negocio...']);
-      console.log('Checking for partner data...');
-      const { data: partnerData } = await supabaseClient
-        .from('partners')
-        .select('id')
-        .eq('user_id', currentUser.id);
-
-      if (partnerData && partnerData.length > 0) {
-        setDeletionProgress(prev => [...prev, '❌ Error: Usuario tiene negocios asociados']);
-        Alert.alert(
-          'Cuenta con negocio',
-          'Tu cuenta tiene negocios asociados. Para eliminar tu cuenta, primero debes transferir o eliminar tus negocios. Contacta con soporte para asistencia.',
-          [{ text: 'Entendido', onPress: () => setLoading(false) }]
-        );
-        return;
-      }
-
-      // Delete user profile from profiles table
-      setDeletionProgress(prev => [...prev, 'Eliminando perfil de usuario...']);
-      console.log('Deleting user profile...');
-      
-      // Delete user profile directly
-      const { error: profileError } = await supabaseClient
-        .from('profiles')
-        .delete()
-        .eq('id', currentUser.id);
-      
-      if (profileError) {
-        console.error('Error deleting user profile:', profileError);
         if (profileError.message?.includes('JWT expired')) {
           Alert.alert('Sesión expirada', 'Por favor inicia sesión nuevamente.');
           router.replace('/auth/login');
           return;
         }
+        
         setDeletionProgress(prev => [...prev, `❌ Error eliminando perfil: ${profileError.message}`]);
         throw new Error(`No se pudo eliminar el perfil: ${profileError.message}`);
+      } else {
+        console.log('Profile deletion query executed successfully');
+        
+        // Verify the profile was actually deleted
+        const { data: verifyProfile, error: verifyError } = await supabaseClient
+          .from('profiles')
+          .select('id')
+          .eq('id', currentUser.id)
+          .single();
+        
+        if (verifyError && verifyError.code === 'PGRST116') {
+          console.log('✅ Profile successfully deleted - verification confirms deletion');
+          setDeletionProgress(prev => [...prev, '✅ Perfil eliminado y verificado']);
+        } else if (verifyProfile) {
+          console.error('❌ Profile still exists after deletion attempt');
+          setDeletionProgress(prev => [...prev, '❌ Error: Perfil aún existe después de eliminación']);
+          throw new Error('El perfil no se eliminó correctamente');
+        } else {
+          console.log('Profile verification had unexpected error:', verifyError);
+          setDeletionProgress(prev => [...prev, '⚠️ No se pudo verificar eliminación del perfil']);
+        }
       }
-      
-      setDeletionProgress(prev => [...prev, '✅ Perfil de usuario eliminado correctamente']);
-      console.log('User profile deleted successfully');
 
       // Delete user from auth.users table (this requires admin privileges)
       setDeletionProgress(prev => [...prev, 'Eliminando usuario del sistema de autenticación...']);
@@ -382,13 +371,13 @@ export default function DeleteAccount() {
       console.log('Signing out user...');
       await logout();
       
-      setDeletionProgress(prev => [...prev, '✅ Datos del usuario eliminados exitosamente']);
-      setDeletionProgress(prev => [...prev, '✅ Sesión cerrada - Cuenta desactivada']);
+      setDeletionProgress(prev => [...prev, '✅ Proceso de eliminación completado']);
+      setDeletionProgress(prev => [...prev, '✅ Sesión cerrada - Datos eliminados']);
       console.log('✅ Account deletion process completed successfully');
       
       Alert.alert(
-        'Datos eliminados',
-        'Todos tus datos han sido eliminados de DogCatiFy. Tu cuenta ha sido desactivada y puedes crear una nueva cuenta con el mismo email si lo deseas.',
+        'Cuenta eliminada',
+        'Todos tus datos han sido eliminados de DogCatiFy. Puedes crear una nueva cuenta con el mismo email si lo deseas.',
         [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
       );
 
@@ -397,7 +386,8 @@ export default function DeleteAccount() {
       console.error('Error deleting account:', error);
       Alert.alert(
         'Error',
-        `Ocurrió un error durante la eliminación: ${error.message || error}. Algunos datos pueden haber sido eliminados. Por favor contacta con soporte para completar el proceso.`
+        `Ocurrió un error durante la eliminación: ${error.message || error}. Por favor contacta con soporte para completar el proceso.`,
+        [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
       );
     } finally {
       setLoading(false);
