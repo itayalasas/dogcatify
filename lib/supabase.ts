@@ -13,8 +13,11 @@ export const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true,
+    detectSessionInUrl: false,
     flowType: 'pkce',
+    // Disable automatic email confirmation
+    confirmationUrl: undefined,
+    emailRedirectTo: undefined,
   },
   global: {
     headers: {

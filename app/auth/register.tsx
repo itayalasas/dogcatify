@@ -45,11 +45,11 @@ export default function Register() {
     try {
       await register(email, password, fullName);
       
-      // Clear loading state
+      // Clear loading state and wait for cleanup
       setLoading(false);
       
-      // Small delay to ensure signOut completes
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Longer delay to ensure complete cleanup
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       Alert.alert(
         '¡Registro exitoso! 🎉',

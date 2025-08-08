@@ -16,18 +16,17 @@ export default function RootLayout() {
 
   // Prevent Supabase from showing automatic modals
   useEffect(() => {
-    // Prevent only signup confirmation modals
+    // Aggressively prevent ALL Supabase auth modals
     const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(
       (event, session) => {
-        console.log('Auth event intercepted:', event);
+        console.log('Auth event intercepted and blocked:', event);
         
-        // Only block SIGNED_UP events to prevent confirmation modal
-        if (event === 'SIGNED_UP') {
-          console.log('Blocking SIGNED_UP event to prevent confirmation modal');
+        // Block ALL events that could trigger modals during registration
+        if (event === 'SIGNED_UP' || event === 'SIGNED_IN') {
+          console.log('Blocking auth event to prevent modal:', event);
           supabaseClient.auth.signOut();
           return;
         }
-        // Allow other events to process normally
       }
     );
 
