@@ -119,7 +119,11 @@ export default function Login() {
       }
     } catch (error: any) {
       console.error('Login error:', error);
-      Alert.alert(t('error'), error.message);
+      
+      // Don't show alert for email confirmation errors - the modal will handle it
+      if (!error.message?.includes('confirmar tu correo')) {
+        Alert.alert(t('error'), error.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -135,13 +139,23 @@ export default function Login() {
     try {
       const result = await resendConfirmationEmail(pendingEmail);
       if (result.success) {
+        // Close modal first
+        setShowEmailConfirmationModal(false);
+        clearAuthError();
+        
+        // Then show success alert
         Alert.alert(
           'Correo enviado',
-          'Se ha enviado un nuevo correo de confirmación. Revisa tu bandeja de entrada.',
-          [{ text: 'Entendido', onPress: () => {
-            setShowEmailConfirmationModal(false);
-            clearAuthError();
-          }}]
+          `Se ha enviado un nuevo correo de confirmación a ${pendingEmail}.\n\nRevisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace de confirmación.`,
+          [{ 
+            text: 'Entendido', 
+            onPress: () => {
+              // Clear form and stay on login screen
+              setEmail('');
+              setPassword('');
+              setPendingEmail('');
+            }
+          }]
         );
       } else {
         Alert.alert('Error', result.error || 'No se pudo reenviar el correo');
@@ -157,6 +171,10 @@ export default function Login() {
   const handleCloseEmailModal = () => {
     setShowEmailConfirmationModal(false);
     clearAuthError();
+    // Clear form when closing modal
+    setEmail('');
+    setPassword('');
+    setPendingEmail('');
   };
 
   return (
