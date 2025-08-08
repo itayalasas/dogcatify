@@ -78,7 +78,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.log('User ID:', session.user.id);
             console.log('User email:', session.user.email);
             
-            // Check our custom confirmation system ONLY
+            // Check both our custom confirmation system AND profiles table
+            console.log('Checking email_confirmations table...');
             const { data: confirmationData, error: confirmationError } = await supabaseClient
               .from('email_confirmations')
               .select('*')
@@ -102,20 +103,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               });
             }
             
-           // STRICT VALIDATION: Must have confirmed record for THIS specific user
-           if (!confirmationData || 
-               confirmationError || 
-               confirmationData.user_id !== session.user.id || 
-               confirmationData.is_confirmed !== true) {
+            // Also check profiles table for email_confirmed
+            console.log('Checking profiles table for email_confirmed...');
+            const { data: profileData, error: profileError } = await supabaseClient
+              .from('profiles')
+              .select('email_confirmed, email_confirmed_at')
+              .eq('id', session.user.id)
+              .single();
+            
+            console.log('Profile email confirmation status:', {
+              hasData: !!profileData,
+              error: profileError?.message,
+              emailConfirmed: profileData?.email_confirmed,
+              confirmedAt: profileData?.email_confirmed_at
+            });
+            
+            // VALIDATION: Check both systems
+            const isConfirmedInEmailTable = confirmationData && 
+                                          !confirmationError && 
+                                          confirmationData.user_id === session.user.id && 
+                                          confirmationData.is_confirmed === true;
+            
+            const isConfirmedInProfile = profileData && 
+                                       !profileError && 
+                                       profileData.email_confirmed === true;
+            
+            // User is confirmed if EITHER system shows confirmation
+            const isEmailConfirmed = isConfirmedInEmailTable || isConfirmedInProfile;
+            
+            console.log('Final confirmation status:', {
+              emailTableConfirmed: isConfirmedInEmailTable,
+              profileTableConfirmed: isConfirmedInProfile,
+              finalResult: isEmailConfirmed
+            });
+            
+            if (!isEmailConfirmed) {
               
               console.log('=== EMAIL NOT CONFIRMED - BLOCKING ACCESS ===');
-              console.log('Reason:', {
-                noData: !confirmationData,
-                hasError: !!confirmationError,
-                userIdMismatch: confirmationData?.user_id !== session.user.id,
-               notConfirmed: confirmationData?.is_confirmed !== true,
-               actualValue: confirmationData?.is_confirmed
-              });
+              console.log('Neither email_confirmations nor profiles show confirmed status');
               
               setIsEmailConfirmed(false);
               setAuthError(`EMAIL_NOT_CONFIRMED:${session.user.email}`);
@@ -242,6 +267,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Check email confirmation for initial session
             console.log('AuthContext - Initial session: Checking email confirmation for user:', session.user.email);
             
+            // Check both confirmation systems
             const { data: confirmationData, error: confirmationError } = await supabaseClient
               .from('email_confirmations')
               .select('*')
@@ -249,10 +275,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               .eq('user_id', session.user.id)
               .single();
             
-            if (!confirmationData || 
-                confirmationError || 
-                confirmationData.user_id !== session.user.id || 
-                confirmationData.is_confirmed !== true) {
+            const { data: profileData, error: profileError } = await supabaseClient
+              .from('profiles')
+              .select('email_confirmed')
+              .eq('id', session.user.id)
+              .single();
+            
+            const isConfirmedInEmailTable = confirmationData && 
+                                          !confirmationError && 
+                                          confirmationData.user_id === session.user.id && 
+                                          confirmationData.is_confirmed === true;
+            
+            const isConfirmedInProfile = profileData && 
+                                       !profileError && 
+                                       profileData.email_confirmed === true;
+            
+            const isEmailConfirmed = isConfirmedInEmailTable || isConfirmedInProfile;
+            
+            if (!isEmailConfirmed) {
               
               console.log('AuthContext - Initial session: Email not confirmed, signing out');
               setIsEmailConfirmed(false);
@@ -472,12 +512,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('User ID:', data.user.id);
         console.log('User email:', data.user.email);
         
-        // Check ONLY our custom confirmation system
+        // Check both confirmation systems
         const { data: confirmationData, error: confirmationError } = await supabaseClient
           .from('email_confirmations')
           .select('*')
           .eq('user_id', data.user.id)
           .eq('type', 'signup')
+          .single();
+        
+        const { data: profileData, error: profileError } = await supabaseClient
+          .from('profiles')
+          .select('email_confirmed')
+          .eq('id', data.user.id)
           .single();
         
         console.log('Confirmation query result:', {
@@ -487,20 +533,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           isConfirmed: confirmationData?.is_confirmed
         });
         
-        // STRICT VALIDATION: Must have confirmed record in our system
-        if (confirmationError || 
-            !confirmationData || 
-            confirmationData.user_id !== data.user.id || 
-            confirmationData.is_confirmed !== true) {
+        console.log('Profile confirmation result:', {
+          hasData: !!profileData,
+          error: profileError?.message,
+          emailConfirmed: profileData?.email_confirmed
+        });
+        
+        // Check both systems for confirmation
+        const isConfirmedInEmailTable = confirmationData && 
+                                      !confirmationError && 
+                                      confirmationData.user_id === data.user.id && 
+                                      confirmationData.is_confirmed === true;
+        
+        const isConfirmedInProfile = profileData && 
+                                   !profileError && 
+                                   profileData.email_confirmed === true;
+        
+        const isEmailConfirmed = isConfirmedInEmailTable || isConfirmedInProfile;
+        
+        if (!isEmailConfirmed) {
           
           console.log('=== EMAIL NOT CONFIRMED - BLOCKING LOGIN ===');
-          console.log('Blocking reason:', {
-            hasError: !!confirmationError,
-            noData: !confirmationData,
-            userIdMismatch: confirmationData?.user_id !== data.user.id,
-            notConfirmed: confirmationData?.is_confirmed !== true,
-            actualConfirmedValue: confirmationData?.is_confirmed
-          });
+          console.log('Neither system shows email as confirmed');
           
           setIsEmailConfirmed(false);
           setAuthError(`EMAIL_NOT_CONFIRMED:${data.user.email}`);

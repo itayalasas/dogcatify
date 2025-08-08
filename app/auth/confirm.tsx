@@ -80,6 +80,8 @@ export default function ConfirmScreen() {
           return;
         }
 
+        console.log('Token marked as confirmed, now updating user profile...');
+
         // Update user profile to mark email as confirmed
         const { error: profileError } = await supabaseClient
           .from('profiles')
@@ -92,7 +94,18 @@ export default function ConfirmScreen() {
 
         if (profileError) {
           console.error('Error updating profile:', profileError);
-          // Don't fail the confirmation if profile update fails
+          console.error('Profile update error details:', JSON.stringify(profileError, null, 2));
+          
+          // Check if the columns exist
+          if (profileError.code === '42703') {
+            console.log('email_confirmed column does not exist in profiles table');
+            // Continue without failing - the email_confirmations table update is sufficient
+          } else {
+            // For other errors, log but don't fail the confirmation
+            console.warn('Profile update failed but continuing with confirmation');
+          }
+        } else {
+          console.log('Profile updated successfully with email_confirmed = true');
         }
         
         console.log('Email confirmation successful for:', tokenData.email);
