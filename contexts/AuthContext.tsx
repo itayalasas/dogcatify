@@ -620,20 +620,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('AuthContext - Attempting registration for:', email);
       
-      // Create a temporary client with NO auth features enabled
-      const tempClient = createClient(
-        process.env.EXPO_PUBLIC_SUPABASE_URL!,
-        process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false,
-            detectSessionInUrl: false,
-            flowType: 'pkce',
-          }
-        }
-      );
-      
       const { data, error } = await supabaseClient.auth.signUp({
         email,
         password,
@@ -641,7 +627,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           data: {
             display_name: displayName,
           },
-          emailRedirectTo: undefined,
         }
       });
       
@@ -652,17 +637,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       console.log('AuthContext - Registration successful, user created');
       
-      // Immediately destroy any session
-      await tempClient.auth.signOut();
+      // Immediately sign out to prevent modal
       await supabaseClient.auth.signOut();
-      
-      // Force clear any remaining session state
-      setCurrentUser(null);
-      setSession(null);
-      setIsEmailConfirmed(false);
-      
-      // Wait longer for complete cleanup
-      await new Promise(resolve => setTimeout(resolve, 1000));
       
       if (data.user) {
         console.log('Creating custom email confirmation token for user:', data.user.id);
@@ -687,11 +663,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         );
         console.log('Custom confirmation email sent successfully');
       }
-      
-      // Ensure clean state after registration
-      setCurrentUser(null);
-      setSession(null);
-      setIsEmailConfirmed(false);
       
       console.log('Registration completed successfully, user needs to confirm email');
     } catch (error) {

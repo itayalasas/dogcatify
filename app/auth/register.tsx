@@ -48,8 +48,8 @@ export default function Register() {
       // Clear loading state
       setLoading(false);
       
-      // Longer delay to ensure complete cleanup
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Small delay to ensure signOut completes
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       Alert.alert(
         '¡Registro exitoso! 🎉',
