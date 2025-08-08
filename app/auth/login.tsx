@@ -337,33 +337,36 @@ export default function DeleteAccount() {
       console.log('Deleting user from auth.users table...');
       
       try {
-        const userEmail = error.message.split(':')[1];
-        errorMessage = `📧 Tu correo electrónico no ha sido confirmado.\n\nRevisa tu bandeja de entrada (y spam) para confirmar tu cuenta.`;
-        Alert.alert(
-          'Email no confirmado',
-          errorMessage,
-          [
-            { text: 'Entendido', style: 'default' },
-            { 
-              text: 'Reenviar confirmación', 
-              onPress: () => {
-                // Navigate to forgot password to resend confirmation
-                router.push('/auth/forgot-password');
-              },
-              style: 'default'
-            }
-          ]
-        );
-        return;
-      } else if (error.message.includes('Too many requests')) {
-        errorMessage = '⏰ Demasiados intentos de inicio de sesión.\n\nEspera unos minutos antes de intentar nuevamente.';
-      } else if (error.message.includes('Invalid login credentials')) {
-        errorMessage = '❌ Credenciales incorrectas.\n\nVerifica tu email y contraseña.';
-      } else {
-        errorMessage = `❌ Error al iniciar sesión:\n\n${error.message}`;
-      }
-      
-      Alert.alert('Error de inicio de sesión', errorMessage);
+        // Try to delete from auth.users table
+        const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+        const response = await fetch(`${supabaseUrl}/functions/v1/delete-user`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            userId: currentUser.id
+          }),
+        });
+
+        console.log('Delete user API response status:', response.status);
+        
+        if (response.ok) {
+          const result = await response.json();
+          console.log('Delete user API result:', result);
+          
+          if (result.success) {
+            setDeletionProgress(prev => [...prev, '✅ Usuario eliminado del sistema de autenticación']);
+            console.log('✅ User deleted from auth.users table');
+          } else {
+            console.warn('Could not delete from auth.users:', result.error);
+            setDeletionProgress(prev => [...prev, `⚠️ No se pudo eliminar de auth: ${result.error}`]);
+            setDeletionProgress(prev => [...prev, '⚠️ Continuando con logout forzado...']);
+          }
+        } else {
+          const errorText = await response.text();
+          console.warn('Auth deletion API error:', response.status, errorText);
           setDeletionProgress(prev => [...prev, `⚠️ Error API auth (${response.status})`]);
           setDeletionProgress(prev => [...prev, '⚠️ Continuando con logout forzado...']);
         }
@@ -476,299 +479,155 @@ export default function DeleteAccount() {
 
           <Card style={styles.alternativeCard}>
             <Text style={styles.alternativeTitle}>¿Consideraste estas alternativas?</Text>
-            
-            <View style={styles.alternativeList}>
-              <Text style={styles.alternativeItem}>
-                • Desactivar temporalmente tu cuenta
-              </Text>
-              <Text style={styles.alternativeItem}>
-                • Cambiar tu configuración de privacidad
-              </Text>
-              <Text style={styles.alternativeItem}>
-                • Contactar con soporte para resolver problemas
-              </Text>
-            </View>
-          </Card>
-
-          <View style={styles.actionButtons}>
-            <Button
-              title="Cancelar"
-              onPress={() => router.back()}
-              variant="outline"
-              size="large"
-            />
-            
-            <Button
-              title="Continuar con la eliminación"
-              onPress={handleContinueToConfirmation}
-              size="large"
-              style={styles.dangerButton}
-            />
-          </View>
-        </ScrollView>
-      </SafeAreaView>
-    );
-  }
-
   return (
-    <SafeAreaView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => setStep(1)} style={styles.backButton}>
-          <ArrowLeft size={24} color="#111827" />
-        </TouchableOpacity>
-        <Text style={styles.title}>Confirmar Eliminación</Text>
-        <View style={styles.placeholder} />
+        <Image 
+          source={require('../../assets/images/logo.jpg')} 
+          style={styles.logo} 
+        />
+        <Text style={styles.title}>{t('welcomeBack')}</Text>
+        <Text style={styles.subtitle}>{t('signInSubtitle')}</Text>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <Card style={styles.confirmationCard}>
-          <View style={styles.confirmationHeader}>
-            <Shield size={48} color="#EF4444" />
-            <Text style={styles.confirmationTitle}>Confirmación Final</Text>
-          </View>
-          
-          <Text style={styles.confirmationText}>
-            Para confirmar que deseas eliminar permanentemente tu cuenta, escribe exactamente:
-          </Text>
-          
-          <View style={styles.confirmationPhrase}>
-            <Text style={styles.phraseText}>ELIMINAR MI CUENTA</Text>
-          </View>
-          
-          <TextInput
-            style={styles.confirmationInput}
-            placeholder="Escribe la frase exacta aquí"
-            value={confirmationText}
-            onChangeText={setConfirmationText}
-            autoCapitalize="characters"
-          />
-          
-          {/* Progress indicator during deletion */}
-          {loading && deletionProgress.length > 0 && (
-            <View style={styles.progressContainer}>
-              <Text style={styles.progressTitle}>Progreso de eliminación:</Text>
-              <ScrollView style={styles.progressScroll} showsVerticalScrollIndicator={false}>
-                {deletionProgress.map((step, index) => (
-                  <Text key={index} style={styles.progressStep}>
-                    {step}
-                  </Text>
-                ))}
-              </ScrollView>
-            </View>
-          )}
-          
-          <Text style={styles.confirmationNote}>
-            Esta acción es irreversible. Una vez eliminada, no podrás recuperar tu cuenta ni tus datos.
-          </Text>
-        </Card>
+      <View style={styles.form}>
+        <Input
+          label={t('email')}
+          placeholder={t('email')}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          leftIcon={<Mail size={20} color="#6B7280" />}
+        />
 
-        <View style={styles.finalActions}>
-          <Button
-            title="Cancelar"
-            onPress={() => router.back()}
-            variant="outline" 
-            size="large"
-          />
-          
-          <Button
-            title={loading ? "Eliminando..." : "Eliminar mi cuenta permanentemente"}
-            onPress={handleDeleteAccount}
-            loading={loading}
-            disabled={confirmationText !== 'ELIMINAR MI CUENTA' || loading}
-            size="large"
-            style={styles.deleteButton}
-          />
+        <Input
+          label={t('password')}
+          placeholder={t('password')}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          leftIcon={<Lock size={20} color="#6B7280" />}
+        />
+
+        <TouchableOpacity 
+          style={styles.forgotPasswordButton}
+          onPress={() => router.push('/auth/forgot-password')}
+        >
+          <Text style={styles.forgotPasswordText}>{t('forgotPassword')}</Text>
+        </TouchableOpacity>
+
+        <Button
+          title={t('signIn')}
+          onPress={handleLogin}
+          loading={loading}
+          size="large"
+        />
+
+        {/* Biometric Login Button */}
+        {isBiometricSupported && isBiometricEnabled && (
+          <TouchableOpacity 
+            style={styles.biometricButton}
+            onPress={handleBiometricLogin}
+            disabled={biometricLoading}
+          >
+            <Fingerprint size={24} color="#2D6A6F" />
+            <Text style={styles.biometricButtonText}>
+              {biometricLoading ? 'Autenticando...' : `Usar ${biometricType || 'Biometría'}`}
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            {t('dontHaveAccount')}{' '}
+            <Link href="/auth/register" style={styles.link}>
+              {t('signUp')}
+            </Link>
+          </Text>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
-    paddingTop: 50,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  backButton: {
-    padding: 8,
-  },
-  title: {
-    fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
-  },
-  placeholder: {
-    width: 32,
+    paddingTop: 30,
   },
   content: {
-    flex: 1,
-    padding: 16,
+    flexGrow: 1,
+    padding: 20,
   },
-  warningCard: {
-    marginBottom: 16,
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FECACA',
-  },
-  warningHeader: {
+  header: {
     alignItems: 'center',
+    marginBottom: 40,
+  },
+  logo: {
+    width: 140,
+    height: 140,
+    resizeMode: 'contain',
     marginBottom: 16,
   },
-  warningTitle: {
-    fontSize: 24,
+  title: {
+    fontSize: 28,
     fontFamily: 'Inter-Bold',
-    color: '#EF4444',
-    marginTop: 8,
-  },
-  warningText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#991B1B',
+    color: '#2D6A6F',
     textAlign: 'center',
-    lineHeight: 24,
-  },
-  dataCard: {
-    marginBottom: 16,
-  },
-  dataTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
-    marginBottom: 16,
-  },
-  dataList: {
-    gap: 12,
-  },
-  dataItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  dataIcon: {
-    fontSize: 20,
-    marginRight: 12,
-    width: 24,
-  },
-  dataText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#374151',
-    flex: 1,
-  },
-  alternativeCard: {
-    marginBottom: 24,
-    backgroundColor: '#F0F9FF',
-    borderWidth: 1,
-    borderColor: '#BAE6FD',
-  },
-  alternativeTitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#0369A1',
-    marginBottom: 12,
-  },
-  alternativeList: {
-    gap: 8,
-  },
-  alternativeItem: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#0369A1',
-    lineHeight: 20,
-  },
-  actionButtons: {
-    gap: 12,
-    marginBottom: 24,
-  },
-  dangerButton: {
-    backgroundColor: '#EF4444',
-  },
-  confirmationCard: {
-    marginBottom: 24,
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FECACA',
-  },
-  confirmationHeader: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  confirmationTitle: {
-    fontSize: 20,
-    fontFamily: 'Inter-Bold',
-    color: '#EF4444',
-    marginTop: 8,
-  },
-  confirmationText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#991B1B',
-    textAlign: 'center',
-    marginBottom: 16,
-    lineHeight: 24,
-  },
-  confirmationPhrase: {
-    backgroundColor: '#991B1B',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  phraseText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Bold',
-    color: '#FFFFFF',
-    textAlign: 'center',
-  },
-  confirmationInput: {
-    borderWidth: 2,
-    borderColor: '#EF4444',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    fontFamily: 'Inter-Medium',
-    marginBottom: 16,
-  },
-  progressContainer: {
-    marginTop: 16,
-    marginBottom: 16,
-  },
-  progressTitle: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    color: '#374151',
     marginBottom: 8,
   },
-  progressScroll: {
-    maxHeight: 150,
-  },
-  progressStep: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
+  subtitle: {
+    fontSize: 16,
     color: '#6B7280',
-    marginBottom: 4,
-  },
-  confirmationNote: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#991B1B',
     textAlign: 'center',
-    fontStyle: 'italic',
+    fontFamily: 'Inter-Regular',
   },
-  finalActions: {
-    gap: 12,
+  form: {
+    width: '100%',
+    maxWidth: 400,
+    alignSelf: 'center',
+  },
+  forgotPasswordButton: {
+    alignSelf: 'flex-end',
     marginBottom: 24,
   },
-  deleteButton: {
-    backgroundColor: '#EF4444',
+  forgotPasswordText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#3B82F6',
+  },
+  biometricButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F0F9FF',
+    borderWidth: 2,
+    borderColor: '#2D6A6F',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginTop: 16,
+  },
+  biometricButtonText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#2D6A6F',
+    marginLeft: 8,
+  },
+  footer: {
+    alignItems: 'center',
+    marginTop: 24,
+  },
+  footerText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+  },
+  link: {
+    color: '#3B82F6',
+    fontFamily: 'Inter-SemiBold',
   },
 });
