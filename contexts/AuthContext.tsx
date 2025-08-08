@@ -1,711 +1,751 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, TextInput } from 'react-native';
 import { router } from 'expo-router';
-import { supabaseClient, getUserProfile, updateUserProfile, signIn as supabaseSignIn, signUp as supabaseSignUp, signOut as supabaseSignOut } from '../lib/supabase';
-import { User } from '../types';
+import { ArrowLeft, Trash2, TriangleAlert as AlertTriangle, Shield } from 'lucide-react-native';
+import { Card } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { useAuth } from '../../contexts/AuthContext';
+import { supabaseClient } from '../../lib/supabase';
 
-interface AuthContextType {
-  currentUser: User | null;
-  loading: boolean; 
-  login: (email: string, password: string) => Promise<User | null>;
-  register: (email: string, password: string, displayName: string) => Promise<void>;
-  logout: () => Promise<void>;
-  isEmailConfirmed: boolean;
-  authInitialized: boolean;
-  authError: string | null;
-  clearAuthError: () => void;
-  checkTokenValidity: () => Promise<boolean>;
-}
+export default function DeleteAccount() {
+  const { currentUser, logout } = useAuth();
+  const [confirmationText, setConfirmationText] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState(1); // 1: Warning, 2: Confirmation
+  const [deletionProgress, setDeletionProgress] = useState<string[]>([]);
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+  const handleDeleteAccount = async () => {
+    if (!currentUser) {
+      Alert.alert('Error', 'No hay usuario autenticado');
+      return;
+    }
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+    if (confirmationText !== 'ELIMINAR MI CUENTA') {
+      Alert.alert('Error', 'Debes escribir exactamente "ELIMINAR MI CUENTA" para confirmar');
+      return;
+    }
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [session, setSession] = useState<any | null>(null);
-  const [isEmailConfirmed, setIsEmailConfirmed] = useState(false);
-  const [authInitialized, setAuthInitialized] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [tokenCheckInterval, setTokenCheckInterval] = useState<NodeJS.Timeout | null>(null);
+    setLoading(true);
+    try {
+      setDeletionProgress(['Iniciando proceso de eliminación...']);
+      console.log('Starting account deletion process for user:', currentUser.id);
 
-  const updateCurrentUser = (updatedUser: User) => {
-    setCurrentUser(updatedUser);
-  };
+      // 1. Delete user's pets and related data
+      console.log('Deleting pets and related data...');
+      const { data: userPets, error: petsError } = await supabaseClient
+        .from('pets')
+        .select('id')
+        .eq('owner_id', currentUser.id);
 
-  useEffect(() => {
-    let mounted = true;
-    
-    // Set up auth state listener
-    const subscription = supabaseClient.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!mounted) return;
-        
-        console.log('AuthContext - Auth state changed:', event, session?.user?.email || 'No user');
-        
-        // Handle session expiration
-        if (event === 'TOKEN_REFRESHED') {
-          console.log('AuthContext - Token refreshed successfully');
+      setDeletionProgress(prev => [...prev, 'Verificando mascotas del usuario...']);
+
+      if (petsError) {
+        console.error('Error fetching user pets:', petsError);
+      } else if (userPets && userPets.length > 0) {
+        for (const pet of userPets) {
+          // Delete pet health records
+          await supabaseClient
+            .from('pet_health')
+            .delete()
+            .eq('pet_id', pet.id);
+
+          setDeletionProgress(prev => [...prev, `Eliminando registros de salud de ${pet.id}...`]);
+
+          // Delete pet albums
+          await supabaseClient
+            .from('pet_albums')
+            .delete()
+            .eq('pet_id', pet.id);
+
+          setDeletionProgress(prev => [...prev, `Eliminando álbumes de ${pet.id}...`]);
+
+          // Delete pet behavior records
+          await supabaseClient
+            .from('pet_behavior')
+            .delete()
+            .eq('pet_id', pet.id);
+
+          setDeletionProgress(prev => [...prev, `Eliminando registros de comportamiento de ${pet.id}...`]);
+
+          // Delete bookings related to this pet
+          await supabaseClient
+            .from('bookings')
+            .delete()
+            .eq('pet_id', pet.id);
+
+          setDeletionProgress(prev => [...prev, `Eliminando reservas de ${pet.id}...`]);
+
+          console.log('Step 7: Deleting service reviews...');
+          const { error: reviewsError } = await supabaseClient
+            .from('service_reviews')
+            .delete()
+            .eq('pet_id', pet.id);
+          
+          if (reviewsError) {
+            console.error('Error deleting service reviews:', reviewsError);
+            console.log('Continuing despite service reviews deletion error...');
+          } else {
+            console.log('Service reviews deleted successfully');
+          }
+
+          console.log('Step 8: Deleting behavior records...');
+          const { error: behaviorError } = await supabaseClient
+            .from('pet_behavior')
+            .delete()
+            .eq('pet_id', pet.id);
+          
+          if (behaviorError) {
+            console.error('Error deleting behavior records:', behaviorError);
+            console.log('Continuing despite behavior records deletion error...');
+          } else {
+            console.log('Behavior records deleted successfully');
+          }
+          
+          console.log('Step 9: Deleting medical alerts...');
+          const { error: alertsError } = await supabaseClient
+            .from('medical_alerts')
+            .delete()
+            .eq('pet_id', pet.id);
+          
+          if (alertsError) {
+            console.error('Error deleting medical alerts:', alertsError);
+            console.log('Continuing despite medical alerts deletion error...');
+          } else {
+            console.log('Medical alerts deleted successfully');
+          }
+          
+          console.log('Step 10: Deleting medical history tokens...');
+          const { error: tokensError } = await supabaseClient
+            .from('medical_history_tokens')
+            .delete()
+            .eq('pet_id', pet.id);
+          
+          if (tokensError) {
+            console.error('Error deleting medical history tokens:', tokensError);
+            console.log('Continuing despite tokens deletion error...');
+          } else {
+            console.log('Medical history tokens deleted successfully');
+          }
         }
+
+        console.log('Step 11: Now deleting the pet...');
+        // Delete all pets
+        await supabaseClient
+          .from('pets')
+          .delete()
+          .eq('owner_id', currentUser.id);
+
+        setDeletionProgress(prev => [...prev, 'Eliminando perfiles de mascotas...']);
+      }
+
+      // 2. Delete user's posts and comments
+      setDeletionProgress(prev => [...prev, 'Eliminando publicaciones y comentarios...']);
+      console.log('Deleting posts and comments...');
+      
+      // Get user's posts to delete related comments
+      const { data: userPosts } = await supabaseClient
+        .from('posts')
+        .select('id')
+        .eq('user_id', currentUser.id);
+
+      if (userPosts && userPosts.length > 0) {
+        for (const post of userPosts) {
+          // Delete comments on this post
+          await supabaseClient
+            .from('comments')
+            .delete()
+            .eq('post_id', post.id);
+
+          setDeletionProgress(prev => [...prev, `Eliminando comentarios del post ${post.id}...`]);
+        }
+      }
+
+      // Delete user's posts
+      await supabaseClient
+        .from('posts')
+        .delete()
+        .eq('user_id', currentUser.id);
+
+      setDeletionProgress(prev => [...prev, 'Eliminando publicaciones del usuario...']);
+
+      // Delete user's comments on other posts
+      await supabaseClient
+        .from('comments')
+        .delete()
+        .eq('user_id', currentUser.id);
+
+      setDeletionProgress(prev => [...prev, 'Eliminando comentarios en otras publicaciones...']);
+
+      // Delete user-level data (not pet-specific)
+      setDeletionProgress(prev => [...prev, 'Eliminando tokens de confirmación de email...']);
+      console.log('Step 12: Deleting email confirmations...');
+      const { error: emailConfirmationsError } = await supabaseClient
+        .from('email_confirmations')
+        .delete()
+        .eq('user_id', currentUser.id);
+      
+      if (emailConfirmationsError) {
+        console.error('Error deleting email confirmations:', emailConfirmationsError);
+        setDeletionProgress(prev => [...prev, `⚠️ Error eliminando confirmaciones: ${emailConfirmationsError.message}`]);
+      } else {
+        console.log('Email confirmations deleted successfully');
+        setDeletionProgress(prev => [...prev, '✅ Tokens de confirmación eliminados']);
+      }
+      
+      console.log('Step 13: Deleting chat conversations and messages...');
+      const { data: userConversations } = await supabaseClient
+        .from('chat_conversations')
+        .select('id')
+        .eq('user_id', currentUser.id);
+
+      if (userConversations && userConversations.length > 0) {
+        for (const conversation of userConversations) {
+          // Delete messages in this conversation
+          setDeletionProgress(prev => [...prev, `Eliminando mensajes de conversación ${conversation.id}...`]);
+          await supabaseClient
+            .from('chat_messages')
+            .delete()
+            .eq('conversation_id', conversation.id);
+        }
+
+        // Delete conversations
+        await supabaseClient
+          .from('chat_conversations')
+          .delete()
+          .eq('user_id', currentUser.id);
+      }
+      
+      console.log('Step 14: Deleting adoption chats and messages...');
+      const { data: adoptionChats } = await supabaseClient
+        .from('adoption_chats')
+        .select('id')
+        .eq('customer_id', currentUser.id);
+
+      if (adoptionChats && adoptionChats.length > 0) {
+        for (const chat of adoptionChats) {
+          // Delete adoption messages
+          setDeletionProgress(prev => [...prev, `Eliminando mensajes de adopción ${chat.id}...`]);
+          await supabaseClient
+            .from('adoption_messages')
+            .delete()
+            .eq('chat_id', chat.id);
+        }
+
+        // Delete adoption chats
+        await supabaseClient
+          .from('adoption_chats')
+          .delete()
+          .eq('customer_id', currentUser.id);
+      }
+      
+      // Delete user-level data (not pet-specific)
+      console.log('Step 15: Deleting user bookings...');
+      const { error: bookingsError } = await supabaseClient
+        .from('bookings')
+        .delete()
+        .eq('customer_id', currentUser.id);
+      
+      if (bookingsError) {
+        console.error('Error deleting bookings:', bookingsError);
+        console.log('Continuing despite bookings deletion error...');
+      } else {
+        console.log('User bookings deleted successfully');
+      }
+
+      console.log('Step 16: Deleting orders...');
+      const { error: ordersError } = await supabaseClient
+        .from('orders')
+        .delete()
+        .eq('customer_id', currentUser.id);
+      
+      if (ordersError) {
+        console.error('Error deleting orders:', ordersError);
+        console.log('Continuing despite orders deletion error...');
+      } else {
+        console.log('Orders deleted successfully');
+      }
+
+      console.log('Step 17: Deleting cart...');
+      const { error: cartError } = await supabaseClient
+        .from('user_carts')
+        .delete()
+        .eq('user_id', currentUser.id);
+      
+      if (cartError) {
+        console.error('Error deleting cart:', cartError);
+        console.log('Continuing despite cart deletion error...');
+      } else {
+        console.log('Cart deleted successfully');
+      }
+
+      console.log('Step 18: Deleting service reviews...');
+      const { error: reviewsError } = await supabaseClient
+        .from('service_reviews')
+        .delete()
+        .eq('customer_id', currentUser.id);
+      
+      if (reviewsError) {
+        console.error('Error deleting service reviews:', reviewsError);
+        console.log('Continuing despite service reviews deletion error...');
+      } else {
+        console.log('Service reviews deleted successfully');
+      }
+
+      // Delete user profile
+      console.log('Step 19: Deleting user profile...');
+      const { error: profileError } = await supabaseClient
+        .from('profiles')
+        .delete()
+        .eq('id', currentUser.id);
+      
+      if (profileError) {
+        console.error('Error deleting profile:', profileError);
         
-        if (event === 'SIGNED_OUT' || !session) {
-          console.log('AuthContext - User signed out or session expired');
-          if (!mounted) return;
-          setCurrentUser(null);
-          setSession(null);
-          setLoading(false);
-          setAuthInitialized(true);
+        if (profileError.message?.includes('JWT expired')) {
+          Alert.alert('Sesión expirada', 'Por favor inicia sesión nuevamente.');
+          router.replace('/auth/login');
           return;
         }
         
-        setSession(session);
+        setDeletionProgress(prev => [...prev, `❌ Error eliminando perfil: ${profileError.message}`]);
+        throw new Error(`No se pudo eliminar el perfil: ${profileError.message}`);
+      } else {
+        console.log('Profile deletion query executed successfully');
         
-        if (!mounted || !session?.user) return;
-        if (session?.user) {
-          try {
-            // Check email confirmation strictly
-            console.log('AuthContext - Checking email confirmation for user:', session.user.email);
-            
-            // STRICT EMAIL CONFIRMATION VALIDATION
-            console.log('=== EMAIL CONFIRMATION VALIDATION START ===');
-            console.log('User ID:', session.user.id);
-            console.log('User email:', session.user.email);
-            
-            // Check both our custom confirmation system AND profiles table
-            console.log('Checking email_confirmations table...');
-            const { data: confirmationData, error: confirmationError } = await supabaseClient
-              .from('email_confirmations')
-              .select('*')
-              .eq('type', 'signup')
-              .eq('user_id', session.user.id)
-              .single();
-            
-            console.log('Confirmation query result:', {
-              hasData: !!confirmationData,
-              error: confirmationError?.message,
-              errorCode: confirmationError?.code
-            });
-            
-            if (confirmationData) {
-              console.log('Confirmation data found:', {
-                userId: confirmationData.user_id,
-                email: confirmationData.email,
-                isConfirmed: confirmationData.is_confirmed,
-                type: confirmationData.type,
-                confirmedAt: confirmationData.confirmed_at
-              });
-            }
-            
-            // Also check profiles table for email_confirmed
-            console.log('Checking profiles table for email_confirmed...');
-            const { data: profileData, error: profileError } = await supabaseClient
-              .from('profiles')
-              .select('email_confirmed, email_confirmed_at')
-              .eq('id', session.user.id)
-              .single();
-            
-            console.log('Profile email confirmation status:', {
-              hasData: !!profileData,
-              error: profileError?.message,
-              emailConfirmed: profileData?.email_confirmed,
-              confirmedAt: profileData?.email_confirmed_at
-            });
-            
-            // VALIDATION: Check both systems
-            const isConfirmedInEmailTable = confirmationData && 
-                                          !confirmationError && 
-                                          confirmationData.user_id === session.user.id && 
-                                          confirmationData.is_confirmed === true;
-            
-            const isConfirmedInProfile = profileData && 
-                                       !profileError && 
-                                       profileData.email_confirmed === true;
-            
-            // User is confirmed if EITHER system shows confirmation
-            const isEmailConfirmed = isConfirmedInEmailTable || isConfirmedInProfile;
-            
-            console.log('Final confirmation status:', {
-              emailTableConfirmed: isConfirmedInEmailTable,
-              profileTableConfirmed: isConfirmedInProfile,
-              finalResult: isEmailConfirmed
-            });
-            
-            if (!isEmailConfirmed) {
-              
-              console.log('=== EMAIL NOT CONFIRMED - BLOCKING ACCESS ===');
-              console.log('Neither email_confirmations nor profiles show confirmed status');
-              
-              setIsEmailConfirmed(false);
-              setAuthError(`EMAIL_NOT_CONFIRMED:${session.user.email}`);
-              await supabaseClient.auth.signOut();
-              return;
-            }
-            
-            console.log('=== EMAIL CONFIRMED - ACCESS GRANTED ===');
-            console.log('Confirmation validated for user:', session.user.email);
-            setIsEmailConfirmed(true);
-            setAuthError(null); // Clear any previous auth errors
-            
-            // Load user profile after email confirmation is validated
-            await loadUserProfile(session.user.id, session.user.email!);
-          } catch (error: any) {
-            console.error('Error loading user profile after login:', error);
-            
-            // Set auth error for display in UI
-            if (error.message?.includes('perfil válido') || error.message?.includes('eliminada')) {
-              setAuthError(error.message);
-            }
-            
-            if (error.message?.includes('session_not_found') || error.message?.includes('JWT')) {
-              console.log('AuthContext - Session error after login, signing out');
-              await supabaseClient.auth.signOut();
-            }
-          }
-        }
-        if (!mounted) return;
-        setLoading(false);
-        setAuthInitialized(true);
-      }
-    );
-
-    // Helper function to load user profile
-    const loadUserProfile = async (userId: string, userEmail: string) => {
-      try {
-        let profile;
-        try {
-          profile = await getUserProfile(userId);
-        } catch (profileError: any) {
-          // Handle case where user exists in auth.users but not in profiles (deleted account)
-          if (profileError.code === 'PGRST116' && profileError.message?.includes('0 rows')) {
-            console.log('AuthContext - User exists in auth but not in profiles (deleted account)');
-            // Sign out the user and throw error
-            await supabaseClient.auth.signOut();
-            setAuthError('Esta cuenta fue eliminada previamente. Por favor crea una nueva cuenta o contacta con soporte.');
-            return;
-          }
-          throw profileError;
-        }
-        
-        if (profile) {
-          if (!mounted) return;
-          console.log('AuthContext - User profile loaded:', profile.display_name);
-          setCurrentUser({
-            id: userId,
-            email: userEmail,
-            displayName: profile.display_name || '',
-            photoURL: profile.photo_url,
-            isOwner: profile.is_owner || true,
-            isPartner: profile.is_partner || false,
-            location: profile.location,
-            bio: profile.bio,
-            phone: profile.phone,
-            createdAt: new Date(profile.created_at),
-            followers: profile.followers,
-            following: profile.following,
-            followersCount: profile.followers?.length || 0,
-            followingCount: profile.following?.length || 0,
-          });
-        } else {
-          // Create user profile if it doesn't exist
-          console.log('AuthContext - Creating new user profile for:', userEmail);
-          if (!mounted) return;
-          const newUser: Omit<User, 'id'> = {
-            email: userEmail,
-            displayName: '',
-            photoURL: undefined,
-            isOwner: true,
-            isPartner: false,
-            createdAt: new Date(),
-            followers: [],
-            following: [],
-            followersCount: 0,
-            followingCount: 0,
-          };
-          
-          // Create the profile in the database
-          await updateUserProfile(userId, {
-            display_name: newUser.displayName,
-            photo_url: newUser.photoURL,
-            is_owner: newUser.isOwner,
-            is_partner: newUser.isPartner,
-            location: newUser.location,
-            bio: newUser.bio,
-            phone: newUser.phone,
-          });
-          
-          setCurrentUser({
-            id: userId,
-            ...newUser,
-          });
-        }
-      } catch (error) {
-        console.error('Error loading user profile:', error);
-        throw error;
-      }
-    };
-
-    // Initial session check
-    const checkSession = async () => {
-      try {
-        if (!mounted) return;
-        console.log('AuthContext - Checking initial session...');
-        const { data } = await supabaseClient.auth.getSession();
-        const session = data?.session;
-        
-        console.log('AuthContext - Initial session check result:', session?.user?.email || 'No session');
-        setSession(session);
-        
-        if (session?.user) {
-          try {
-            // Check email confirmation for initial session
-            console.log('AuthContext - Initial session: Checking email confirmation for user:', session.user.email);
-            
-            // Check both confirmation systems
-            const { data: confirmationData, error: confirmationError } = await supabaseClient
-              .from('email_confirmations')
-              .select('*')
-              .eq('type', 'signup')
-              .eq('user_id', session.user.id)
-              .single();
-            
-            const { data: profileData, error: profileError } = await supabaseClient
-              .from('profiles')
-              .select('email_confirmed')
-              .eq('id', session.user.id)
-              .single();
-            
-            const isConfirmedInEmailTable = confirmationData && 
-                                          !confirmationError && 
-                                          confirmationData.user_id === session.user.id && 
-                                          confirmationData.is_confirmed === true;
-            
-            const isConfirmedInProfile = profileData && 
-                                       !profileError && 
-                                       profileData.email_confirmed === true;
-            
-            const isEmailConfirmed = isConfirmedInEmailTable || isConfirmedInProfile;
-            
-            if (!isEmailConfirmed) {
-              
-              console.log('AuthContext - Initial session: Email not confirmed, signing out');
-              setIsEmailConfirmed(false);
-              setAuthError(`EMAIL_NOT_CONFIRMED:${session.user.email}`);
-              await supabaseClient.auth.signOut();
-              return;
-            }
-            
-            console.log('AuthContext - Initial session: Email confirmed, loading profile');
-            setIsEmailConfirmed(true);
-            await loadUserProfile(session.user.id, session.user.email!);
-          } catch (error) {
-            console.error('AuthContext - Error loading profile:', error);
-          }
-        } else {
-          console.log('AuthContext - No initial session found');
-        }
-      } catch (error) {
-        console.error('AuthContext - Error in checkSession:', error);
-      }
-      if (!mounted) return;
-      setAuthInitialized(true);
-      setLoading(false);
-    };
-    
-    checkSession();
-    
-    return () => {
-      mounted = false;
-      // Clear token check interval
-      if (tokenCheckInterval) {
-        clearInterval(tokenCheckInterval);
-      }
-      if (subscription && typeof subscription.unsubscribe === 'function') {
-        subscription.unsubscribe();
-      }
-    };
-  }, []);
-
-  // Set up periodic token validation when user is authenticated
-  useEffect(() => {
-    if (currentUser && session) {
-      console.log('Setting up token validation interval for user:', currentUser.email);
-      
-      // Clear any existing interval
-      if (tokenCheckInterval) {
-        clearInterval(tokenCheckInterval);
-      }
-      
-      // Check token validity every 5 minutes
-      const interval = setInterval(async () => {
-        const isValid = await checkTokenValidity();
-        if (!isValid) {
-          console.log('Token expired, redirecting to login...');
-          await handleTokenExpiration();
-        }
-      }, 5 * 60 * 1000); // 5 minutes
-      
-      setTokenCheckInterval(interval);
-    } else {
-      // Clear interval when user logs out
-      if (tokenCheckInterval) {
-        clearInterval(tokenCheckInterval);
-        setTokenCheckInterval(null);
-      }
-    }
-    
-    return () => {
-      if (tokenCheckInterval) {
-        clearInterval(tokenCheckInterval);
-      }
-    };
-  }, [currentUser, session]);
-
-  const checkTokenValidity = async (): Promise<boolean> => {
-    try {
-      // Get current session
-      const { data: { session }, error } = await supabaseClient.auth.getSession();
-      
-      if (error) {
-        console.error('Error checking session:', error);
-        return false;
-      }
-      
-      if (!session) {
-        console.log('No active session found');
-        return false;
-      }
-      
-      // Check if token is expired
-      const now = Math.floor(Date.now() / 1000);
-      const tokenExp = session.expires_at || 0;
-      
-      console.log('Token validation:', {
-        now,
-        expires_at: tokenExp,
-        isExpired: now >= tokenExp,
-        timeUntilExpiry: tokenExp - now
-      });
-      
-      if (now >= tokenExp) {
-        console.log('Token has expired');
-        return false;
-      }
-      
-      // Try to make a simple API call to verify token works
-      const { data, error: testError } = await supabaseClient
-        .from('profiles')
-        .select('id')
-        .eq('id', session.user.id)
-        .limit(1);
-      
-      if (testError) {
-        console.error('Token validation API call failed:', testError);
-        
-        // Check for specific JWT errors
-        if (testError.message?.includes('JWT') || 
-            testError.message?.includes('expired') ||
-            testError.message?.includes('invalid')) {
-          console.log('JWT error detected, token is invalid');
-          return false;
-        }
-      }
-      
-      return true;
-    } catch (error) {
-      console.error('Error in checkTokenValidity:', error);
-      return false;
-    }
-  };
-
-  const handleTokenExpiration = async () => {
-    try {
-      console.log('Handling token expiration...');
-      
-      // Clear local state
-      setCurrentUser(null);
-      setSession(null);
-      setIsEmailConfirmed(false);
-      
-      // Clear token check interval
-      if (tokenCheckInterval) {
-        clearInterval(tokenCheckInterval);
-        setTokenCheckInterval(null);
-      }
-      
-      // Sign out from Supabase
-      await supabaseClient.auth.signOut();
-      
-      // Show alert and redirect to login
-      Alert.alert(
-        'Sesión expirada',
-        'Tu sesión ha expirado por seguridad. Por favor inicia sesión nuevamente.',
-        [
-          {
-            text: 'Iniciar sesión',
-            onPress: () => {
-              try {
-                router.replace('/auth/login');
-              } catch (routerError) {
-                console.error('Error navigating to login:', routerError);
-                // Fallback navigation
-                setTimeout(() => {
-                  router.replace('/auth/login');
-                }, 100);
-              }
-            }
-          }
-        ],
-        { cancelable: false }
-      );
-    } catch (error) {
-      console.error('Error handling token expiration:', error);
-      // Force navigation to login even if there's an error
-      try {
-        router.replace('/auth/login');
-      } catch (routerError) {
-        console.error('Error in fallback navigation:', routerError);
-      }
-    }
-  };
-  const login = async (email: string, password: string): Promise<User | null> => {
-    try {
-      console.log('AuthContext - Attempting login with Supabase for:', email);
-
-      const { data, error } = await supabaseClient.auth.signInWithPassword({
-        email,
-        password
-      });
-      
-      if (error) {
-        console.error('AuthContext - Login error:', error.message); 
-        
-        // Handle specific session errors
-        if (error.message?.includes('session_not_found') || error.message?.includes('JWT')) {
-          console.log('AuthContext - Session error during login, clearing state');
-          await supabaseClient.auth.signOut();
-        }
-        
-        // Mejorar mensajes de error específicos
-        if (error.message.includes('Invalid login credentials')) {
-          throw new Error('Invalid login credentials');
-        } else if (error.message.includes('Email not confirmed')) {
-          throw new Error('Email not confirmed');
-        } else if (error.message.includes('Too many requests')) {
-          throw new Error('Too many requests');
-        } else if (error.message.includes('User not found')) {
-          throw new Error('User not found');
-        }
-        
-        throw error;
-      }
-      
-      if (data.user) {
-        // STRICT EMAIL CONFIRMATION VALIDATION - Check our custom system ONLY
-        console.log('=== STRICT EMAIL CONFIRMATION CHECK ===');
-        console.log('User ID:', data.user.id);
-        console.log('User email:', data.user.email);
-        
-        // Check both confirmation systems
-        const { data: confirmationData, error: confirmationError } = await supabaseClient
-          .from('email_confirmations')
-          .select('*')
-          .eq('user_id', data.user.id)
-          .eq('type', 'signup')
-          .single();
-        
-        const { data: profileData, error: profileError } = await supabaseClient
+        // Verify the profile was actually deleted
+        const { data: verifyProfile, error: verifyError } = await supabaseClient
           .from('profiles')
-          .select('email_confirmed')
-          .eq('id', data.user.id)
+          .select('id')
+          .eq('id', currentUser.id)
           .single();
         
-        console.log('Confirmation query result:', {
-          hasData: !!confirmationData,
-          error: confirmationError?.message,
-          errorCode: confirmationError?.code,
-          isConfirmed: confirmationData?.is_confirmed
-        });
-        
-        console.log('Profile confirmation result:', {
-          hasData: !!profileData,
-          error: profileError?.message,
-          emailConfirmed: profileData?.email_confirmed
-        });
-        
-        // Check both systems for confirmation
-        const isConfirmedInEmailTable = confirmationData && 
-                                      !confirmationError && 
-                                      confirmationData.user_id === data.user.id && 
-                                      confirmationData.is_confirmed === true;
-        
-        const isConfirmedInProfile = profileData && 
-                                   !profileError && 
-                                   profileData.email_confirmed === true;
-        
-        const isEmailConfirmed = isConfirmedInEmailTable || isConfirmedInProfile;
-        
-        if (!isEmailConfirmed) {
-          
-          console.log('=== EMAIL NOT CONFIRMED - BLOCKING LOGIN ===');
-          console.log('Neither system shows email as confirmed');
-          
-          setIsEmailConfirmed(false);
-          setAuthError(`EMAIL_NOT_CONFIRMED:${data.user.email}`);
-          
-          // Sign out the user immediately
-          await supabaseClient.auth.signOut();
-          
-          throw new Error('Debes confirmar tu correo electrónico antes de iniciar sesión. Revisa tu bandeja de entrada.');
-        }
-        
-        console.log('=== EMAIL CONFIRMED - LOGIN ALLOWED ===');
-        setIsEmailConfirmed(true);
-        try {
-          // Check if user profile exists
-          const profile = await getUserProfile(data.user.id);
-          
-          if (!profile) {
-            // Profile doesn't exist, sign out and throw error
-            await supabaseClient.auth.signOut();
-            throw new Error('Esta cuenta fue eliminada previamente. Por favor crea una nueva cuenta o contacta con soporte.');
-          }
-          
-          const user: User = {
-            id: data.user.id,
-            email: data.user.email!,
-            displayName: profile.display_name || '',
-            photoURL: profile.photo_url,
-            isOwner: profile.is_owner || true,
-            isPartner: profile.is_partner || false,
-            location: profile.location,
-            bio: profile.bio,
-            phone: profile.phone,
-            createdAt: new Date(profile.created_at),
-            followers: profile.followers,
-            following: profile.following,
-            followersCount: profile.followers?.length || 0,
-            followingCount: profile.following?.length || 0,
-          };
-          
-          console.log('AuthContext - Login successful, setting user:', user.email);
-          setCurrentUser(user);
-          return user;
-        } catch (error: any) {
-          // Handle case where user exists in auth.users but not in profiles
-          if (error.code === 'PGRST116' && error.message?.includes('0 rows')) {
-            console.log('AuthContext - Login: User exists in auth but not in profiles (deleted account)');
-            // Sign out the user and throw clear error message
-            await supabaseClient.auth.signOut();
-            throw new Error('Esta cuenta fue eliminada previamente. Por favor crea una nueva cuenta o contacta con soporte.');
-          }
-          throw error;
+        if (verifyError && verifyError.code === 'PGRST116') {
+          console.log('✅ Profile successfully deleted - verification confirms deletion');
+          setDeletionProgress(prev => [...prev, '✅ Perfil eliminado y verificado']);
+        } else if (verifyProfile) {
+          console.error('❌ Profile still exists after deletion attempt');
+          setDeletionProgress(prev => [...prev, '❌ Error: Perfil aún existe después de eliminación']);
+          throw new Error('El perfil no se eliminó correctamente');
+        } else {
+          console.log('Profile verification had unexpected error:', verifyError);
+          setDeletionProgress(prev => [...prev, '⚠️ No se pudo verificar eliminación del perfil']);
         }
       }
-      
-      return null;
-    } catch (error) {
-      console.error('Login error:', error);
-      throw error;
-    }
-  };
 
-  const register = async (email: string, password: string, displayName: string) => {
-    try {
-      console.log('AuthContext - Attempting registration for:', email);
+      // Delete user from auth.users table (this requires admin privileges)
+      setDeletionProgress(prev => [...prev, 'Eliminando usuario del sistema de autenticación...']);
+      console.log('Deleting user from auth.users table...');
       
-      // First create the user without email confirmation
-      const { data, error } = await supabaseClient.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            display_name: displayName,
-          },
-          // Disable automatic email confirmation
-          emailRedirectTo: undefined,
-        }
-      });
-      
-      if (error) throw error;
-      console.log('AuthContext - Registration successful, user created');
-      
-      if (data.user) {
-        // Create our custom email confirmation token
-        const { createEmailConfirmationToken, generateConfirmationUrl } = await import('../utils/emailConfirmation');
-        const token = await createEmailConfirmationToken(data.user.id, email, 'signup');
-        const confirmationUrl = generateConfirmationUrl(token, 'signup');
-        
-        console.log('Custom confirmation token created:', token);
-        console.log('Confirmation URL:', confirmationUrl);
-        
-        // Send our custom confirmation email
-        const { NotificationService } = await import('../utils/notifications');
-        await NotificationService.sendCustomConfirmationEmail(
-          email,
-          displayName,
-          confirmationUrl
-        );
-        console.log('Custom confirmation email sent successfully');
-        
-        // Sign out immediately after registration to prevent auth state conflicts
-        await supabaseClient.auth.signOut();
-      }
-      
-      // Clear any session but don't throw error - registration was successful
-      setCurrentUser(null);
-      setSession(null);
-      
-      console.log('Registration completed successfully, user needs to confirm email');
-    } catch (error) {
-      console.error('Register error:', error);
-      throw error;
-    }
-  };
-
-  const logout = async () => {
-    try {
-      console.log('AuthContext - Logging out user');
-      const { error } = await supabaseClient.auth.signOut();
-      if (error) throw error;
-      
-      // Clear local state
+      try {
+          setDeletionProgress(prev => [...prev, `⚠️ Error API auth (${response.status})`]);
+      await supabaseClient.auth.signOut();
       setCurrentUser(null);
       setSession(null);
       setIsEmailConfirmed(false);
+          setDeletionProgress(prev => [...prev, '⚠️ Continuando con logout forzado...']);
+        }
+      } catch (authError) {
+        console.warn('Error deleting from auth system:', authError);
+        setDeletionProgress(prev => [...prev, `⚠️ Error eliminando de auth: ${authError.message}`]);
+        setDeletionProgress(prev => [...prev, '⚠️ Continuando con logout forzado...']);
+      }
+
+      // Sign out user from current session
+      setDeletionProgress(prev => [...prev, 'Cerrando sesión...']);
+      console.log('Signing out user...');
+      await logout();
+      
+      setDeletionProgress(prev => [...prev, '✅ Proceso de eliminación completado']);
+      setDeletionProgress(prev => [...prev, '✅ Sesión cerrada - Datos eliminados']);
+      console.log('✅ Account deletion process completed successfully');
+      
+      Alert.alert(
+        'Cuenta eliminada',
+        'Todos tus datos han sido eliminados de DogCatiFy. Puedes crear una nueva cuenta con el mismo email si lo deseas.',
+        [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
+      );
+
     } catch (error) {
-      console.error('Logout error:', error);
-      throw error;
+      setDeletionProgress(prev => [...prev, `❌ Error: ${error.message || error}`]);
+      console.error('Error deleting account:', error);
+      Alert.alert(
+        'Error',
+        `Ocurrió un error durante la eliminación: ${error.message || error}. Por favor contacta con soporte para completar el proceso.`,
+        [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
-  const clearAuthError = () => {
-    setAuthError(null);
+  const handleContinueToConfirmation = () => {
+    setStep(2);
   };
 
-  const value = {
-    currentUser,
-    loading,
-    authInitialized,
-    login,
-    register,
-    logout,
-    updateCurrentUser,
-    isEmailConfirmed,
-    authError,
-    clearAuthError,
-    checkTokenValidity,
-  };
+  if (step === 1) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <ArrowLeft size={24} color="#111827" />
+          </TouchableOpacity>
+          <Text style={styles.title}>Eliminar Cuenta</Text>
+          <View style={styles.placeholder} />
+        </View>
+
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          <Card style={styles.warningCard}>
+            <View style={styles.warningHeader}>
+              <AlertTriangle size={48} color="#EF4444" />
+              <Text style={styles.warningTitle}>¡Atención!</Text>
+            </View>
+            
+            <Text style={styles.warningText}>
+              Estás a punto de eliminar permanentemente tu cuenta de DogCatiFy. Esta acción no se puede deshacer.
+            </Text>
+          </Card>
+
+          <Card style={styles.dataCard}>
+            <Text style={styles.dataTitle}>Se eliminarán los siguientes datos:</Text>
+            
+            <View style={styles.dataList}>
+              <View style={styles.dataItem}>
+                <Text style={styles.dataIcon}>🐾</Text>
+                <Text style={styles.dataText}>Todos los perfiles de tus mascotas</Text>
+              </View>
+              
+              <View style={styles.dataItem}>
+                <Text style={styles.dataIcon}>📸</Text>
+                <Text style={styles.dataText}>Todas las fotos y álbumes</Text>
+              </View>
+              
+              <View style={styles.dataItem}>
+                <Text style={styles.dataIcon}>📝</Text>
+                <Text style={styles.dataText}>Todas tus publicaciones y comentarios</Text>
+              </View>
+              
+              <View style={styles.dataItem}>
+                <Text style={styles.dataIcon}>🏥</Text>
+                <Text style={styles.dataText}>Registros médicos y de salud</Text>
+              </View>
+              
+              <View style={styles.dataItem}>
+                <Text style={styles.dataIcon}>📅</Text>
+                <Text style={styles.dataText}>Historial de reservas y citas</Text>
+              </View>
+              
+              <View style={styles.dataItem}>
+                <Text style={styles.dataIcon}>🛒</Text>
+                <Text style={styles.dataText}>Historial de compras y pedidos</Text>
+              </View>
+              
+              <View style={styles.dataItem}>
+                <Text style={styles.dataIcon}>💬</Text>
+                <Text style={styles.dataText}>Conversaciones y mensajes</Text>
+              </View>
+              
+              <View style={styles.dataItem}>
+                <Text style={styles.dataIcon}>👤</Text>
+                <Text style={styles.dataText}>Tu perfil y información personal</Text>
+              </View>
+            </View>
+          </Card>
+
+          <Card style={styles.alternativeCard}>
+            <Text style={styles.alternativeTitle}>¿Consideraste estas alternativas?</Text>
+            
+            <View style={styles.alternativeList}>
+              <Text style={styles.alternativeItem}>
+                • Desactivar temporalmente tu cuenta
+              </Text>
+              <Text style={styles.alternativeItem}>
+                • Cambiar tu configuración de privacidad
+              </Text>
+              <Text style={styles.alternativeItem}>
+                • Contactar con soporte para resolver problemas
+              </Text>
+            </View>
+          </Card>
+
+          <View style={styles.actionButtons}>
+            <Button
+              title="Cancelar"
+              onPress={() => router.back()}
+              variant="outline"
+              size="large"
+            />
+            
+            <Button
+              title="Continuar con la eliminación"
+              onPress={handleContinueToConfirmation}
+              size="large"
+              style={styles.dangerButton}
+            />
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => setStep(1)} style={styles.backButton}>
+          <ArrowLeft size={24} color="#111827" />
+        </TouchableOpacity>
+        <Text style={styles.title}>Confirmar Eliminación</Text>
+        <View style={styles.placeholder} />
+      </View>
+
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <Card style={styles.confirmationCard}>
+          <View style={styles.confirmationHeader}>
+            <Shield size={48} color="#EF4444" />
+            <Text style={styles.confirmationTitle}>Confirmación Final</Text>
+          </View>
+          
+          <Text style={styles.confirmationText}>
+            Para confirmar que deseas eliminar permanentemente tu cuenta, escribe exactamente:
+          </Text>
+          
+          <View style={styles.confirmationPhrase}>
+            <Text style={styles.phraseText}>ELIMINAR MI CUENTA</Text>
+          </View>
+          
+          <TextInput
+            style={styles.confirmationInput}
+            placeholder="Escribe la frase exacta aquí"
+            value={confirmationText}
+            onChangeText={setConfirmationText}
+            autoCapitalize="characters"
+          />
+          
+          {/* Progress indicator during deletion */}
+          {loading && deletionProgress.length > 0 && (
+            <View style={styles.progressContainer}>
+              <Text style={styles.progressTitle}>Progreso de eliminación:</Text>
+              <ScrollView style={styles.progressScroll} showsVerticalScrollIndicator={false}>
+                {deletionProgress.map((step, index) => (
+                  <Text key={index} style={styles.progressStep}>
+                    {step}
+                  </Text>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+          
+          <Text style={styles.confirmationNote}>
+            Esta acción es irreversible. Una vez eliminada, no podrás recuperar tu cuenta ni tus datos.
+          </Text>
+        </Card>
+
+        <View style={styles.finalActions}>
+          <Button
+            title="Cancelar"
+            onPress={() => router.back()}
+            variant="outline" 
+            size="large"
+          />
+          
+          <Button
+            title={loading ? "Eliminando..." : "Eliminar mi cuenta permanentemente"}
+            onPress={handleDeleteAccount}
+            loading={loading}
+            disabled={confirmationText !== 'ELIMINAR MI CUENTA' || loading}
+            size="large"
+            style={styles.deleteButton}
+          />
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
-};
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+    paddingTop: 50,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  backButton: {
+    padding: 8,
+  },
+  title: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#111827',
+  },
+  placeholder: {
+    width: 32,
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+  },
+  warningCard: {
+    marginBottom: 16,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  warningHeader: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  warningTitle: {
+    fontSize: 24,
+    fontFamily: 'Inter-Bold',
+    color: '#EF4444',
+    marginTop: 8,
+  },
+  warningText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#991B1B',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  dataCard: {
+    marginBottom: 16,
+  },
+  dataTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#111827',
+    marginBottom: 16,
+  },
+  dataList: {
+    gap: 12,
+  },
+  dataItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dataIcon: {
+    fontSize: 20,
+    marginRight: 12,
+    width: 24,
+  },
+  dataText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+    flex: 1,
+  },
+  alternativeCard: {
+    marginBottom: 24,
+    backgroundColor: '#F0F9FF',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  alternativeTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#0369A1',
+    marginBottom: 12,
+  },
+  alternativeList: {
+    gap: 8,
+  },
+  alternativeItem: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#0369A1',
+    lineHeight: 20,
+  },
+  actionButtons: {
+    gap: 12,
+    marginBottom: 24,
+  },
+  dangerButton: {
+    backgroundColor: '#EF4444',
+  },
+  confirmationCard: {
+    marginBottom: 24,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  confirmationHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  confirmationTitle: {
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
+    color: '#EF4444',
+    marginTop: 8,
+  },
+  confirmationText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#991B1B',
+    textAlign: 'center',
+    marginBottom: 16,
+    lineHeight: 24,
+  },
+  confirmationPhrase: {
+    backgroundColor: '#991B1B',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  phraseText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  confirmationInput: {
+    borderWidth: 2,
+    borderColor: '#EF4444',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    marginBottom: 16,
+  },
+  progressContainer: {
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  progressTitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  progressScroll: {
+    maxHeight: 150,
+  },
+  progressStep: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  confirmationNote: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#991B1B',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  finalActions: {
+    gap: 12,
+    marginBottom: 24,
+  },
+  deleteButton: {
+    backgroundColor: '#EF4444',
+  },
+});
