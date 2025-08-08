@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, Image, TouchableOpacity, Modal, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Modal, Platform, Animated } from 'react-native';
 import { Link, router } from 'expo-router';
-import { Mail, Lock, Eye, EyeOff, Fingerprint } from 'lucide-react-native';
+import { Mail, Lock, Eye, EyeOff, Fingerprint, AlertCircle, X, CheckCircle } from 'lucide-react-native';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../contexts/AuthContext';
@@ -12,6 +12,82 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SAVED_CREDENTIALS_KEY = '@saved_credentials';
 
+// Componente de error moderno
+const ErrorBanner = ({ error, onDismiss }: { error: string; onDismiss: () => void }) => {
+  const fadeAnim = new Animated.Value(0);
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  const handleDismiss = () => {
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      onDismiss();
+    });
+  };
+
+  const getErrorMessage = (errorText: string) => {
+    if (errorText.includes('Invalid login credentials')) {
+      return {
+        title: 'Credenciales incorrectas',
+        message: 'El correo electrónico o la contraseña no son correctos. Verifica e intenta nuevamente.',
+        icon: <AlertCircle size={20} color="#EF4444" />
+      };
+    } else if (errorText.includes('Email not confirmed')) {
+      return {
+        title: 'Email no confirmado',
+        message: 'Debes confirmar tu correo electrónico antes de iniciar sesión.',
+        icon: <Mail size={20} color="#F59E0B" />
+      };
+    } else if (errorText.includes('Too many requests')) {
+      return {
+        title: 'Demasiados intentos',
+        message: 'Has intentado muchas veces. Espera unos minutos antes de intentar nuevamente.',
+        icon: <AlertCircle size={20} color="#F59E0B" />
+      };
+    } else if (errorText.includes('User not found')) {
+      return {
+        title: 'Usuario no encontrado',
+        message: 'No existe una cuenta con este correo electrónico. ¿Quizás necesitas registrarte?',
+        icon: <AlertCircle size={20} color="#3B82F6" />
+      };
+    } else {
+      return {
+        title: 'Error de conexión',
+        message: 'Hubo un problema al conectar. Verifica tu conexión e intenta nuevamente.',
+        icon: <AlertCircle size={20} color="#EF4444" />
+      };
+    }
+  };
+
+  const errorInfo = getErrorMessage(error);
+
+  return (
+    <Animated.View style={[styles.errorBanner, { opacity: fadeAnim }]}>
+      <View style={styles.errorContent}>
+        <View style={styles.errorIcon}>
+          {errorInfo.icon}
+        </View>
+        <View style={styles.errorText}>
+          <Text style={styles.errorTitle}>{errorInfo.title}</Text>
+          <Text style={styles.errorMessage}>{errorInfo.message}</Text>
+        </View>
+        <TouchableOpacity style={styles.errorDismiss} onPress={handleDismiss}>
+          <X size={18} color="#6B7280" />
+        </TouchableOpacity>
+      </View>
+    </Animated.View>
+  );
+};
+
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -21,6 +97,7 @@ export default function Login() {
   const [rememberCredentials, setRememberCredentials] = useState(false);
   const [showEmailConfirmationModal, setShowEmailConfirmationModal] = useState(false);
   const [pendingEmail, setPendingEmail] = useState('');
+  const [loginError, setLoginError] = useState<string | null>(null);
   const { login, authError, clearAuthError } = useAuth();
   const { t } = useLanguage();
   const { 
@@ -30,32 +107,23 @@ export default function Login() {
     authenticateWithBiometric
   } = useBiometric();
 
-  // Load saved credentials and check for biometric authentication on component mount
+  // Load saved credentials on component mount
   useEffect(() => {
-    const initializeLogin = async () => {
-      // First try to load saved credentials
-      await loadSavedCredentials();
-      
-      // Then check for biometric authentication if enabled
-      if (isBiometricEnabled && isBiometricSupported) {
-        setTimeout(async () => {
-          try {
-            const credentials = await authenticateWithBiometric();
-            if (credentials) {
-              setEmail(credentials.email);
-              setPassword(credentials.password);
-              // Auto-login with biometric credentials
-              handleLogin(credentials.email, credentials.password);
-            }
-          } catch (error) {
-            console.log('Biometric authentication cancelled or failed');
-          }
-        }, 500);
-      }
-    };
+    loadSavedCredentials();
+  }, []);
 
-    initializeLogin();
-  }, [isBiometricEnabled, isBiometricSupported]);
+  // Handle auth errors from context
+  useEffect(() => {
+    if (authError) {
+      if (authError.startsWith('EMAIL_NOT_CONFIRMED:')) {
+        const userEmail = authError.split(':')[1];
+        setPendingEmail(userEmail || email);
+        setShowEmailConfirmationModal(true);
+      } else {
+        setLoginError(authError);
+      }
+    }
+  }, [authError]);
 
   const loadSavedCredentials = async () => {
     try {
@@ -93,27 +161,17 @@ export default function Login() {
     }
   };
 
-  // Handle auth errors from context
-  useEffect(() => {
-    if (authError) {
-      if (authError.startsWith('EMAIL_NOT_CONFIRMED:')) {
-        const userEmail = authError.split(':')[1];
-        setPendingEmail(userEmail || email);
-        setShowEmailConfirmationModal(true);
-      }
-    }
-  }, [authError]);
-
   const handleLogin = async (emailParam?: string, passwordParam?: string) => {
     const loginEmail = emailParam || email;
     const loginPassword = passwordParam || password;
 
     if (!loginEmail || !loginPassword) {
-      Alert.alert(t('error'), t('fillAllFields'));
+      setLoginError('Por favor completa todos los campos');
       return;
     }
 
     setLoading(true);
+    setLoginError(null);
     clearAuthError();
 
     try {
@@ -150,18 +208,31 @@ export default function Login() {
     } catch (error: any) {
       console.error('Login error:', error);
       
-      // Don't show alert for email confirmation errors - the modal will handle it
+      // Don't show error banner for email confirmation errors - the modal will handle it
       if (!error.message?.includes('confirmar tu correo')) {
-        Alert.alert(t('error'), error.message);
+        setLoginError(error.message);
       }
     } finally {
       setLoading(false);
     }
   };
 
+  const handleBiometricLogin = async () => {
+    try {
+      const credentials = await authenticateWithBiometric();
+      if (credentials) {
+        setEmail(credentials.email);
+        setPassword(credentials.password);
+        // Auto-login with biometric credentials
+        handleLogin(credentials.email, credentials.password);
+      }
+    } catch (error) {
+      console.log('Biometric authentication cancelled or failed');
+    }
+  };
+
   const handleResendEmail = async () => {
     if (!pendingEmail) {
-      Alert.alert('Error', 'Por favor ingresa tu correo electrónico');
       return;
     }
 
@@ -173,26 +244,24 @@ export default function Login() {
         setShowEmailConfirmationModal(false);
         clearAuthError();
         
-        // Then show success alert
-        Alert.alert(
-          'Correo enviado',
-          `Se ha enviado un nuevo correo de confirmación a ${pendingEmail}.\n\nRevisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace de confirmación.`,
-          [{ 
-            text: 'Entendido', 
-            onPress: () => {
-              // Clear form and stay on login screen
-              setEmail('');
-              setPassword('');
-              setPendingEmail('');
-            }
-          }]
-        );
+        // Show success banner instead of alert
+        setLoginError(null);
+        
+        // Clear form and show success message
+        setEmail('');
+        setPassword('');
+        setPendingEmail('');
+        
+        // Show success banner
+        setTimeout(() => {
+          setLoginError(`SUCCESS:Se ha enviado un nuevo correo de confirmación a ${pendingEmail}. Revisa tu bandeja de entrada.`);
+        }, 300);
       } else {
-        Alert.alert('Error', result.error || 'No se pudo reenviar el correo');
+        setLoginError(result.error || 'No se pudo reenviar el correo');
       }
     } catch (error) {
       console.error('Resend email error:', error);
-      Alert.alert('Error', 'No se pudo reenviar el correo de confirmación');
+      setLoginError('No se pudo reenviar el correo de confirmación');
     } finally {
       setResendingEmail(false);
     }
@@ -207,6 +276,10 @@ export default function Login() {
     setPendingEmail('');
   };
 
+  const dismissError = () => {
+    setLoginError(null);
+  };
+
   return (
     <>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -215,14 +288,22 @@ export default function Login() {
             source={require('../../assets/images/logo.jpg')} 
             style={styles.logo} 
           />
-          <Text style={styles.title}>{t('welcomeBack')}</Text>
-          <Text style={styles.subtitle}>{t('signInSubtitle')}</Text>
+          <Text style={styles.title}>¡Bienvenido de vuelta a DogCatiFy! 🐾</Text>
+          <Text style={styles.subtitle}>Inicia sesión para conectar con tu comunidad de mascotas</Text>
         </View>
+
+        {/* Error Banner */}
+        {loginError && (
+          <ErrorBanner 
+            error={loginError} 
+            onDismiss={dismissError}
+          />
+        )}
 
         <View style={styles.form}>
           <Input
-            label={t('email')}
-            placeholder={t('email')}
+            label="Correo electrónico"
+            placeholder="tu@email.com"
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -231,8 +312,8 @@ export default function Login() {
           />
 
           <Input
-            label={t('password')}
-            placeholder={t('password')}
+            label="Contraseña"
+            placeholder="Tu contraseña"
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
@@ -263,25 +344,39 @@ export default function Login() {
           </View>
 
           <Button
-            title={t('signIn')}
+            title="Iniciar sesión"
             onPress={() => handleLogin()}
             loading={loading}
             disabled={loading}
             size="large"
           />
 
+          {/* Biometric Login Button */}
+          {isBiometricEnabled && isBiometricSupported && (
+            <TouchableOpacity 
+              style={styles.biometricButton}
+              onPress={handleBiometricLogin}
+              disabled={loading}
+            >
+              <Fingerprint size={24} color="#2D6A6F" />
+              <Text style={styles.biometricButtonText}>
+                Iniciar con {biometricType || 'Biometría'}
+              </Text>
+            </TouchableOpacity>
+          )}
+
           <View style={styles.forgotPasswordContainer}>
             <Link href="/auth/forgot-password" style={styles.forgotPasswordLink}>
-              {t('forgotPassword')}
+              ¿Olvidaste tu contraseña?
             </Link>
           </View>
         </View>
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            {t('dontHaveAccount')}{' '}
+            ¿No tienes una cuenta?{' '}
             <Link href="/auth/register" style={styles.link}>
-              {t('signUp')}
+              Registrarse
             </Link>
           </Text>
         </View>
@@ -370,13 +465,83 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontFamily: 'Inter-Regular',
   },
+  
+  // Error Banner Styles
+  errorBanner: {
+    marginBottom: 20,
+    borderRadius: 12,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    overflow: 'hidden',
+  },
+  errorContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 16,
+  },
+  errorIcon: {
+    marginRight: 12,
+    marginTop: 2,
+  },
+  errorText: {
+    flex: 1,
+  },
+  errorTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#991B1B',
+    marginBottom: 4,
+  },
+  errorMessage: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#991B1B',
+    lineHeight: 20,
+  },
+  errorDismiss: {
+    padding: 4,
+    marginLeft: 8,
+  },
+  
+  // Success Banner (when error starts with SUCCESS:)
+  successBanner: {
+    marginBottom: 20,
+    borderRadius: 12,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    overflow: 'hidden',
+  },
+  successContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 16,
+  },
+  successIcon: {
+    marginRight: 12,
+    marginTop: 2,
+  },
+  successText: {
+    flex: 1,
+  },
+  successTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#166534',
+    marginBottom: 4,
+  },
+  successMessage: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#166534',
+    lineHeight: 20,
+  },
+
   form: {
     width: '100%',
     maxWidth: 400,
     alignSelf: 'center',
-  },
-  saveCredentialsContainer: {
-    marginBottom: 20,
   },
   rememberCredentialsContainer: {
     marginBottom: 20,
@@ -412,6 +577,24 @@ const styles = StyleSheet.create({
     color: '#374151',
     flex: 1,
   },
+  biometricButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F0F9FF',
+    borderWidth: 2,
+    borderColor: '#2D6A6F',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    marginTop: 16,
+    gap: 8,
+  },
+  biometricButtonText: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#2D6A6F',
+  },
   forgotPasswordContainer: {
     alignItems: 'center',
     marginTop: 16,
@@ -434,6 +617,7 @@ const styles = StyleSheet.create({
     color: '#3B82F6',
     fontFamily: 'Inter-SemiBold',
   },
+  
   // Modal styles
   modalOverlay: {
     flex: 1,
