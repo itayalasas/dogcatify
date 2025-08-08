@@ -350,23 +350,30 @@ export default function DeleteAccount() {
           } else {
             // For other errors, continue but log the issue
             console.warn('Profile update failed but continuing with confirmation:', profileError.message);
-          .eq('id', tokenData.user_id);
+          }
+        }
+      }
+
+      try {
+        console.log('Step 20: Attempting to delete from auth system...');
+        setDeletionProgress(prev => [...prev, 'Eliminando de sistema de autenticación...']);
+        
+        // Try to delete from auth system
+        const response = await fetch(`${supabaseClient.supabaseUrl}/auth/v1/admin/users/${currentUser.id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          console.log('✅ User deleted from auth system successfully');
+          setDeletionProgress(prev => [...prev, '✅ Usuario eliminado del sistema de autenticación']);
+        } else {
+          console.warn('⚠️ Could not delete from auth system (status:', response.status, ')');
           setDeletionProgress(prev => [...prev, `⚠️ Error API auth (${response.status})`]);
           setDeletionProgress(prev => [...prev, '⚠️ Continuando con logout forzado...']);
-          
-          // Verify the update worked
-          const { data: updatedProfile, error: verifyError } = await supabaseClient
-            .from('profiles')
-            .select('email_confirmed, email_confirmed_at')
-            .eq('id', tokenData.user_id)
-            .single();
-          
-          if (!verifyError && updatedProfile) {
-            console.log('Profile update verified:', {
-              email_confirmed: updatedProfile.email_confirmed,
-              email_confirmed_at: updatedProfile.email_confirmed_at
-            });
-          }
         }
       } catch (authError) {
         console.warn('Error deleting from auth system:', authError);
