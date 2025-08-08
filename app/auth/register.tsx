@@ -45,8 +45,8 @@ export default function Register() {
     try {
       await register(email, password, fullName);
       Alert.alert(
-        'Registro exitoso',
-        'Tu cuenta ha sido creada. Te hemos enviado un correo de confirmación. Por favor revisa tu bandeja de entrada y haz clic en el enlace para activar tu cuenta.',
+        '¡Registro exitoso! 🎉',
+        `Tu cuenta ha sido creada exitosamente.\n\n📧 Hemos enviado un correo de confirmación a:\n${email}\n\nPor favor revisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace de confirmación.\n\n⏰ El enlace expira en 24 horas.`,
         [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
       );
     } catch (error: any) {
