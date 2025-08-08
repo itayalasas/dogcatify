@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, Image, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, Image, TouchableOpacity, Modal, Platform } from 'react-native';
 import { Link, router } from 'expo-router';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
+import { Mail, Lock, Eye, EyeOff, Fingerprint } from 'lucide-react-native';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useBiometric } from '../../contexts/BiometricContext';
 import { resendConfirmationEmail } from '../../utils/emailConfirmation';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const SAVED_CREDENTIALS_KEY = '@saved_credentials';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -15,7 +18,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [resendingEmail, setResendingEmail] = useState(false);
-  const [saveCredentials, setSaveCredentials] = useState(false);
+  const [rememberCredentials, setRememberCredentials] = useState(false);
   const [showEmailConfirmationModal, setShowEmailConfirmationModal] = useState(false);
   const [pendingEmail, setPendingEmail] = useState('');
   const { login, authError, clearAuthError } = useAuth();
@@ -24,31 +27,71 @@ export default function Login() {
     isBiometricSupported, 
     isBiometricEnabled, 
     biometricType, 
-    enableBiometric,
     authenticateWithBiometric
   } = useBiometric();
 
-  // Check for biometric authentication on component mount
+  // Load saved credentials and check for biometric authentication on component mount
   useEffect(() => {
-    const checkBiometricLogin = async () => {
+    const initializeLogin = async () => {
+      // First try to load saved credentials
+      await loadSavedCredentials();
+      
+      // Then check for biometric authentication if enabled
       if (isBiometricEnabled && isBiometricSupported) {
-        try {
-          const credentials = await authenticateWithBiometric();
-          if (credentials) {
-            setEmail(credentials.email);
-            setPassword(credentials.password);
-            // Auto-login with biometric credentials
-            handleLogin(credentials.email, credentials.password);
+        setTimeout(async () => {
+          try {
+            const credentials = await authenticateWithBiometric();
+            if (credentials) {
+              setEmail(credentials.email);
+              setPassword(credentials.password);
+              // Auto-login with biometric credentials
+              handleLogin(credentials.email, credentials.password);
+            }
+          } catch (error) {
+            console.log('Biometric authentication cancelled or failed');
           }
-        } catch (error) {
-          console.log('Biometric authentication cancelled or failed');
-        }
+        }, 500);
       }
     };
 
-    // Small delay to ensure component is mounted
-    setTimeout(checkBiometricLogin, 500);
+    initializeLogin();
   }, [isBiometricEnabled, isBiometricSupported]);
+
+  const loadSavedCredentials = async () => {
+    try {
+      const savedCredentials = await AsyncStorage.getItem(SAVED_CREDENTIALS_KEY);
+      if (savedCredentials) {
+        const { email: savedEmail, password: savedPassword } = JSON.parse(savedCredentials);
+        if (savedEmail && savedPassword) {
+          setEmail(savedEmail);
+          setPassword(savedPassword);
+          setRememberCredentials(true);
+          console.log('Loaded saved credentials for:', savedEmail);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading saved credentials:', error);
+    }
+  };
+
+  const saveCredentials = async (email: string, password: string) => {
+    try {
+      const credentials = { email, password };
+      await AsyncStorage.setItem(SAVED_CREDENTIALS_KEY, JSON.stringify(credentials));
+      console.log('Credentials saved successfully');
+    } catch (error) {
+      console.error('Error saving credentials:', error);
+    }
+  };
+
+  const clearSavedCredentials = async () => {
+    try {
+      await AsyncStorage.removeItem(SAVED_CREDENTIALS_KEY);
+      console.log('Saved credentials cleared');
+    } catch (error) {
+      console.error('Error clearing saved credentials:', error);
+    }
+  };
 
   // Handle auth errors from context
   useEffect(() => {
@@ -80,39 +123,41 @@ export default function Login() {
       if (result) {
         console.log('Login successful');
         
-        // Save credentials if user opted to save them
-        if (saveCredentials && isBiometricSupported) {
-          try {
-            await enableBiometric(loginEmail, loginPassword);
-            console.log('Credentials saved with biometric authentication');
-          } catch (error) {
-            console.error('Error saving credentials:', error);
-          }
+        // Save credentials if user opted to remember them
+        if (rememberCredentials) {
+          await saveCredentials(loginEmail, loginPassword);
+        } else {
+          // Clear saved credentials if user unchecked the option
+          await clearSavedCredentials();
         }
         
-        // Show biometric setup only if login was successful
-        if (isBiometricSupported && !isBiometricEnabled && !saveCredentials && loginEmail && loginPassword) {
-          Alert.alert(
-            'Habilitar acceso rápido',
-            `¿Quieres usar tu ${biometricType || 'biometría'} para iniciar sesión más rápido la próxima vez?`,
-            [
-              { text: 'Ahora no', style: 'cancel' },
-              {
-                text: 'Habilitar',
-                onPress: async () => {
-                  try {
-                    await enableBiometric(loginEmail, loginPassword);
-                    Alert.alert(
-                      'Biometría habilitada',
-                      `${biometricType || 'La autenticación biométrica'} ha sido configurada correctamente.`
-                    );
-                  } catch (error) {
-                    console.error('Error enabling biometric:', error);
+        // Show biometric setup only if login was successful and biometric is supported but not enabled
+        if (isBiometricSupported && !isBiometricEnabled && loginEmail && loginPassword) {
+          try {
+            Alert.alert(
+              'Habilitar acceso rápido',
+              `¿Quieres usar tu ${biometricType || 'biometría'} para iniciar sesión más rápido?`,
+              [
+                { text: 'Ahora no', style: 'cancel' },
+                {
+                  text: 'Habilitar',
+                  onPress: () => {
+                    // Navigate to profile to set up biometric
+                    router.push('/(tabs)/profile');
+                    setTimeout(() => {
+                      Alert.alert(
+                        'Configurar biometría',
+                        'Ve a la configuración de tu perfil para habilitar la autenticación biométrica.',
+                        [{ text: 'Entendido' }]
+                      );
+                    }, 1000);
                   }
                 }
-              }
-            ]
-          );
+              ]
+            );
+          } catch (error) {
+            console.error('Error showing biometric setup:', error);
+          }
         }
         
         router.replace('/(tabs)');
@@ -218,21 +263,19 @@ export default function Login() {
             }
           />
 
-          {isBiometricSupported && (
-            <View style={styles.saveCredentialsContainer}>
-              <TouchableOpacity 
-                style={styles.saveCredentialsRow} 
-                onPress={() => setSaveCredentials(!saveCredentials)}
-              >
-                <View style={[styles.checkbox, saveCredentials && styles.checkedCheckbox]}>
-                  {saveCredentials && <Text style={styles.checkmark}>✓</Text>}
-                </View>
-                <Text style={styles.saveCredentialsText}>
-                  Guardar credenciales con {biometricType || 'biometría'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
+          <View style={styles.rememberCredentialsContainer}>
+            <TouchableOpacity 
+              style={styles.rememberCredentialsRow} 
+              onPress={() => setRememberCredentials(!rememberCredentials)}
+            >
+              <View style={[styles.checkbox, rememberCredentials && styles.checkedCheckbox]}>
+                {rememberCredentials && <Text style={styles.checkmark}>✓</Text>}
+              </View>
+              <Text style={styles.rememberCredentialsText}>
+                Recordar mis credenciales
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           <Button
             title={t('signIn')}
@@ -350,7 +393,10 @@ const styles = StyleSheet.create({
   saveCredentialsContainer: {
     marginBottom: 20,
   },
-  saveCredentialsRow: {
+  rememberCredentialsContainer: {
+    marginBottom: 20,
+  },
+  rememberCredentialsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
@@ -375,7 +421,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
   },
-  saveCredentialsText: {
+  rememberCredentialsText: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#374151',
