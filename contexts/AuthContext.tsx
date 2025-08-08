@@ -653,6 +653,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           confirmationUrl
         );
         console.log('Custom confirmation email sent successfully');
+        
+        // Sign out immediately after registration to prevent auth state conflicts
+        await supabaseClient.auth.signOut();
       }
       
       // Clear any session but don't throw error - registration was successful
