@@ -254,7 +254,7 @@ export const completeUserRegistration = async (
  * Generate confirmation URL
  */
 export const generateConfirmationUrl = (token: string, type: 'signup' | 'password_reset' = 'signup'): string => {
-  const baseUrl = process.env.EXPO_PUBLIC_APP_DOMAIN || 'https://app-dogcatify.netlify.app';
+  const baseUrl = process.env.EXPO_PUBLIC_APP_DOMAIN || process.env.EXPO_PUBLIC_APP_URL || 'https://app-dogcatify.netlify.app';
   
   if (type === 'password_reset') {
     // Password reset goes to a SEPARATE reset password page

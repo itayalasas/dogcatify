@@ -143,7 +143,7 @@ serve(async (req: Request) => {
 
     // Send custom confirmation email
     try {
-      const baseUrl = Deno.env.get('APP_DOMAIN') || 'https://app-dogcatify.netlify.app';
+      const baseUrl = Deno.env.get('EXPO_PUBLIC_APP_DOMAIN') || Deno.env.get('EXPO_PUBLIC_APP_URL') || 'https://app-dogcatify.netlify.app';
       const confirmationUrl = `${baseUrl}/auth/confirm?token_hash=${token}&type=signup`;
       
       // Send email using our email function
@@ -158,23 +158,45 @@ serve(async (req: Request) => {
           subject: '¡Confirma tu cuenta en DogCatiFy!',
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <div style="background-color: #2D6A6F; padding: 20px; text-align: center;">
-                <h1 style="color: white; margin: 10px 0;">¡Confirma tu cuenta en DogCatiFy!</h1>
+              <div style="background-color: #2D6A6F; padding: 30px 20px; text-align: center;">
+                <h1 style="color: white; margin: 0; font-size: 24px; font-weight: bold;">¡Confirma tu cuenta en DogCatiFy!</h1>
               </div>
-              <div style="padding: 20px; background-color: #f9f9f9;">
-                <p>Hola <strong>${displayName}</strong>,</p>
-                <p>¡Gracias por registrarte en DogCatiFy!</p>
-                <p>Para completar tu registro, haz clic en el siguiente enlace:</p>
+              <div style="padding: 30px 20px; background-color: #ffffff;">
+                <p style="margin: 0 0 10px 0; font-size: 16px; color: #333;">Hola <strong>DogCatify</strong>,</p>
+                <p style="margin: 0 0 20px 0; font-size: 16px; color: #333;">¡Gracias por registrarte en DogCatiFy!</p>
+                <p style="margin: 0 0 30px 0; font-size: 16px; color: #333;">Para completar tu registro y acceder a todas las funciones, necesitas confirmar tu correo electrónico.</p>
                 
                 <div style="text-align: center; margin: 30px 0;">
-                  <a href="${confirmationUrl}" style="background-color: #2D6A6F; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
-                    ✅ Confirmar mi correo electrónico
+                  <a href="${confirmationUrl}" style="background-color: #2D6A6F; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; text-decoration: none;">
+                    Confirmar mi correo electrónico
                   </a>
                 </div>
                 
-                <p><strong>Este enlace expira en 24 horas.</strong></p>
-                <p>¡Esperamos verte pronto en DogCatiFy!</p>
-                <p>El equipo de DogCatiFy</p>
+                <div style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 15px; margin: 20px 0; border-radius: 4px;">
+                  <p style="margin: 0 0 10px 0; font-weight: bold; color: #92400E;">📧 Importante:</p>
+                  <p style="margin: 0 0 10px 0; color: #92400E;">Debes hacer clic en el botón de arriba para activar tu cuenta.</p>
+                  <p style="margin: 0 0 10px 0; color: #92400E;">Si el botón no funciona, copia y pega este enlace en tu navegador:</p>
+                  <p style="margin: 0 0 10px 0; word-break: break-all; font-family: monospace; background: #f5f5f5; padding: 10px; border-radius: 4px; color: #333;">
+                    ${confirmationUrl}
+                  </p>
+                  <p style="margin: 0; color: #92400E;">Si no ves el correo, revisa tu carpeta de spam.</p>
+                  <p style="margin: 10px 0 0 0; font-weight: bold; color: #92400E;">Este enlace expira en 24 horas.</p>
+                </div>
+                
+                <p style="margin: 20px 0 0 0; font-size: 16px; color: #333;">Una vez confirmado tu email, podrás:</p>
+                <ul style="margin: 10px 0 20px 20px; color: #333;">
+                  <li>Crear perfiles para tus mascotas</li>
+                  <li>Conectar con otros dueños de mascotas</li>
+                  <li>Encontrar servicios para tus compañeros peludos</li>
+                  <li>Compartir momentos especiales con la comunidad</li>
+                </ul>
+                
+                <p style="margin: 20px 0 0 0; font-size: 16px; color: #333;">¡Esperamos verte pronto en DogCatiFy!</p>
+                <p style="margin: 10px 0 0 0; font-size: 16px; color: #333;">El equipo de DogCatiFy</p>
+              </div>
+              <div style="background-color: #f0f0f0; padding: 15px; text-align: center; font-size: 12px; color: #666;">
+                <p style="margin: 0 0 5px 0;">© 2025 DogCatiFy. Todos los derechos reservados.</p>
+                <p style="margin: 0;">Si no solicitaste esta cuenta, puedes ignorar este correo.</p>
               </div>
             </div>
           `

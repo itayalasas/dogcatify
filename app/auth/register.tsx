@@ -43,7 +43,7 @@ export default function Register() {
 
     setLoading(true);
     try {
-      // Call our custom user creation function instead of auth.signUp
+      // Llamar a nuestra función personalizada de creación de usuario
       const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
       const response = await fetch(`${supabaseUrl}/functions/v1/create-user`, {
         method: 'POST',
@@ -66,11 +66,11 @@ export default function Register() {
 
       console.log('Account created successfully:', result.userId);
       
-      // Navigate to login with success message
+      // Mostrar mensaje de éxito como en la imagen
       Alert.alert(
-        'Cuenta creada',
-        'Tu cuenta ha sido creada. Revisa tu email para confirmarla y luego podrás iniciar sesión.',
-        [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
+        '¡Registro exitoso! 🎉',
+        `Tu cuenta ha sido creada exitosamente.\n\n📧 Hemos enviado un correo de confirmación a:\n${email}\n\nPor favor revisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace de confirmación.\n\n⏰ El enlace expira en 24 horas.`,
+        [{ text: 'ENTENDIDO', onPress: () => router.replace('/auth/login') }]
       );
     } catch (error: any) {
       // Solo mostrar errores reales de registro
