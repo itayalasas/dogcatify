@@ -47,15 +47,62 @@ serve(async (req: Request) => {
 
     console.log('Deleting user from auth.users table:', userId);
 
+    // First, verify the user exists in auth.users
+    try {
+      const { data: userData, error: getUserError } = await supabase.auth.admin.getUserById(userId);
+      
+      if (getUserError) {
+        console.error('Error getting user:', getUserError);
+        if (getUserError.message?.includes('User not found')) {
+          return new Response(
+            JSON.stringify({ success: true, message: "User already deleted from auth" }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json", ...corsHeaders },
+            }
+          );
+        }
+        throw getUserError;
+      }
+      
+      console.log('User found in auth.users, proceeding with deletion...');
+    } catch (verifyError) {
+      console.error('Error verifying user exists:', verifyError);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: `Failed to verify user exists: ${verifyError.message}` 
+        }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
     // Delete user from auth.users table using admin API
     const { error: deleteError } = await supabase.auth.admin.deleteUser(userId);
 
     if (deleteError) {
       console.error('Error deleting user from auth:', deleteError);
+      console.error('Delete error details:', JSON.stringify(deleteError, null, 2));
+      
+      // Check if user was already deleted
+      if (deleteError.message?.includes('User not found')) {
+        return new Response(
+          JSON.stringify({ success: true, message: "User was already deleted" }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+          }
+        );
+      }
+      
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: `Failed to delete user from auth: ${deleteError.message}` 
+          error: `Failed to delete user from auth: ${deleteError.message}`,
+          details: deleteError
         }),
         {
           status: 500,

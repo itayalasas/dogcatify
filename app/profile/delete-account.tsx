@@ -177,6 +177,7 @@ export default function DeleteAccount() {
       setDeletionProgress(prev => [...prev, 'Eliminando comentarios en otras publicaciones...']);
 
       // Delete user-level data (not pet-specific)
+      setDeletionProgress(prev => [...prev, 'Eliminando tokens de confirmación de email...']);
       console.log('Step 12: Deleting email confirmations...');
       const { error: emailConfirmationsError } = await supabaseClient
         .from('email_confirmations')
@@ -185,9 +186,10 @@ export default function DeleteAccount() {
       
       if (emailConfirmationsError) {
         console.error('Error deleting email confirmations:', emailConfirmationsError);
-        console.log('Continuing despite email confirmations deletion error...');
+        setDeletionProgress(prev => [...prev, `⚠️ Error eliminando confirmaciones: ${emailConfirmationsError.message}`]);
       } else {
         console.log('Email confirmations deleted successfully');
+        setDeletionProgress(prev => [...prev, '✅ Tokens de confirmación eliminados']);
       }
       
       console.log('Step 13: Deleting chat conversations and messages...');
@@ -290,7 +292,7 @@ export default function DeleteAccount() {
       }
 
       // Handle partner data if user is a partner
-      setDeletionProgress(prev => [...prev, 'Step 19: Verificando datos de negocio...']);
+      setDeletionProgress(prev => [...prev, 'Verificando datos de negocio...']);
       console.log('Checking for partner data...');
       const { data: partnerData } = await supabaseClient
         .from('partners')
@@ -298,7 +300,7 @@ export default function DeleteAccount() {
         .eq('user_id', currentUser.id);
 
       if (partnerData && partnerData.length > 0) {
-        setDeletionProgress(prev => [...prev, 'Error: Usuario tiene negocios asociados']);
+        setDeletionProgress(prev => [...prev, '❌ Error: Usuario tiene negocios asociados']);
         Alert.alert(
           'Cuenta con negocio',
           'Tu cuenta tiene negocios asociados. Para eliminar tu cuenta, primero debes transferir o eliminar tus negocios. Contacta con soporte para asistencia.',
@@ -308,7 +310,7 @@ export default function DeleteAccount() {
       }
 
       // Delete user profile from profiles table
-      setDeletionProgress(prev => [...prev, 'Step 20: Eliminando perfil de usuario...']);
+      setDeletionProgress(prev => [...prev, 'Eliminando perfil de usuario...']);
       console.log('Deleting user profile...');
       
       // Delete user profile directly
@@ -324,7 +326,7 @@ export default function DeleteAccount() {
           router.replace('/auth/login');
           return;
         }
-        setDeletionProgress(prev => [...prev, `Error eliminando perfil: ${profileError.message}`]);
+        setDeletionProgress(prev => [...prev, `❌ Error eliminando perfil: ${profileError.message}`]);
         throw new Error(`No se pudo eliminar el perfil: ${profileError.message}`);
       }
       
@@ -332,7 +334,7 @@ export default function DeleteAccount() {
       console.log('User profile deleted successfully');
 
       // Delete user from auth.users table (this requires admin privileges)
-      setDeletionProgress(prev => [...prev, 'Step 21: Eliminando usuario del sistema de autenticación...']);
+      setDeletionProgress(prev => [...prev, 'Eliminando usuario del sistema de autenticación...']);
       console.log('Deleting user from auth.users table...');
       
       try {
@@ -349,26 +351,34 @@ export default function DeleteAccount() {
           }),
         });
 
+        console.log('Delete user API response status:', response.status);
+        
         if (response.ok) {
           const result = await response.json();
+          console.log('Delete user API result:', result);
+          
           if (result.success) {
             setDeletionProgress(prev => [...prev, '✅ Usuario eliminado del sistema de autenticación']);
             console.log('✅ User deleted from auth.users table');
           } else {
-            console.warn('Could not delete from auth.users:', result.error);
-            setDeletionProgress(prev => [...prev, '⚠️ Usuario eliminado de la app (auth pendiente)']);
+            console.error('Could not delete from auth.users:', result.error);
+            setDeletionProgress(prev => [...prev, `❌ Error en auth: ${result.error}`]);
+            throw new Error(`No se pudo eliminar del sistema de autenticación: ${result.error}`);
           }
         } else {
-          console.warn('Auth deletion API not available');
-          setDeletionProgress(prev => [...prev, '⚠️ Usuario eliminado de la app (auth pendiente)']);
+          const errorText = await response.text();
+          console.error('Auth deletion API error:', response.status, errorText);
+          setDeletionProgress(prev => [...prev, `❌ Error API auth (${response.status}): ${errorText}`]);
+          throw new Error(`Error del servidor de autenticación: ${response.status} - ${errorText}`);
         }
       } catch (authError) {
-        console.warn('Error deleting from auth system:', authError);
-        setDeletionProgress(prev => [...prev, '⚠️ Usuario eliminado de la app (auth pendiente)']);
+        console.error('Error deleting from auth system:', authError);
+        setDeletionProgress(prev => [...prev, `❌ Error eliminando de auth: ${authError.message}`]);
+        throw new Error(`No se pudo eliminar del sistema de autenticación: ${authError.message}`);
       }
 
       // Sign out user from current session
-      setDeletionProgress(prev => [...prev, 'Step 22: Cerrando sesión...']);
+      setDeletionProgress(prev => [...prev, 'Cerrando sesión...']);
       console.log('Signing out user...');
       await logout();
       
