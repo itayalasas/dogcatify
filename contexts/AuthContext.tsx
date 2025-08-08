@@ -337,6 +337,22 @@ export default function DeleteAccount() {
       console.log('Deleting user from auth.users table...');
       
       try {
+          confirmationUrl
+        );
+        
+        console.log('Custom confirmation email sent successfully');
+      } catch (emailError) {
+        console.error('Error sending custom confirmation email:', emailError);
+        // Continue with registration even if email fails
+      }
+
+      console.log('Registration completed successfully');
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
+    }
+  };
+
           setDeletionProgress(prev => [...prev, `⚠️ Error API auth (${response.status})`]);
           setDeletionProgress(prev => [...prev, '⚠️ Continuando con logout forzado...']);
         }
