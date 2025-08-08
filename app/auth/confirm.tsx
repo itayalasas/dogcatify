@@ -1,434 +1,775 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Alert, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { CircleCheck as CheckCircle, Circle as XCircle, Mail } from 'lucide-react-native';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { resendConfirmationEmail } from '../../utils/emailConfirmation';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, TextInput } from 'react-native';
+import { router } from 'expo-router';
+import { ArrowLeft, Trash2, TriangleAlert as AlertTriangle, Shield } from 'lucide-react-native';
+import { Card } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { useAuth } from '../../contexts/AuthContext';
 import { supabaseClient } from '../../lib/supabase';
 
-export default function ConfirmScreen() {
-  const params = useLocalSearchParams();
-  const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [confirmed, setConfirmed] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [showResendForm, setShowResendForm] = useState(false);
-  const [email, setEmail] = useState('');
-  const [resending, setResending] = useState(false);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+export default function DeleteAccount() {
+  const { currentUser, logout } = useAuth();
+  const [confirmationText, setConfirmationText] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState(1); // 1: Warning, 2: Confirmation
+  const [deletionProgress, setDeletionProgress] = useState<string[]>([]);
 
-  useEffect(() => {
-    const confirmEmail = async () => {
-      const { token_hash, type = 'signup' } = params;
-      
-      if (!token_hash) {
-        setError('Token de confirmación no encontrado');
-        setLoading(false);
-        setShowResendForm(true);
-        return;
-      }
+  const handleDeleteAccount = async () => {
+    if (!currentUser) {
+      Alert.alert('Error', 'No hay usuario autenticado');
+      return;
+    }
 
-      // ONLY handle signup confirmations here
-      if (type !== 'signup') {
-        setError('Esta página es solo para confirmación de registro. Para recuperar contraseña, usa el enlace correcto.');
-        setLoading(false);
-        return;
-      }
-      try {
-        // Find and verify the signup confirmation token
-        const { data: tokenData, error } = await supabaseClient
-          .from('email_confirmations')
-          .select('*')
-          .eq('token_hash', token_hash)
-          .eq('type', 'signup')
-          .eq('is_confirmed', false)
-          .single();
+    if (confirmationText !== 'ELIMINAR MI CUENTA') {
+      Alert.alert('Error', 'Debes escribir exactamente "ELIMINAR MI CUENTA" para confirmar');
+      return;
+    }
 
-        if (error || !tokenData) {
-          setError('Token no encontrado o ya utilizado');
-          setLoading(false);
-          setShowResendForm(true);
-          return;
-        }
+    setLoading(true);
+    try {
+      setDeletionProgress(['Iniciando proceso de eliminación...']);
+      console.log('Starting account deletion process for user:', currentUser.id);
 
-        // Check if token has expired
-        const now = new Date();
-        const expiresAt = new Date(tokenData.expires_at);
-        
-        if (now > expiresAt) {
-          setError('Token expirado. Solicita un nuevo enlace de confirmación.');
-          setLoading(false);
-          setShowResendForm(true);
-          return;
-        }
+      // 1. Delete user's pets and related data
+      console.log('Deleting pets and related data...');
+      const { data: userPets, error: petsError } = await supabaseClient
+        .from('pets')
+        .select('id')
+        .eq('owner_id', currentUser.id);
 
-        // Mark token as confirmed
-        const { error: updateError } = await supabaseClient
-          .from('email_confirmations')
-          .update({
-            is_confirmed: true,
-            confirmed_at: new Date().toISOString()
-          })
-          .eq('id', tokenData.id);
+      setDeletionProgress(prev => [...prev, 'Verificando mascotas del usuario...']);
 
-        if (updateError) {
-          console.error('Error updating token:', updateError);
-          setError('Error al confirmar token');
-          setLoading(false);
-          return;
-        }
+      if (petsError) {
+        console.error('Error fetching user pets:', petsError);
+      } else if (userPets && userPets.length > 0) {
+        for (const pet of userPets) {
+          // Delete pet health records
+          await supabaseClient
+            .from('pet_health')
+            .delete()
+            .eq('pet_id', pet.id);
 
-        console.log('Token marked as confirmed, now updating user profile...');
+          setDeletionProgress(prev => [...prev, `Eliminando registros de salud de ${pet.id}...`]);
 
-        // Update user profile to mark email as confirmed
-        const { error: profileError } = await supabaseClient
-          .from('profiles')
-          .update({
-            email_confirmed: true,
-            email_confirmed_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', tokenData.user_id);
+          // Delete pet albums
+          await supabaseClient
+            .from('pet_albums')
+            .delete()
+            .eq('pet_id', pet.id);
 
-        if (profileError) {
-          console.error('Error updating profile:', profileError);
-          console.error('Profile update error details:', JSON.stringify(profileError, null, 2));
+          setDeletionProgress(prev => [...prev, `Eliminando álbumes de ${pet.id}...`]);
+
+          // Delete pet behavior records
+          await supabaseClient
+            .from('pet_behavior')
+            .delete()
+            .eq('pet_id', pet.id);
+
+          setDeletionProgress(prev => [...prev, `Eliminando registros de comportamiento de ${pet.id}...`]);
+
+          // Delete bookings related to this pet
+          await supabaseClient
+            .from('bookings')
+            .delete()
+            .eq('pet_id', pet.id);
+
+          setDeletionProgress(prev => [...prev, `Eliminando reservas de ${pet.id}...`]);
+
+          console.log('Step 7: Deleting service reviews...');
+          const { error: reviewsError } = await supabaseClient
+            .from('service_reviews')
+            .delete()
+            .eq('pet_id', pet.id);
           
-          // Check if the columns exist
-          if (profileError.code === '42703') {
-            console.log('email_confirmed column does not exist in profiles table');
-            // Continue without failing - the email_confirmations table update is sufficient
+          if (reviewsError) {
+            console.error('Error deleting service reviews:', reviewsError);
+            console.log('Continuing despite service reviews deletion error...');
           } else {
-            // For other errors, log but don't fail the confirmation
-            console.warn('Profile update failed but continuing with confirmation');
+            console.log('Service reviews deleted successfully');
           }
-        } else {
-          console.log('Profile updated successfully with email_confirmed = true');
+
+          console.log('Step 8: Deleting behavior records...');
+          const { error: behaviorError } = await supabaseClient
+            .from('pet_behavior')
+            .delete()
+            .eq('pet_id', pet.id);
+          
+          if (behaviorError) {
+            console.error('Error deleting behavior records:', behaviorError);
+            console.log('Continuing despite behavior records deletion error...');
+          } else {
+            console.log('Behavior records deleted successfully');
+          }
+          
+          console.log('Step 9: Deleting medical alerts...');
+          const { error: alertsError } = await supabaseClient
+            .from('medical_alerts')
+            .delete()
+            .eq('pet_id', pet.id);
+          
+          if (alertsError) {
+            console.error('Error deleting medical alerts:', alertsError);
+            console.log('Continuing despite medical alerts deletion error...');
+          } else {
+            console.log('Medical alerts deleted successfully');
+          }
+          
+          console.log('Step 10: Deleting medical history tokens...');
+          const { error: tokensError } = await supabaseClient
+            .from('medical_history_tokens')
+            .delete()
+            .eq('pet_id', pet.id);
+          
+          if (tokensError) {
+            console.error('Error deleting medical history tokens:', tokensError);
+            console.log('Continuing despite tokens deletion error...');
+          } else {
+            console.log('Medical history tokens deleted successfully');
+          }
+        }
+
+        console.log('Step 11: Now deleting the pet...');
+        // Delete all pets
+        await supabaseClient
+          .from('pets')
+          .delete()
+          .eq('owner_id', currentUser.id);
+
+        setDeletionProgress(prev => [...prev, 'Eliminando perfiles de mascotas...']);
+      }
+
+      // 2. Delete user's posts and comments
+      setDeletionProgress(prev => [...prev, 'Eliminando publicaciones y comentarios...']);
+      console.log('Deleting posts and comments...');
+      
+      // Get user's posts to delete related comments
+      const { data: userPosts } = await supabaseClient
+        .from('posts')
+        .select('id')
+        .eq('user_id', currentUser.id);
+
+      if (userPosts && userPosts.length > 0) {
+        for (const post of userPosts) {
+          // Delete comments on this post
+          await supabaseClient
+            .from('comments')
+            .delete()
+            .eq('post_id', post.id);
+
+          setDeletionProgress(prev => [...prev, `Eliminando comentarios del post ${post.id}...`]);
+        }
+      }
+
+      // Delete user's posts
+      await supabaseClient
+        .from('posts')
+        .delete()
+        .eq('user_id', currentUser.id);
+
+      setDeletionProgress(prev => [...prev, 'Eliminando publicaciones del usuario...']);
+
+      // Delete user's comments on other posts
+      await supabaseClient
+        .from('comments')
+        .delete()
+        .eq('user_id', currentUser.id);
+
+      setDeletionProgress(prev => [...prev, 'Eliminando comentarios en otras publicaciones...']);
+
+      // Delete user-level data (not pet-specific)
+      setDeletionProgress(prev => [...prev, 'Eliminando tokens de confirmación de email...']);
+      console.log('Step 12: Deleting email confirmations...');
+      const { error: emailConfirmationsError } = await supabaseClient
+        .from('email_confirmations')
+        .delete()
+        .eq('user_id', currentUser.id);
+      
+      if (emailConfirmationsError) {
+        console.error('Error deleting email confirmations:', emailConfirmationsError);
+        setDeletionProgress(prev => [...prev, `⚠️ Error eliminando confirmaciones: ${emailConfirmationsError.message}`]);
+      } else {
+        console.log('Email confirmations deleted successfully');
+        setDeletionProgress(prev => [...prev, '✅ Tokens de confirmación eliminados']);
+      }
+      
+      console.log('Step 13: Deleting chat conversations and messages...');
+      const { data: userConversations } = await supabaseClient
+        .from('chat_conversations')
+        .select('id')
+        .eq('user_id', currentUser.id);
+
+      if (userConversations && userConversations.length > 0) {
+        for (const conversation of userConversations) {
+          // Delete messages in this conversation
+          setDeletionProgress(prev => [...prev, `Eliminando mensajes de conversación ${conversation.id}...`]);
+          await supabaseClient
+            .from('chat_messages')
+            .delete()
+            .eq('conversation_id', conversation.id);
+        }
+
+        // Delete conversations
+        await supabaseClient
+          .from('chat_conversations')
+          .delete()
+          .eq('user_id', currentUser.id);
+      }
+      
+      console.log('Step 14: Deleting adoption chats and messages...');
+      const { data: adoptionChats } = await supabaseClient
+        .from('adoption_chats')
+        .select('id')
+        .eq('customer_id', currentUser.id);
+
+      if (adoptionChats && adoptionChats.length > 0) {
+        for (const chat of adoptionChats) {
+          // Delete adoption messages
+          setDeletionProgress(prev => [...prev, `Eliminando mensajes de adopción ${chat.id}...`]);
+          await supabaseClient
+            .from('adoption_messages')
+            .delete()
+            .eq('chat_id', chat.id);
+        }
+
+        // Delete adoption chats
+        await supabaseClient
+          .from('adoption_chats')
+          .delete()
+          .eq('customer_id', currentUser.id);
+      }
+      
+      // Delete user-level data (not pet-specific)
+      console.log('Step 15: Deleting user bookings...');
+      const { error: bookingsError } = await supabaseClient
+        .from('bookings')
+        .delete()
+        .eq('customer_id', currentUser.id);
+      
+      if (bookingsError) {
+        console.error('Error deleting bookings:', bookingsError);
+        console.log('Continuing despite bookings deletion error...');
+      } else {
+        console.log('User bookings deleted successfully');
+      }
+
+      console.log('Step 16: Deleting orders...');
+      const { error: ordersError } = await supabaseClient
+        .from('orders')
+        .delete()
+        .eq('customer_id', currentUser.id);
+      
+      if (ordersError) {
+        console.error('Error deleting orders:', ordersError);
+        console.log('Continuing despite orders deletion error...');
+      } else {
+        console.log('Orders deleted successfully');
+      }
+
+      console.log('Step 17: Deleting cart...');
+      const { error: cartError } = await supabaseClient
+        .from('user_carts')
+        .delete()
+        .eq('user_id', currentUser.id);
+      
+      if (cartError) {
+        console.error('Error deleting cart:', cartError);
+        console.log('Continuing despite cart deletion error...');
+      } else {
+        console.log('Cart deleted successfully');
+      }
+
+      console.log('Step 18: Deleting service reviews...');
+      const { error: reviewsError } = await supabaseClient
+        .from('service_reviews')
+        .delete()
+        .eq('customer_id', currentUser.id);
+      
+      if (reviewsError) {
+        console.error('Error deleting service reviews:', reviewsError);
+        console.log('Continuing despite service reviews deletion error...');
+      } else {
+        console.log('Service reviews deleted successfully');
+      }
+
+      // Delete user profile
+      console.log('Step 19: Deleting user profile...');
+      const { error: profileError } = await supabaseClient
+        .from('profiles')
+        .delete()
+        .eq('id', currentUser.id);
+      
+      if (profileError) {
+        console.error('Error deleting profile:', profileError);
+        
+        if (profileError.message?.includes('JWT expired')) {
+          Alert.alert('Sesión expirada', 'Por favor inicia sesión nuevamente.');
+          router.replace('/auth/login');
+          return;
         }
         
-        console.log('Email confirmation successful for:', tokenData.email);
-        setUserEmail(tokenData.email);
-        setConfirmed(true);
-      } catch (error) {
-        console.error('Email confirmation error:', error);
-        setError('Error al procesar la confirmación');
-        setLoading(false);
-        setShowResendForm(true);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    confirmEmail();
-  }, [params]);
-
-  const handleResendConfirmation = async () => {
-    if (!email.trim()) {
-      Alert.alert('Error', 'Por favor ingresa tu email');
-      return;
-    }
-
-    try {
-      setResending(true);
-      const result = await resendConfirmationEmail(email.trim());
-
-      if (!result.success) {
-        Alert.alert('Error', result.error || 'No se pudo reenviar el email de confirmación');
+        setDeletionProgress(prev => [...prev, `❌ Error eliminando perfil: ${profileError.message}`]);
+        throw new Error(`No se pudo eliminar el perfil: ${profileError.message}`);
       } else {
-        Alert.alert('Éxito', 'Email de confirmación reenviado. Revisa tu bandeja de entrada.');
-        setShowResendForm(false);
+        console.log('Profile deletion query executed successfully');
+        
+        // Verify the profile was actually deleted
+        const { data: verifyProfile, error: verifyError } = await supabaseClient
+          .from('profiles')
+          .select('id')
+          .eq('id', currentUser.id)
+          .single();
+        
+        if (verifyError && verifyError.code === 'PGRST116') {
+          console.log('✅ Profile successfully deleted - verification confirms deletion');
+          setDeletionProgress(prev => [...prev, '✅ Perfil eliminado y verificado']);
+        } else if (verifyProfile) {
+          console.error('❌ Profile still exists after deletion attempt');
+          setDeletionProgress(prev => [...prev, '❌ Error: Perfil aún existe después de eliminación']);
+          throw new Error('El perfil no se eliminó correctamente');
+        } else {
+          console.log('Profile verification had unexpected error:', verifyError);
+          setDeletionProgress(prev => [...prev, '⚠️ No se pudo verificar eliminación del perfil']);
+          console.error('Profile update error details:', {
+            code: profileError.code,
+            message: profileError.message,
+            details: profileError.details,
+            hint: profileError.hint
+          });
+          
+          // Check for specific error types
+          if (profileError.code === '42703' || profileError.code === 'PGRST204') {
+            console.log('email_confirmed columns do not exist in profiles table');
+            setError('Las columnas de confirmación no existen en la base de datos. Contacta con soporte.');
+            setLoading(false);
+            return;
+          } else if (profileError.code === 'PGRST301') {
+            console.log('RLS policy blocking profile update');
+            setError('Permisos insuficientes para actualizar el perfil. Contacta con soporte.');
+            setLoading(false);
+            return;
+          } else {
+            // For other errors, continue but log the issue
+            console.warn('Profile update failed but continuing with confirmation:', profileError.message);
+          .eq('id', tokenData.user_id);
+          setDeletionProgress(prev => [...prev, `⚠️ Error API auth (${response.status})`]);
+          setDeletionProgress(prev => [...prev, '⚠️ Continuando con logout forzado...']);
+          
+          // Verify the update worked
+          const { data: updatedProfile, error: verifyError } = await supabaseClient
+            .from('profiles')
+            .select('email_confirmed, email_confirmed_at')
+            .eq('id', tokenData.user_id)
+            .single();
+          
+          if (!verifyError && updatedProfile) {
+            console.log('Profile update verified:', {
+              email_confirmed: updatedProfile.email_confirmed,
+              email_confirmed_at: updatedProfile.email_confirmed_at
+            });
+          }
+        }
+      } catch (authError) {
+        console.warn('Error deleting from auth system:', authError);
+        setDeletionProgress(prev => [...prev, `⚠️ Error eliminando de auth: ${authError.message}`]);
+        setDeletionProgress(prev => [...prev, '⚠️ Continuando con logout forzado...']);
       }
-    } catch (error) {
-      Alert.alert('Error', 'Ocurrió un error al reenviar el email');
-    } finally {
-      setResending(false);
-    }
-  };
 
-  const handlePasswordReset = async () => {
-    if (!newPassword || !confirmPassword) {
-      Alert.alert('Error', 'Por favor completa ambos campos de contraseña');
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'Las contraseñas no coinciden');
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
-      return;
-    }
-
-    if (!userId || !resetToken) {
-      Alert.alert('Error', 'Información de reset inválida');
-      return;
-    }
-
-    setUpdatingPassword(true);
-    try {
-      // Call our Edge Function to reset password securely
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const response = await fetch(`${supabaseUrl}/functions/v1/reset-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId,
-          newPassword,
-          token: resetToken
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Error al actualizar contraseña');
-      }
-
-      setPasswordUpdated(true);
+      // Sign out user from current session
+      setDeletionProgress(prev => [...prev, 'Cerrando sesión...']);
+      console.log('Signing out user...');
+      await logout();
+      
+      setDeletionProgress(prev => [...prev, '✅ Proceso de eliminación completado']);
+      setDeletionProgress(prev => [...prev, '✅ Sesión cerrada - Datos eliminados']);
+      console.log('✅ Account deletion process completed successfully');
+      
       Alert.alert(
-        'Contraseña actualizada',
-        'Tu contraseña ha sido cambiada exitosamente. Ya puedes iniciar sesión con tu nueva contraseña.',
+        'Cuenta eliminada',
+        'Todos tus datos han sido eliminados de DogCatiFy. Puedes crear una nueva cuenta con el mismo email si lo deseas.',
         [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
       );
 
-    } catch (error: any) {
-      console.error('Error updating password:', error);
-      Alert.alert('Error', error.message || 'No se pudo actualizar la contraseña');
+    } catch (error) {
+      setDeletionProgress(prev => [...prev, `❌ Error: ${error.message || error}`]);
+      console.error('Error deleting account:', error);
+      Alert.alert(
+        'Error',
+        `Ocurrió un error durante la eliminación: ${error.message || error}. Por favor contacta con soporte para completar el proceso.`,
+        [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
+      );
     } finally {
-      setUpdatingPassword(false);
+      setLoading(false);
     }
   };
 
-  const handleGoToLogin = () => {
-    if (Platform.OS === 'web') {
-      router.replace('/web-info');
-    } else {
-      router.replace('/auth/login');
-    }
+  const handleContinueToConfirmation = () => {
+    setStep(2);
   };
 
-  if (loading) {
+  if (step === 1) {
     return (
-      <View style={styles.container}>
-        <Card style={styles.loadingCard}>
-          <ActivityIndicator size="large" color="#2D6A6F" />
-          <Text style={styles.loadingText}>Confirmando tu email...</Text>
-        </Card>
-      </View>
-    );
-  }
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <ArrowLeft size={24} color="#111827" />
+          </TouchableOpacity>
+          <Text style={styles.title}>Eliminar Cuenta</Text>
+          <View style={styles.placeholder} />
+        </View>
 
-  if (confirmed) {
-    return (
-      <View style={styles.container}>
-        <Card style={styles.successCard}>
-          <CheckCircle size={64} color="#10B981" />
-          <Text style={styles.successTitle}>¡Email Confirmado!</Text>
-          <Text style={styles.successText}>
-            Tu cuenta ha sido activada exitosamente. Ya puedes iniciar sesión y disfrutar de todas las funciones de DogCatiFy.
-          </Text>
-          {userEmail && (
-            <Text style={styles.emailText}>
-              Email confirmado: {userEmail}
-            </Text>
-          )}
-          <Button
-            title="Ir a Iniciar Sesión"
-            onPress={() => router.replace('/auth/login')}
-            size="large"
-          />
-        </Card>
-      </View>
-    );
-  }
-
-  if (error && showResendForm) {
-    return (
-      <View style={styles.container}>
-        <Card style={styles.errorCard}>
-          <XCircle size={64} color="#EF4444" />
-          <Text style={styles.errorTitle}>Error de Confirmación</Text>
-          <Text style={styles.errorText}>{error}</Text>
-          
-          <View style={styles.resendContainer}>
-            <Text style={styles.resendTitle}>Reenviar Email de Confirmación</Text>
-            <Text style={styles.resendDescription}>
-              Ingresa tu email para recibir un nuevo enlace de confirmación
-            </Text>
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          <Card style={styles.warningCard}>
+            <View style={styles.warningHeader}>
+              <AlertTriangle size={48} color="#EF4444" />
+              <Text style={styles.warningTitle}>¡Atención!</Text>
+            </View>
             
-            <Input
-              label="Email"
-              placeholder="tu@email.com"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              leftIcon={<Mail size={20} color="#6B7280" />}
+            <Text style={styles.warningText}>
+              Estás a punto de eliminar permanentemente tu cuenta de DogCatiFy. Esta acción no se puede deshacer.
+            </Text>
+          </Card>
+
+          <Card style={styles.dataCard}>
+            <Text style={styles.dataTitle}>Se eliminarán los siguientes datos:</Text>
+            
+            <View style={styles.dataList}>
+              <View style={styles.dataItem}>
+                <Text style={styles.dataIcon}>🐾</Text>
+                <Text style={styles.dataText}>Todos los perfiles de tus mascotas</Text>
+              </View>
+              
+              <View style={styles.dataItem}>
+                <Text style={styles.dataIcon}>📸</Text>
+                <Text style={styles.dataText}>Todas las fotos y álbumes</Text>
+              </View>
+              
+              <View style={styles.dataItem}>
+                <Text style={styles.dataIcon}>📝</Text>
+                <Text style={styles.dataText}>Todas tus publicaciones y comentarios</Text>
+              </View>
+              
+              <View style={styles.dataItem}>
+                <Text style={styles.dataIcon}>🏥</Text>
+                <Text style={styles.dataText}>Registros médicos y de salud</Text>
+              </View>
+              
+              <View style={styles.dataItem}>
+                <Text style={styles.dataIcon}>📅</Text>
+                <Text style={styles.dataText}>Historial de reservas y citas</Text>
+              </View>
+              
+              <View style={styles.dataItem}>
+                <Text style={styles.dataIcon}>🛒</Text>
+                <Text style={styles.dataText}>Historial de compras y pedidos</Text>
+              </View>
+              
+              <View style={styles.dataItem}>
+                <Text style={styles.dataIcon}>💬</Text>
+                <Text style={styles.dataText}>Conversaciones y mensajes</Text>
+              </View>
+              
+              <View style={styles.dataItem}>
+                <Text style={styles.dataIcon}>👤</Text>
+                <Text style={styles.dataText}>Tu perfil y información personal</Text>
+              </View>
+            </View>
+          </Card>
+
+          <Card style={styles.alternativeCard}>
+            <Text style={styles.alternativeTitle}>¿Consideraste estas alternativas?</Text>
+            
+            <View style={styles.alternativeList}>
+              <Text style={styles.alternativeItem}>
+                • Desactivar temporalmente tu cuenta
+              </Text>
+              <Text style={styles.alternativeItem}>
+                • Cambiar tu configuración de privacidad
+              </Text>
+              <Text style={styles.alternativeItem}>
+                • Contactar con soporte para resolver problemas
+              </Text>
+            </View>
+          </Card>
+
+          <View style={styles.actionButtons}>
+            <Button
+              title="Cancelar"
+              onPress={() => router.back()}
+              variant="outline"
+              size="large"
             />
             
             <Button
-              title={resending ? 'Enviando...' : 'Reenviar Confirmación'}
-              onPress={handleResendConfirmation}
-              loading={resending}
+              title="Continuar con la eliminación"
+              onPress={handleContinueToConfirmation}
               size="large"
+              style={styles.dangerButton}
             />
           </View>
-
-          <TouchableOpacity style={styles.linkButton} onPress={() => router.replace('/auth/login')}>
-            <Text style={styles.linkText}>Volver al Login</Text>
-          </TouchableOpacity>
-        </Card>
-      </View>
+        </ScrollView>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <Card style={styles.errorCard}>
-        <XCircle size={64} color="#EF4444" />
-        <Text style={styles.errorTitle}>Error</Text>
-        <Text style={styles.errorText}>
-          {error || 'Ocurrió un error inesperado'}
-        </Text>
-        <Button
-          title="Volver al Login"
-          onPress={() => router.replace('/auth/login')}
-          size="large"
-        />
-      </Card>
-    </View>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => setStep(1)} style={styles.backButton}>
+          <ArrowLeft size={24} color="#111827" />
+        </TouchableOpacity>
+        <Text style={styles.title}>Confirmar Eliminación</Text>
+        <View style={styles.placeholder} />
+      </View>
+
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <Card style={styles.confirmationCard}>
+          <View style={styles.confirmationHeader}>
+            <Shield size={48} color="#EF4444" />
+            <Text style={styles.confirmationTitle}>Confirmación Final</Text>
+          </View>
+          
+          <Text style={styles.confirmationText}>
+            Para confirmar que deseas eliminar permanentemente tu cuenta, escribe exactamente:
+          </Text>
+          
+          <View style={styles.confirmationPhrase}>
+            <Text style={styles.phraseText}>ELIMINAR MI CUENTA</Text>
+          </View>
+          
+          <TextInput
+            style={styles.confirmationInput}
+            placeholder="Escribe la frase exacta aquí"
+            value={confirmationText}
+            onChangeText={setConfirmationText}
+            autoCapitalize="characters"
+          />
+          
+          {/* Progress indicator during deletion */}
+          {loading && deletionProgress.length > 0 && (
+            <View style={styles.progressContainer}>
+              <Text style={styles.progressTitle}>Progreso de eliminación:</Text>
+              <ScrollView style={styles.progressScroll} showsVerticalScrollIndicator={false}>
+                {deletionProgress.map((step, index) => (
+                  <Text key={index} style={styles.progressStep}>
+                    {step}
+                  </Text>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+          
+          <Text style={styles.confirmationNote}>
+            Esta acción es irreversible. Una vez eliminada, no podrás recuperar tu cuenta ni tus datos.
+          </Text>
+        </Card>
+
+        <View style={styles.finalActions}>
+          <Button
+            title="Cancelar"
+            onPress={() => router.back()}
+            variant="outline" 
+            size="large"
+          />
+          
+          <Button
+            title={loading ? "Eliminando..." : "Eliminar mi cuenta permanentemente"}
+            onPress={handleDeleteAccount}
+            loading={loading}
+            disabled={confirmationText !== 'ELIMINAR MI CUENTA' || loading}
+            size="large"
+            style={styles.deleteButton}
+          />
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
     backgroundColor: '#F9FAFB',
     paddingTop: 50,
   },
-  loadingCard: {
+  header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 40,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
-  loadingText: {
-    marginTop: 20,
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
+  backButton: {
+    padding: 8,
   },
-  successCard: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  successTitle: {
-    fontSize: 24,
-    fontFamily: 'Inter-Bold',
-    color: '#10B981',
-    marginTop: 16,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  successText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#374151',
-    textAlign: 'center',
-    marginBottom: 16,
-    lineHeight: 24,
-  },
-  emailText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  passwordCard: {
-    alignItems: 'center',
-    paddingVertical: 40,
-    width: '100%',
-    maxWidth: 400,
-  },
-  iconContainer: {
-    marginBottom: 16,
-  },
-  passwordTitle: {
-    fontSize: 24,
-    fontFamily: 'Inter-Bold',
-    color: '#2D6A6F',
-    marginTop: 16,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  passwordText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 24,
-    lineHeight: 24,
-  },
-  passwordForm: {
-    width: '100%',
-    gap: 16,
-  },
-  errorCard: {
-    alignItems: 'center',
-    paddingVertical: 40,
-    width: '100%',
-    maxWidth: 400,
-  },
-  errorTitle: {
-    fontSize: 24,
-    fontFamily: 'Inter-Bold',
-    color: '#EF4444',
-    marginTop: 16,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  errorText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 24,
-    lineHeight: 24,
-  },
-  resendContainer: {
-    width: '100%',
-    marginBottom: 24,
-  },
-  resendTitle: {
+  title: {
     fontSize: 18,
     fontFamily: 'Inter-SemiBold',
     color: '#111827',
-    marginBottom: 8,
-    textAlign: 'center',
   },
-  resendDescription: {
+  placeholder: {
+    width: 32,
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+  },
+  warningCard: {
+    marginBottom: 16,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  warningHeader: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  warningTitle: {
+    fontSize: 24,
+    fontFamily: 'Inter-Bold',
+    color: '#EF4444',
+    marginTop: 8,
+  },
+  warningText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#991B1B',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  dataCard: {
+    marginBottom: 16,
+  },
+  dataTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#111827',
+    marginBottom: 16,
+  },
+  dataList: {
+    gap: 12,
+  },
+  dataItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dataIcon: {
+    fontSize: 20,
+    marginRight: 12,
+    width: 24,
+  },
+  dataText: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 16,
+    color: '#374151',
+    flex: 1,
+  },
+  alternativeCard: {
+    marginBottom: 24,
+    backgroundColor: '#F0F9FF',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  alternativeTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#0369A1',
+    marginBottom: 12,
+  },
+  alternativeList: {
+    gap: 8,
+  },
+  alternativeItem: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#0369A1',
     lineHeight: 20,
   },
-  linkButton: {
-    marginTop: 16,
+  actionButtons: {
+    gap: 12,
+    marginBottom: 24,
   },
-  linkText: {
+  dangerButton: {
+    backgroundColor: '#EF4444',
+  },
+  confirmationCard: {
+    marginBottom: 24,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  confirmationHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  confirmationTitle: {
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
+    color: '#EF4444',
+    marginTop: 8,
+  },
+  confirmationText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#991B1B',
+    textAlign: 'center',
+    marginBottom: 16,
+    lineHeight: 24,
+  },
+  confirmationPhrase: {
+    backgroundColor: '#991B1B',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  phraseText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  confirmationInput: {
+    borderWidth: 2,
+    borderColor: '#EF4444',
+    borderRadius: 8,
+    padding: 12,
     fontSize: 16,
     fontFamily: 'Inter-Medium',
-    color: '#3B82F6',
+    marginBottom: 16,
+  },
+  progressContainer: {
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  progressTitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  progressScroll: {
+    maxHeight: 150,
+  },
+  progressStep: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  confirmationNote: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#991B1B',
     textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  finalActions: {
+    gap: 12,
+    marginBottom: 24,
+  },
+  deleteButton: {
+    backgroundColor: '#EF4444',
   },
 });
