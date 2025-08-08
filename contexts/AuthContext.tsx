@@ -672,53 +672,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw error;
     }
   };
-        options: {
-          data: {
-            display_name: displayName,
-          },
-        }
-      });
-      
-      if (error) {
-        console.error('Registration error:', error);
-        throw error;
-      }
-      
-      console.log('AuthContext - Registration successful, user created');
-      
-      // Immediately sign out to prevent modal
-      await supabaseClient.auth.signOut();
-      
-      if (data.user) {
-        console.log('Creating custom email confirmation token for user:', data.user.id);
-        
-        // Create our custom email confirmation token
-        const { createEmailConfirmationToken, generateConfirmationUrl } = await import('../utils/emailConfirmation');
-        const token = await createEmailConfirmationToken(data.user.id, email, 'signup');
-        const confirmationUrl = generateConfirmationUrl(token, 'signup');
-        
-        console.log('Custom confirmation token created:', token);
-        console.log('Confirmation URL:', confirmationUrl);
-        
-        // Wait a moment to ensure token is saved in database
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Send our custom confirmation email
-        const { NotificationService } = await import('../utils/notifications');
-        await NotificationService.sendCustomConfirmationEmail(
-          email,
-          displayName,
-          confirmationUrl
-        );
-        console.log('Custom confirmation email sent successfully');
-      }
-      
-      console.log('Registration completed successfully, user needs to confirm email');
-    } catch (error) {
-      console.error('Register error:', error);
-      throw error;
-    }
-  };
 
   const logout = async () => {
     try {
