@@ -55,6 +55,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log('AuthContext - Token refreshed successfully');
         }
         
+        // IMPORTANT: Skip email validation for SIGNED_UP event (registration)
+        // Only validate email confirmation on SIGNED_IN (login)
+        if (event === 'SIGNED_UP') {
+          console.log('AuthContext - SIGNED_UP event detected, skipping email validation');
+          // Immediately sign out to prevent any Supabase modals
+          setTimeout(async () => {
+            await supabaseClient.auth.signOut();
+          }, 100);
+          return;
+        }
+        
         if (event === 'SIGNED_OUT' || !session) {
           console.log('AuthContext - User signed out or session expired');
           if (!mounted) return;
@@ -67,8 +78,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         setSession(session);
         
+        // Only validate email confirmation for SIGNED_IN events (login), not SIGNED_UP (registration)
         if (!mounted || !session?.user) return;
-        if (session?.user) {
+        if (session?.user && event === 'SIGNED_IN') {
           try {
             // Check email confirmation strictly
             console.log('AuthContext - Checking email confirmation for user:', session.user.email);
@@ -169,6 +181,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           }
         }
+        
+        // For other events (like initial session check), load profile without email validation
+        if (session?.user && event !== 'SIGNED_IN' && event !== 'SIGNED_UP') {
+          try {
+            await loadUserProfile(session.user.id, session.user.email!);
+          } catch (error: any) {
+            console.error('Error loading user profile:', error);
+          }
+        }
+        
         if (!mounted) return;
         setLoading(false);
         setAuthInitialized(true);

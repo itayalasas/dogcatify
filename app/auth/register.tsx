@@ -45,19 +45,12 @@ export default function Register() {
     try {
       await register(email, password, fullName);
       
-      // Clear loading state and wait for cleanup
-      setLoading(false);
-      
-      // Small delay to ensure cleanup
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
       Alert.alert(
         '¡Registro exitoso! 🎉',
         `Tu cuenta ha sido creada exitosamente.\n\n📧 Hemos enviado un correo de confirmación a:\n${email}\n\nPor favor revisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace de confirmación.\n\n⏰ El enlace expira en 24 horas.`,
         [{ 
           text: 'OK',
           onPress: () => {
-            // Force immediate navigation
             router.replace('/auth/login');
           }
         }]
