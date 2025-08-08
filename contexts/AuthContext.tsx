@@ -351,11 +351,13 @@ export default function DeleteAccount() {
       console.log('Signing out user...');
       await logout();
       
-        // Registration completed - user will get Alert message only
-        console.log('Registration completed successfully - no automatic modal');
+      setDeletionProgress(prev => [...prev, '✅ Proceso de eliminación completado']);
+      setDeletionProgress(prev => [...prev, '✅ Sesión cerrada - Datos eliminados']);
       console.log('✅ Account deletion process completed successfully');
+      // Sign out immediately to prevent auto-login and modal
+      await supabaseClient.auth.signOut();
       
-      Alert.alert(
+      console.log('Registration completed successfully - user signed out to prevent modal');
         'Cuenta eliminada',
         'Todos tus datos han sido eliminados de DogCatiFy. Puedes crear una nueva cuenta con el mismo email si lo deseas.',
         [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
