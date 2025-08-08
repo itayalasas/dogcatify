@@ -292,15 +292,16 @@ export default function Login() {
           <Text style={styles.subtitle}>Inicia sesión para conectar con tu comunidad de mascotas</Text>
         </View>
 
-        {/* Error Banner */}
-        {loginError && (
-          <ErrorBanner 
-            error={loginError} 
-            onDismiss={dismissError}
-          />
-        )}
 
         <View style={styles.form}>
+          {/* Error Banner - Dentro del form para mejor espaciado */}
+          {loginError && (
+            <ErrorBanner 
+              error={loginError} 
+              onDismiss={dismissError}
+            />
+          )}
+
           <Input
             label="Correo electrónico"
             placeholder="tu@email.com"
@@ -468,7 +469,7 @@ const styles = StyleSheet.create({
   
   // Error Banner Styles
   errorBanner: {
-    marginBottom: 20,
+    marginBottom: 16,
     borderRadius: 12,
     backgroundColor: '#FEF2F2',
     borderWidth: 1,
@@ -478,30 +479,30 @@ const styles = StyleSheet.create({
   errorContent: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    padding: 16,
+    padding: 12,
   },
   errorIcon: {
-    marginRight: 12,
+    marginRight: 8,
     marginTop: 2,
   },
   errorText: {
     flex: 1,
   },
   errorTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: 'Inter-SemiBold',
     color: '#991B1B',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   errorMessage: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: 'Inter-Regular',
     color: '#991B1B',
-    lineHeight: 20,
+    lineHeight: 18,
   },
   errorDismiss: {
-    padding: 4,
-    marginLeft: 8,
+    padding: 2,
+    marginLeft: 4,
   },
   
   // Success Banner (when error starts with SUCCESS:)
@@ -606,7 +607,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: 'center',
-    marginTop: 32,
+    marginTop: 24,
   },
   footerText: {
     fontSize: 16,
