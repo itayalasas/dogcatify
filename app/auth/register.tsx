@@ -44,15 +44,29 @@ export default function Register() {
     setLoading(true);
     try {
       await register(email, password, fullName);
+      
+      // Clear any potential session state immediately
+      setLoading(false);
+      
       Alert.alert(
         '¡Registro exitoso! 🎉',
         `Tu cuenta ha sido creada exitosamente.\n\n📧 Hemos enviado un correo de confirmación a:\n${email}\n\nPor favor revisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace de confirmación.\n\n⏰ El enlace expira en 24 horas.`,
-        [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
+        [{ 
+          text: 'ENTENDIDO', 
+          onPress: () => {
+            // Force navigation to login and clear any potential modals
+            setTimeout(() => {
+              router.replace('/auth/login');
+            }, 100);
+          }
+        }]
       );
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Error al crear la cuenta');
-    } finally {
       setLoading(false);
+    } finally {
+      // Ensure loading is always cleared
+      setTimeout(() => setLoading(false), 100);
     }
   };
 

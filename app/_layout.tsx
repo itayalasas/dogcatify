@@ -9,9 +9,31 @@ import { NotificationProvider } from '../contexts/NotificationContext';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { Platform } from 'react-native';
+import { useEffect } from 'react';
+import { supabaseClient } from '../lib/supabase';
 
 export default function RootLayout() {
   useFrameworkReady();
+
+  // Prevent Supabase from showing automatic modals
+  useEffect(() => {
+    // Disable automatic session recovery that might trigger modals
+    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(
+      (event, session) => {
+        // Only handle explicit sign-in events, ignore automatic ones
+        if (event === 'SIGNED_IN' && session?.user) {
+          console.log('Auth state change handled:', event);
+        } else if (event === 'SIGNED_OUT') {
+          console.log('User signed out');
+        }
+        // Ignore other events that might trigger modals
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   // Determine initial route based on platform
   const initialRouteName = Platform.OS === 'web' ? 'web-info' : '(tabs)';

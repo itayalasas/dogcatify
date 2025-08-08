@@ -210,7 +210,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('Starting registration process for:', email);
       
-      // Step 1: Create user account WITHOUT email confirmation
+      // Step 1: Create user account and immediately sign out to prevent modals
       const { data, error } = await supabaseClient.auth.signUp({
         email: email.toLowerCase().trim(),
         password,
@@ -218,8 +218,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           data: {
             display_name: displayName.trim(),
           },
-          emailRedirectTo: undefined, // Disable automatic email confirmation
-          captchaToken: undefined,    // Disable captcha
+          emailRedirectTo: undefined,
+          captchaToken: undefined,
         },
       });
 
@@ -230,10 +230,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       console.log('User created in Supabase auth:', data.user?.id);
 
-      // Step 2: Immediately sign out to prevent any automatic modals
-      console.log('Signing out immediately to prevent modals...');
-      await supabaseClient.auth.stopAutoRefresh();
+      // Step 2: Immediately sign out and clear session to prevent modals
+      console.log('Clearing session to prevent automatic modals...');
       await supabaseClient.auth.signOut();
+      await supabaseClient.auth.stopAutoRefresh();
       setCurrentUser(null);
 
       // Step 3: Create profile in profiles table
