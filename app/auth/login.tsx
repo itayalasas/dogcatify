@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Modal, Platform, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Modal, Platform, Animated, Alert } from 'react-native';
 import { Link, router } from 'expo-router';
 import { Mail, Lock, Eye, EyeOff, Fingerprint, CircleAlert as AlertCircle, X, CircleCheck as CheckCircle } from 'lucide-react-native';
 import { Input } from '../../components/ui/Input';
@@ -98,6 +98,7 @@ export default function Login() {
   const [showEmailConfirmationModal, setShowEmailConfirmationModal] = useState(false);
   const [pendingEmail, setPendingEmail] = useState('');
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [biometricPromptShown, setBiometricPromptShown] = useState(false);
   const { login, authError, clearAuthError } = useAuth();
   const { t } = useLanguage();
   const { 
@@ -111,6 +112,15 @@ export default function Login() {
   useEffect(() => {
     loadSavedCredentials();
   }, []);
+
+  // Auto-trigger biometric authentication when available
+  useEffect(() => {
+    if (isBiometricEnabled && isBiometricSupported && !biometricPromptShown && !loading) {
+      console.log('Biometric available and enabled, triggering automatic authentication...');
+      setBiometricPromptShown(true);
+      handleAutomaticBiometricLogin();
+    }
+  }, [isBiometricEnabled, isBiometricSupported, biometricPromptShown, loading]);
 
   // Handle auth errors from context
   useEffect(() => {
@@ -161,6 +171,41 @@ export default function Login() {
     }
   };
 
+  const handleAutomaticBiometricLogin = async () => {
+    try {
+      console.log('Attempting automatic biometric authentication...');
+      const credentials = await authenticateWithBiometric();
+      if (credentials) {
+        console.log('Biometric authentication successful, logging in...');
+        setEmail(credentials.email);
+        setPassword(credentials.password);
+        // Auto-login with biometric credentials
+        await handleLogin(credentials.email, credentials.password);
+      } else {
+        console.log('Biometric authentication cancelled or failed');
+        // Reset the flag so user can try again if they want
+        setBiometricPromptShown(false);
+      }
+    } catch (error) {
+      console.log('Biometric authentication error:', error);
+      setBiometricPromptShown(false);
+    }
+  };
+
+  const handleManualBiometricLogin = async () => {
+    try {
+      const credentials = await authenticateWithBiometric();
+      if (credentials) {
+        setEmail(credentials.email);
+        setPassword(credentials.password);
+        // Auto-login with biometric credentials
+        handleLogin(credentials.email, credentials.password);
+      }
+    } catch (error) {
+      console.log('Manual biometric authentication cancelled or failed');
+    }
+  };
+
   const handleLogin = async (emailParam?: string, passwordParam?: string) => {
     const loginEmail = emailParam || email;
     const loginPassword = passwordParam || password;
@@ -189,9 +234,9 @@ export default function Login() {
           await clearSavedCredentials();
         }
         
-        // Check if should show biometric setup
-        if (isBiometricSupported && !isBiometricEnabled) {
-          // Navigate to biometric setup screen instead of directly to tabs
+        // Check if should show biometric setup (only for manual login, not biometric login)
+        if (isBiometricSupported && !isBiometricEnabled && !emailParam && !passwordParam) {
+          // Navigate to biometric setup screen for manual login
           router.replace({
             pathname: '/auth/biometric-setup',
             params: { 
@@ -201,7 +246,7 @@ export default function Login() {
             }
           });
         } else {
-          // Go directly to main app
+          // Go directly to main app (for biometric login or when biometric already configured)
           router.replace('/(tabs)');
         }
       }
@@ -214,20 +259,6 @@ export default function Login() {
       }
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleBiometricLogin = async () => {
-    try {
-      const credentials = await authenticateWithBiometric();
-      if (credentials) {
-        setEmail(credentials.email);
-        setPassword(credentials.password);
-        // Auto-login with biometric credentials
-        handleLogin(credentials.email, credentials.password);
-      }
-    } catch (error) {
-      console.log('Biometric authentication cancelled or failed');
     }
   };
 
@@ -252,10 +283,12 @@ export default function Login() {
         setPassword('');
         setPendingEmail('');
         
-        // Show success banner
-        setTimeout(() => {
-          setLoginError(`SUCCESS:Se ha enviado un nuevo correo de confirmación a ${pendingEmail}. Revisa tu bandeja de entrada.`);
-        }, 300);
+        // Show success message
+        Alert.alert(
+          'Correo enviado',
+          `Se ha enviado un nuevo correo de confirmación a ${pendingEmail}. Revisa tu bandeja de entrada.`,
+          [{ text: 'Entendido' }]
+        );
       } else {
         setLoginError(result.error || 'No se pudo reenviar el correo');
       }
@@ -291,7 +324,6 @@ export default function Login() {
           <Text style={styles.title}>¡Bienvenido de vuelta a DogCatiFy! 🐾</Text>
           <Text style={styles.subtitle}>Inicia sesión para conectar con tu comunidad de mascotas</Text>
         </View>
-
 
         <View style={styles.form}>
           <Input
@@ -352,11 +384,11 @@ export default function Login() {
             size="large"
           />
 
-          {/* Biometric Login Button */}
+          {/* Manual Biometric Login Button - Solo si biometría está habilitada */}
           {isBiometricEnabled && isBiometricSupported && (
             <TouchableOpacity 
               style={styles.biometricButton}
-              onPress={handleBiometricLogin}
+              onPress={handleManualBiometricLogin}
               disabled={loading}
             >
               <Fingerprint size={24} color="#2D6A6F" />
@@ -467,7 +499,13 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
   },
   
-  // Error Banner Styles
+  form: {
+    width: '100%',
+    maxWidth: 400,
+    alignSelf: 'center',
+  },
+  
+  // Error Banner Styles - Solo ocupa espacio cuando existe
   errorBanner: {
     marginBottom: 16,
     borderRadius: 12,
@@ -505,45 +543,6 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   
-  // Success Banner (when error starts with SUCCESS:)
-  successBanner: {
-    marginBottom: 20,
-    borderRadius: 12,
-    backgroundColor: '#F0FDF4',
-    borderWidth: 1,
-    borderColor: '#BBF7D0',
-    overflow: 'hidden',
-  },
-  successContent: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: 16,
-  },
-  successIcon: {
-    marginRight: 12,
-    marginTop: 2,
-  },
-  successText: {
-    flex: 1,
-  },
-  successTitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#166534',
-    marginBottom: 4,
-  },
-  successMessage: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#166534',
-    lineHeight: 20,
-  },
-
-  form: {
-    width: '100%',
-    maxWidth: 400,
-    alignSelf: 'center',
-  },
   rememberCredentialsContainer: {
     marginBottom: 16,
   },
