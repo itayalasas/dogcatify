@@ -337,13 +337,12 @@ export default function DeleteAccount() {
       console.log('Deleting user from auth.users table...');
       
       try {
-          setDeletionProgress(prev => [...prev, `⚠️ Error API auth (${response.status})`]);
-      await supabaseClient.auth.signOut();
-      setCurrentUser(null);
-      setSession(null);
-      setIsEmailConfirmed(false);
-          setDeletionProgress(prev => [...prev, '⚠️ Continuando con logout forzado...']);
-        }
+        setDeletionProgress(prev => [...prev, `⚠️ Error API auth (${response.status})`]);
+        await supabaseClient.auth.signOut();
+        setCurrentUser(null);
+        setSession(null);
+        setIsEmailConfirmed(false);
+        setDeletionProgress(prev => [...prev, '⚠️ Continuando con logout forzado...']);
       } catch (authError) {
         console.warn('Error deleting from auth system:', authError);
         setDeletionProgress(prev => [...prev, `⚠️ Error eliminando de auth: ${authError.message}`]);
