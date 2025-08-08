@@ -384,20 +384,6 @@ export default function Login() {
             size="large"
           />
 
-          {/* Manual Biometric Login Button - Solo si biometría está habilitada */}
-          {isBiometricEnabled && isBiometricSupported && (
-            <TouchableOpacity 
-              style={styles.biometricButton}
-              onPress={handleManualBiometricLogin}
-              disabled={loading}
-            >
-              <Fingerprint size={24} color="#2D6A6F" />
-              <Text style={styles.biometricButtonText}>
-                Iniciar con {biometricType || 'Biometría'}
-              </Text>
-            </TouchableOpacity>
-          )}
-
           <View style={styles.forgotPasswordContainer}>
             <Link href="/auth/forgot-password" style={styles.forgotPasswordLink}>
               ¿Olvidaste tu contraseña?
@@ -576,24 +562,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#374151',
     flex: 1,
-  },
-  biometricButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F0F9FF',
-    borderWidth: 2,
-    borderColor: '#2D6A6F',
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    marginTop: 16,
-    gap: 8,
-  },
-  biometricButtonText: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#2D6A6F',
   },
   forgotPasswordContainer: {
     alignItems: 'center',
