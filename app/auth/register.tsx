@@ -1,105 +1,115 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
-import { router, Stack, Link } from 'expo-router';
-import { Mail, Lock, User } from 'lucide-react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, Image, TouchableOpacity } from 'react-native';
+import { Link, router } from 'expo-router';
+import { Linking } from 'react-native';
+import { Mail, Lock, User, Check, ExternalLink } from 'lucide-react-native';
 import { Input } from '../../components/ui/Input';
-import { Button } from '../../components/ui/Button';
+import { Button } from '../../components/ui/Button'; 
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [fullName, setFullName] = useState('');
+  const [acceptedPolicies, setAcceptedPolicies] = useState(false);
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
   const { t } = useLanguage();
 
   const handleRegister = async () => {
-    if (!email || !password || !confirmPassword || !fullName) {
-      Alert.alert('Error', t('fillAllFields'));
+    if (!email || !password || !displayName || !confirmPassword) {
+      Alert.alert(t('error'), t('fillAllFields'));
+      return;
+    }
+
+    if (!acceptedPolicies) {
+      Alert.alert('Error', 'Debes aceptar las políticas de privacidad y términos de servicio para continuar');
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', t('passwordsDontMatch'));
+      Alert.alert(t('error'), t('passwordsDontMatch'));
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert('Error', t('passwordTooShort'));
+      Alert.alert(t('error'), t('passwordTooShort'));
       return;
     }
 
     setLoading(true);
     try {
-      console.log('Starting registration process...');
-      await register(email.trim(), password, fullName.trim());
+      console.log('Registering user:', email, displayName);
+      await register(email, password, displayName);
+      console.log('User registered successfully');
       
-      // Show success alert and redirect to login
+      // No redirigir automáticamente, mostrar mensaje de éxito
       Alert.alert(
         '¡Registro exitoso! 🎉',
-        `Tu cuenta ha sido creada exitosamente.\n\n📧 Hemos enviado un correo de confirmación a:\n${email.trim()}\n\nPor favor revisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace de confirmación.\n\n⏰ El enlace expira en 24 horas.`,
+        `Tu cuenta ha sido creada exitosamente.\n\n📧 Hemos enviado un correo de confirmación a:\n${email}\n\nPor favor revisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace de confirmación.\n\n⏰ El enlace expira en 24 horas.`,
         [
           {
             text: 'Entendido',
             onPress: () => {
-              // Clear form
+              // Limpiar formulario y redirigir al login
               setEmail('');
               setPassword('');
+              setDisplayName('');
               setConfirmPassword('');
-              setFullName('');
-              // Navigate to login
+              setAcceptedPolicies(false);
               router.replace('/auth/login');
             }
           }
-        ]
+        ],
+        { cancelable: false }
       );
     } catch (error: any) {
       console.error('Registration error:', error);
-      
-      let errorMessage = 'No se pudo crear la cuenta';
-      
-      if (error.message?.includes('User already registered')) {
-        errorMessage = '📧 Este correo electrónico ya está registrado.\n\n¿Ya tienes una cuenta? Intenta iniciar sesión o recuperar tu contraseña.';
-        Alert.alert(
-          'Email ya registrado',
-          errorMessage,
-          [
-            { text: 'Cancelar', style: 'cancel' },
-            { text: 'Ir al Login', onPress: () => router.push('/auth/login') },
-            { text: 'Recuperar Contraseña', onPress: () => router.push('/auth/forgot-password') }
-          ]
-        );
-        return;
-      } else if (error.message?.includes('Invalid email')) {
-        errorMessage = '📧 El formato del correo electrónico no es válido.\n\nPor favor verifica que esté escrito correctamente.';
-      } else if (error.message?.includes('Password should be at least')) {
-        errorMessage = '🔒 La contraseña debe tener al menos 6 caracteres.\n\nPor favor elige una contraseña más segura.';
-      } else if (error.message?.includes('signup is disabled')) {
-        errorMessage = '🚫 El registro está temporalmente deshabilitado.\n\nPor favor intenta más tarde o contacta con soporte.';
-      } else if (error.message?.includes('rate limit')) {
-        errorMessage = '⏰ Demasiados intentos de registro.\n\nPor favor espera unos minutos antes de intentar nuevamente.';
-      } else if (error.message) {
-        errorMessage = `❌ Error: ${error.message}`;
-      }
-      
-      Alert.alert('Error en el registro', errorMessage);
+      Alert.alert(t('error'), error.message);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleOpenPrivacyPolicy = async () => {
+    try {
+      const url = process.env.EXPO_PUBLIC_PRIVACY_POLICY_URL || 'https://dogcatify.com/privacy-policy';
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'No se pudo abrir el enlace de políticas de privacidad');
+      }
+    } catch (error) {
+      console.error('Error opening privacy policy:', error);
+      Alert.alert('Error', 'No se pudo abrir el enlace de políticas de privacidad');
+    }
+  };
+
+  const handleOpenTermsOfService = async () => {
+    try {
+      const url = process.env.EXPO_PUBLIC_TERMS_OF_SERVICE_URL || 'https://dogcatify.com/terms-of-service';
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'No se pudo abrir el enlace de términos de servicio');
+      }
+    } catch (error) {
+      console.error('Error opening terms of service:', error);
+      Alert.alert('Error', 'No se pudo abrir el enlace de términos de servicio');
+    }
+  };
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.header}>
         <Image 
           source={require('../../assets/images/logo.jpg')} 
           style={styles.logo} 
         />
-        <Text style={styles.title}>{t('joinPatitas')}</Text>
+        <Text style={styles.title}>Únete a nosotros</Text>
         <Text style={styles.subtitle}>{t('createAccountSubtitle')}</Text>
       </View>
 
@@ -107,9 +117,8 @@ export default function Register() {
         <Input
           label={t('fullName')}
           placeholder={t('fullName')}
-          value={fullName}
-          onChangeText={setFullName}
-          autoCapitalize="words"
+          value={displayName}
+          onChangeText={setDisplayName}
           leftIcon={<User size={20} color="#6B7280" />}
         />
 
@@ -141,10 +150,35 @@ export default function Register() {
           leftIcon={<Lock size={20} color="#6B7280" />}
         />
 
+        <View style={styles.policiesContainer}>
+          <TouchableOpacity 
+            style={styles.policiesRow} 
+            onPress={() => setAcceptedPolicies(!acceptedPolicies)}
+          >
+            <View style={[styles.checkbox, acceptedPolicies && styles.checkedCheckbox]}>
+              {acceptedPolicies && <Check size={16} color="#FFFFFF" />}
+            </View>
+            <View style={styles.policiesTextContainer}>
+              <Text style={styles.policiesText}>
+                Acepto las{' '}
+                <TouchableOpacity onPress={handleOpenPrivacyPolicy}>
+                  <Text style={styles.linkText}>políticas de privacidad</Text>
+                </TouchableOpacity>
+                {' '}y los{' '}
+                <TouchableOpacity onPress={handleOpenTermsOfService}>
+                  <Text style={styles.linkText}>términos de servicio</Text>
+                </TouchableOpacity>
+              </Text>
+            </View>
+          </TouchableOpacity>
+          
+         
+        </View>
         <Button
           title={t('createAccount')}
           onPress={handleRegister}
           loading={loading}
+          disabled={loading || !acceptedPolicies}
           size="large"
         />
 
@@ -165,21 +199,22 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    paddingTop: 30,
+    paddingTop: 30, // Add padding at the top to show status bar
   },
   content: {
     flexGrow: 1,
     padding: 20,
+    paddingTop: 20,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 8,
   },
   logo: {
     width: 140,
     height: 140,
     resizeMode: 'contain',
-    marginBottom: 16,
+    marginBottom: 4,
   },
   title: {
     fontSize: 28,
@@ -199,9 +234,69 @@ const styles = StyleSheet.create({
     maxWidth: 400,
     alignSelf: 'center',
   },
+  policiesContainer: {
+    marginBottom: 20,
+  },
+  policiesRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    borderRadius: 4,
+    marginRight: 12,
+    marginTop: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkedCheckbox: {
+    backgroundColor: '#2D6A6F',
+    borderColor: '#2D6A6F',
+  },
+  policiesTextContainer: {
+    flex: 1,
+  },
+  policiesText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+    lineHeight: 20,
+  },
+  linkText: {
+    color: '#3B82F6',
+    fontFamily: 'Inter-SemiBold',
+    textDecorationLine: 'underline',
+  },
+  policiesLinks: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  policyLinkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    flex: 1,
+    justifyContent: 'center',
+  },
+  policyLinkText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#3B82F6',
+    marginLeft: 4,
+  },
   footer: {
     alignItems: 'center',
-    marginTop: 24,
+    marginTop: 8,
   },
   footerText: {
     fontSize: 16,
