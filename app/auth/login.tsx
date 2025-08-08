@@ -125,10 +125,17 @@ export default function Login() {
   // Handle auth errors from context
   useEffect(() => {
     if (authError) {
-      if (authError.startsWith('EMAIL_NOT_CONFIRMED:')) {
+      // Only show email confirmation modal for login attempts, not after registration
+      if (authError.startsWith('EMAIL_NOT_CONFIRMED:') && !loading) {
         const userEmail = authError.split(':')[1];
-        setPendingEmail(userEmail || email);
-        setShowEmailConfirmationModal(true);
+        // Only show modal if we're actually trying to login (have email/password filled)
+        if (email && password) {
+          setPendingEmail(userEmail || email);
+          setShowEmailConfirmationModal(true);
+        } else {
+          // If no credentials, just show error
+          setLoginError('Debes confirmar tu correo electrónico antes de iniciar sesión');
+        }
       } else {
         setLoginError(authError);
       }
