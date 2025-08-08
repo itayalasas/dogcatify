@@ -11,9 +11,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true,
+    autoRefreshToken: false,
+    persistSession: false,
+    detectSessionInUrl: false,
     flowType: 'pkce',
   },
   global: {

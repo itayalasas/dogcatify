@@ -620,7 +620,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('AuthContext - Attempting registration for:', email);
       
-      // Completely disable email confirmation from Supabase
+      // Create a temporary client with NO auth features enabled
+      const tempClient = createClient(
+        process.env.EXPO_PUBLIC_SUPABASE_URL!,
+        process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false,
+            detectSessionInUrl: false,
+            flowType: 'pkce',
+          }
+        }
+      );
+      
       const { data, error } = await supabaseClient.auth.signUp({
         email,
         password,
@@ -628,7 +641,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           data: {
             display_name: displayName,
           },
-          emailRedirectTo: undefined, // Prevent any redirects
+          emailRedirectTo: undefined,
         }
       });
       
@@ -639,7 +652,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       console.log('AuthContext - Registration successful, user created');
       
-      // Immediately sign out and clear all session data
+      // Immediately destroy any session
+      await tempClient.auth.signOut();
       await supabaseClient.auth.signOut();
       
       // Force clear any remaining session state
@@ -647,8 +661,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(null);
       setIsEmailConfirmed(false);
       
-      // Wait a moment for Supabase to process the signOut
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Wait longer for complete cleanup
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       if (data.user) {
         console.log('Creating custom email confirmation token for user:', data.user.id);

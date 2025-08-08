@@ -16,21 +16,20 @@ export default function RootLayout() {
 
   // Prevent Supabase from showing automatic modals
   useEffect(() => {
-    // Completely disable automatic auth state changes that trigger modals
+    // Aggressively prevent ALL Supabase modals
     const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(
       (event, session) => {
-        // Ignore all automatic auth state changes during registration
-        if (event === 'SIGNED_UP') {
-          console.log('Registration detected, preventing automatic modals');
-          // Immediately sign out to prevent modals
-          setTimeout(() => {
-            supabaseClient.auth.signOut();
-          }, 100);
-          return;
+        // BLOCK ALL AUTH EVENTS THAT COULD TRIGGER MODALS
+        console.log('Auth event blocked:', event);
+        
+        // Force signout for any signup events
+        if (event === 'SIGNED_UP' || event === 'SIGNED_IN') {
+          console.log('Forcing signout to prevent modals');
+          supabaseClient.auth.signOut();
         }
         
-        // Only log other events, don't process them automatically
-        console.log('Auth state change (ignored):', event);
+        // Don't process any events automatically
+        return false;
       }
     );
 
