@@ -53,10 +53,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Handle different auth events
         if (event === 'SIGNED_UP') {
           console.log('AuthContext - SIGNED_UP event detected, signing out immediately');
-          // Sign out immediately without any validation or error setting
+          // Sign out immediately without ANY validation or error setting
           await supabaseClient.auth.signOut();
-          // Clear any auth errors that might have been set
+          // Clear any auth errors and return immediately
           setAuthError(null);
+          setCurrentUser(null);
+          setSession(null);
+          setIsEmailConfirmed(false);
           return;
         }
         
