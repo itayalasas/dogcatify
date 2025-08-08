@@ -291,6 +291,17 @@ export default function DeleteAccount() {
         console.log('Service reviews deleted successfully');
       }
 
+      // Delete user profile
+      setDeletionProgress(prev => [...prev, 'Eliminando perfil de usuario...']);
+      console.log('Step 19: Deleting user profile...');
+      const { error: profileError } = await supabaseClient
+        .from('profiles')
+        .delete()
+        .eq('id', currentUser.id);
+      
+      if (profileError) {
+        console.error('Error deleting profile:', profileError);
+        
         if (profileError.message?.includes('JWT expired')) {
           Alert.alert('Sesión expirada', 'Por favor inicia sesión nuevamente.');
           router.replace('/auth/login');
