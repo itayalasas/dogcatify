@@ -68,12 +68,16 @@ serve(async (req: Request) => {
       }
     });
 
-    // Check if user already exists
-    const { data: existingUser } = await supabase.auth.admin.getUserByEmail(email);
+    // Check if user already exists in profiles table
+    const { data: existingProfile, error: checkError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', email.toLowerCase())
+      .single();
     
-    if (existingUser.user) {
+    if (existingProfile && !checkError) {
       return new Response(
-        JSON.stringify({ success: false, error: 'User already exists' }),
+        JSON.stringify({ success: false, error: 'Ya existe una cuenta con este correo electrónico' }),
         {
           status: 400,
           headers: { 'Content-Type': 'application/json', ...corsHeaders },
