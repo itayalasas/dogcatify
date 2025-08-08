@@ -624,7 +624,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email,
         password,
         options: {
-          emailRedirectTo: undefined, // Disable automatic redirect
+          emailRedirectTo: undefined,
           data: {
             display_name: displayName,
           },
