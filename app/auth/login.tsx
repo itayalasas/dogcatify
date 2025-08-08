@@ -71,7 +71,7 @@ const ErrorBanner = ({ error, onDismiss }: { error: string; onDismiss: () => voi
   const errorInfo = getErrorMessage(error);
 
   return (
-    <Animated.View style={[styles.errorBanner, { opacity: fadeAnim }]}>
+    <Animated.View style={[styles.errorBanner, { opacity: fadeAnim, transform: [{ translateY: fadeAnim.interpolate({ inputRange: [0, 1], outputRange: [-20, 0] }) }] }]}>
       <View style={styles.errorContent}>
         <View style={styles.errorIcon}>
           {errorInfo.icon}
@@ -294,14 +294,6 @@ export default function Login() {
 
 
         <View style={styles.form}>
-          {/* Error Banner - Dentro del form para mejor espaciado */}
-          {loginError && (
-            <ErrorBanner 
-              error={loginError} 
-              onDismiss={dismissError}
-            />
-          )}
-
           <Input
             label="Correo electrónico"
             placeholder="tu@email.com"
@@ -329,6 +321,14 @@ export default function Login() {
               </TouchableOpacity>
             }
           />
+
+          {/* Error Banner - Solo se renderiza cuando hay error */}
+          {loginError && (
+            <ErrorBanner 
+              error={loginError} 
+              onDismiss={dismissError}
+            />
+          )}
 
           <View style={styles.rememberCredentialsContainer}>
             <TouchableOpacity 
@@ -545,12 +545,12 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   rememberCredentialsContainer: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   rememberCredentialsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 8,
   },
   checkbox: {
     width: 20,
@@ -607,7 +607,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: 'center',
-    marginTop: 24,
+    marginTop: 16,
   },
   footerText: {
     fontSize: 16,
