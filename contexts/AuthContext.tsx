@@ -89,7 +89,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               .select('*')
               .eq('type', 'signup')
               .eq('user_id', session.user.id)
-              .single();
+              .eq('is_confirmed', true)
+              .maybeSingle();
             
             console.log('Confirmation query result:', {
               hasData: !!confirmationData,
@@ -113,7 +114,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               .from('profiles')
               .select('email_confirmed, email_confirmed_at')
               .eq('id', session.user.id)
-              .single();
+              .maybeSingle();
             
             console.log('Profile email confirmation status:', {
               hasData: !!profileData,
@@ -124,12 +125,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             
             // VALIDATION: Check both systems
             const isConfirmedInEmailTable = confirmationData && 
-                                          !confirmationError && 
                                           confirmationData.user_id === session.user.id && 
                                           confirmationData.is_confirmed === true;
             
             const isConfirmedInProfile = profileData && 
-                                       !profileError && 
                                        profileData.email_confirmed === true;
             
             // User is confirmed if EITHER system shows confirmation

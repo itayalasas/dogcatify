@@ -157,44 +157,44 @@ serve(async (req: Request) => {
           to: email,
           subject: '¡Confirma tu cuenta en DogCatiFy!',
           html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <div style="background-color: #2D6A6F; padding: 30px 20px; text-align: center;">
-                <h1 style="color: white; margin: 0; font-size: 24px; font-weight: bold;">¡Confirma tu cuenta en DogCatiFy!</h1>
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+              <div style="background-color: #2D6A6F; padding: 20px; text-align: center;">
+                <h1 style="color: white; margin: 0; font-size: 20px; font-weight: bold;">¡Confirma tu cuenta en DogCatiFy!</h1>
               </div>
-              <div style="padding: 30px 20px; background-color: #ffffff;">
-                <p style="margin: 0 0 10px 0; font-size: 16px; color: #333;">Hola <strong>DogCatify</strong>,</p>
-                <p style="margin: 0 0 20px 0; font-size: 16px; color: #333;">¡Gracias por registrarte en DogCatiFy!</p>
-                <p style="margin: 0 0 30px 0; font-size: 16px; color: #333;">Para completar tu registro y acceder a todas las funciones, necesitas confirmar tu correo electrónico.</p>
+              <div style="padding: 20px; background-color: #ffffff;">
+                <p style="margin: 0 0 10px 0; font-size: 14px; color: #333;">Hola <strong>${displayName}</strong>,</p>
+                <p style="margin: 0 0 20px 0; font-size: 14px; color: #333;">¡Gracias por registrarte en DogCatiFy!</p>
+                <p style="margin: 0 0 20px 0; font-size: 14px; color: #333;">Para completar tu registro y acceder a todas las funciones, necesitas confirmar tu correo electrónico.</p>
                 
                 <div style="text-align: center; margin: 30px 0;">
-                  <a href="${confirmationUrl}" style="background-color: #2D6A6F; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; text-decoration: none;">
+                  <a href="${confirmationUrl}" style="background-color: #2D6A6F; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px; display: inline-block;">
                     Confirmar mi correo electrónico
                   </a>
                 </div>
                 
-                <div style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 15px; margin: 20px 0; border-radius: 4px;">
-                  <p style="margin: 0 0 10px 0; font-weight: bold; color: #92400E;">📧 Importante:</p>
-                  <p style="margin: 0 0 10px 0; color: #92400E;">Debes hacer clic en el botón de arriba para activar tu cuenta.</p>
-                  <p style="margin: 0 0 10px 0; color: #92400E;">Si el botón no funciona, copia y pega este enlace en tu navegador:</p>
-                  <p style="margin: 0 0 10px 0; word-break: break-all; font-family: monospace; background: #f5f5f5; padding: 10px; border-radius: 4px; color: #333;">
+                <div style="background-color: #FFF3CD; border: 1px solid #FFEAA7; padding: 15px; margin: 20px 0; border-radius: 6px;">
+                  <p style="margin: 0 0 10px 0; font-weight: bold; color: #856404; font-size: 14px;">⚠️ Importante:</p>
+                  <p style="margin: 0 0 10px 0; color: #856404; font-size: 13px;">Debes hacer clic en el botón de arriba para activar tu cuenta.</p>
+                  <p style="margin: 0 0 10px 0; color: #856404; font-size: 13px;">Si el botón no funciona, copia y pega este enlace en tu navegador:</p>
+                  <p style="margin: 0 0 10px 0; word-break: break-all; font-family: monospace; background: #f8f9fa; padding: 8px; border-radius: 4px; color: #495057; font-size: 12px;">
                     ${confirmationUrl}
                   </p>
-                  <p style="margin: 0; color: #92400E;">Si no ves el correo, revisa tu carpeta de spam.</p>
-                  <p style="margin: 10px 0 0 0; font-weight: bold; color: #92400E;">Este enlace expira en 24 horas.</p>
+                  <p style="margin: 0 0 8px 0; color: #856404; font-size: 13px;">Si no ves el correo, revisa tu carpeta de spam.</p>
+                  <p style="margin: 0; font-weight: bold; color: #856404; font-size: 13px;">Este enlace expira en 24 horas.</p>
                 </div>
                 
-                <p style="margin: 20px 0 0 0; font-size: 16px; color: #333;">Una vez confirmado tu email, podrás:</p>
-                <ul style="margin: 10px 0 20px 20px; color: #333;">
+                <p style="margin: 20px 0 10px 0; font-size: 14px; color: #333;">Una vez confirmado tu email, podrás:</p>
+                <ul style="margin: 0 0 20px 20px; color: #333; font-size: 13px;">
                   <li>Crear perfiles para tus mascotas</li>
                   <li>Conectar con otros dueños de mascotas</li>
                   <li>Encontrar servicios para tus compañeros peludos</li>
                   <li>Compartir momentos especiales con la comunidad</li>
                 </ul>
                 
-                <p style="margin: 20px 0 0 0; font-size: 16px; color: #333;">¡Esperamos verte pronto en DogCatiFy!</p>
-                <p style="margin: 10px 0 0 0; font-size: 16px; color: #333;">El equipo de DogCatiFy</p>
+                <p style="margin: 20px 0 5px 0; font-size: 14px; color: #333;">¡Esperamos verte pronto en DogCatiFy!</p>
+                <p style="margin: 0; font-size: 14px; color: #333;">El equipo de DogCatiFy</p>
               </div>
-              <div style="background-color: #f0f0f0; padding: 15px; text-align: center; font-size: 12px; color: #666;">
+              <div style="background-color: #f8f9fa; padding: 15px; text-align: center; font-size: 11px; color: #6c757d;">
                 <p style="margin: 0 0 5px 0;">© 2025 DogCatiFy. Todos los derechos reservados.</p>
                 <p style="margin: 0;">Si no solicitaste esta cuenta, puedes ignorar este correo.</p>
               </div>
