@@ -620,10 +620,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('AuthContext - Attempting registration for:', email);
       
-      // Disable auto-refresh and session persistence to prevent modals
-      const originalAutoRefresh = supabaseClient.auth.autoRefreshToken;
-      supabaseClient.auth.autoRefreshToken = false;
-      
+      // Completely disable email confirmation from Supabase
       const { data, error } = await supabaseClient.auth.signUp({
         email,
         password,
@@ -631,11 +628,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           data: {
             display_name: displayName,
           },
-          emailRedirectTo: undefined, // Prevent redirect
+          emailRedirectTo: undefined, // Prevent any redirects
         }
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Registration error:', error);
+        throw error;
+      }
+      
       console.log('AuthContext - Registration successful, user created');
       
       // Immediately sign out and clear all session data
@@ -646,10 +647,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(null);
       setIsEmailConfirmed(false);
       
-      // Restore auto-refresh setting
-      supabaseClient.auth.autoRefreshToken = originalAutoRefresh;
+      // Wait a moment for Supabase to process the signOut
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       if (data.user) {
+        console.log('Creating custom email confirmation token for user:', data.user.id);
+        
         // Create our custom email confirmation token
         const { createEmailConfirmationToken, generateConfirmationUrl } = await import('../utils/emailConfirmation');
         const token = await createEmailConfirmationToken(data.user.id, email, 'signup');
@@ -657,6 +660,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         console.log('Custom confirmation token created:', token);
         console.log('Confirmation URL:', confirmationUrl);
+        
+        // Wait a moment to ensure token is saved in database
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
         // Send our custom confirmation email
         const { NotificationService } = await import('../utils/notifications');

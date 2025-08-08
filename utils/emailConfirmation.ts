@@ -87,8 +87,9 @@ export const confirmEmailCustom = async (
   try {
     console.log('Verifying token:', token, 'type:', type);
 
-    // Find the token in database
-    const { data: tokenData, error } = await supabaseClient
+    // Find the token in database using service client to bypass RLS
+    const serviceClient = getServiceClient();
+    const { data: tokenData, error } = await serviceClient
       .from('email_confirmations')
       .select('*')
       .eq('token_hash', token)
@@ -98,6 +99,29 @@ export const confirmEmailCustom = async (
 
     if (error) {
       console.error('Error finding token:', error);
+      
+      // If token not found, try without the is_confirmed filter (maybe it was already confirmed)
+      const { data: anyTokenData, error: anyTokenError } = await serviceClient
+        .from('email_confirmations')
+        .select('*')
+        .eq('token_hash', token)
+        .eq('type', type)
+        .single();
+      
+      if (anyTokenError) {
+        console.error('Token not found at all:', anyTokenError);
+        return { success: false, error: 'Token no encontrado' };
+      }
+      
+      if (anyTokenData && anyTokenData.is_confirmed) {
+        console.log('Token already confirmed, treating as success');
+        return {
+          success: true,
+          userId: anyTokenData.user_id,
+          email: anyTokenData.email
+        };
+      }
+      
       return { success: false, error: 'Token no encontrado o ya utilizado' };
     }
 
@@ -114,8 +138,6 @@ export const confirmEmailCustom = async (
     }
 
     // Mark token as confirmed
-    // Use service client to bypass RLS for token verification
-    const serviceClient = getServiceClient();
     const { error: updateError } = await serviceClient
       .from('email_confirmations')
       .update({

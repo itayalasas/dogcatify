@@ -29,6 +29,9 @@ export default function EmailConfirmationScreen() {
       try {
         console.log('Attempting to confirm email with token:', token_hash);
         
+        // Add a small delay to ensure database is ready
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
         const result = await confirmEmailCustom(
           token_hash as string, 
           (type as 'signup' | 'password_reset') || 'signup'
