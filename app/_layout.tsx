@@ -9,7 +9,6 @@ import { NotificationProvider } from '../contexts/NotificationContext';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { Platform } from 'react-native';
-import { useEffect } from 'react';
 import { supabaseClient } from '../lib/supabase';
 
 export default function RootLayout() {
