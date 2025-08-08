@@ -98,6 +98,7 @@ export default function Login() {
   const [showEmailConfirmationModal, setShowEmailConfirmationModal] = useState(false);
   const [pendingEmail, setPendingEmail] = useState('');
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [biometricAttempted, setBiometricAttempted] = useState(false);
   const { login, authError, clearAuthError } = useAuth();
   const { t } = useLanguage();
   const { 
@@ -111,6 +112,37 @@ export default function Login() {
   useEffect(() => {
     loadSavedCredentials();
   }, []);
+
+  // Auto-trigger biometric authentication when component loads
+  useEffect(() => {
+    const attemptBiometricLogin = async () => {
+      // Only attempt once and if biometric is enabled
+      if (!biometricAttempted && isBiometricEnabled && isBiometricSupported) {
+        setBiometricAttempted(true);
+        console.log('Auto-attempting biometric login...');
+        
+        try {
+          const credentials = await authenticateWithBiometric();
+          if (credentials) {
+            console.log('Biometric authentication successful, logging in...');
+            setEmail(credentials.email);
+            setPassword(credentials.password);
+            // Auto-login with biometric credentials
+            await handleLogin(credentials.email, credentials.password);
+          } else {
+            console.log('Biometric authentication cancelled or failed');
+          }
+        } catch (error) {
+          console.log('Biometric authentication error:', error);
+          // If biometric fails, just continue with normal login
+        }
+      }
+    };
+
+    // Small delay to ensure UI is ready
+    const timer = setTimeout(attemptBiometricLogin, 500);
+    return () => clearTimeout(timer);
+  }, [isBiometricEnabled, isBiometricSupported, biometricAttempted]);
 
   // Handle auth errors from context
   useEffect(() => {
@@ -352,20 +384,6 @@ export default function Login() {
             size="large"
           />
 
-          {/* Biometric Login Button */}
-          {isBiometricEnabled && isBiometricSupported && (
-            <TouchableOpacity 
-              style={styles.biometricButton}
-              onPress={handleBiometricLogin}
-              disabled={loading}
-            >
-              <Fingerprint size={24} color="#2D6A6F" />
-              <Text style={styles.biometricButtonText}>
-                Iniciar con {biometricType || 'Biometría'}
-              </Text>
-            </TouchableOpacity>
-          )}
-
           <View style={styles.forgotPasswordContainer}>
             <Link href="/auth/forgot-password" style={styles.forgotPasswordLink}>
               ¿Olvidaste tu contraseña?
@@ -577,24 +595,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#374151',
     flex: 1,
-  },
-  biometricButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F0F9FF',
-    borderWidth: 2,
-    borderColor: '#2D6A6F',
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    marginTop: 16,
-    gap: 8,
-  },
-  biometricButtonText: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#2D6A6F',
   },
   forgotPasswordContainer: {
     alignItems: 'center',
