@@ -131,12 +131,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const isConfirmedInProfile = profileData && 
                                        profileData.email_confirmed === true;
             
-            // User is confirmed if EITHER system shows confirmation
-            const isEmailConfirmed = isConfirmedInEmailTable || isConfirmedInProfile;
+            // Also check Supabase Auth confirmation status
+            const isConfirmedInAuth = session.user.email_confirmed_at !== null;
+            
+            // User is confirmed if ANY system shows confirmation
+            const isEmailConfirmed = isConfirmedInEmailTable || isConfirmedInProfile || isConfirmedInAuth;
             
             console.log('Final confirmation status:', {
               emailTableConfirmed: isConfirmedInEmailTable,
               profileTableConfirmed: isConfirmedInProfile,
+              authTableConfirmed: isConfirmedInAuth,
               finalResult: isEmailConfirmed
             });
             

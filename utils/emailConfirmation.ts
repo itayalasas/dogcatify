@@ -151,6 +151,26 @@ export const confirmEmailCustom = async (
       return { success: false, error: 'Error al confirmar token' };
     }
 
+    // CRITICAL: Update user in auth.users to mark email as confirmed
+    console.log('Updating user in auth.users to mark email as confirmed...');
+    const { error: authUpdateError } = await serviceClient.auth.admin.updateUserById(
+      tokenData.user_id,
+      { 
+        email_confirm: true,
+        user_metadata: {
+          email_confirmed: true,
+          email_confirmed_at: new Date().toISOString()
+        }
+      }
+    );
+
+    if (authUpdateError) {
+      console.error('Error updating user in auth.users:', authUpdateError);
+      // Don't fail the confirmation if auth update fails, but log it
+      console.warn('Email confirmed in our system but not in auth.users');
+    } else {
+      console.log('✅ User email confirmed in auth.users successfully');
+    }
     // Update user profile to mark email as confirmed
     const { error: profileError } = await serviceClient
       .from('profiles')
