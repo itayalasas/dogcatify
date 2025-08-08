@@ -293,6 +293,8 @@ export const generateConfirmationUrl = (token: string, type: 'signup' | 'passwor
  */
 export const resendConfirmationEmail = async (email: string): Promise<{ success: boolean; error?: string }> => {
   try {
+    console.log('Resending confirmation email for:', email);
+    
     // Find user by email
     const { data: userData, error: userError } = await supabaseClient
       .from('profiles')
@@ -301,24 +303,36 @@ export const resendConfirmationEmail = async (email: string): Promise<{ success:
       .single();
 
     if (userError) {
+      console.error('User not found for email resend:', userError);
+      if (userError.code === 'PGRST116') {
+        return { success: false, error: 'No existe una cuenta con este correo electrónico' };
+      }
       return { success: false, error: 'Usuario no encontrado' };
     }
 
     console.log('Resending confirmation email for user:', userData.id);
 
-    // Invalidate any existing tokens for this user
-    // Use service client to bypass RLS
+    // Invalidate any existing signup tokens for this user
     const serviceClient = getServiceClient();
-    await serviceClient
+    const { error: invalidateError } = await serviceClient
       .from('email_confirmations')
-      .update({ is_confirmed: true })
+      .update({ 
+        is_confirmed: true,
+        confirmed_at: new Date().toISOString()
+      })
       .eq('user_id', userData.id)
       .eq('type', 'signup')
       .eq('is_confirmed', false);
+    
+    if (invalidateError) {
+      console.warn('Could not invalidate existing tokens:', invalidateError);
+    }
 
     // Create new confirmation token
     const token = await createEmailConfirmationToken(userData.id, email, 'signup');
     const confirmationUrl = generateConfirmationUrl(token, 'signup');
+
+    console.log('New confirmation URL generated:', confirmationUrl);
 
     // Send confirmation email
     const { NotificationService } = await import('./notifications');

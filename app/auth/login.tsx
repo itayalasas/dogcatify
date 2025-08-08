@@ -15,6 +15,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [biometricLoading, setBiometricLoading] = useState(false);
+  const [resendingEmail, setResendingEmail] = useState(false);
   
   const { login } = useAuth();
   const { t } = useLanguage();
@@ -65,9 +66,58 @@ export default function Login() {
         }
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Error al iniciar sesión');
+      console.log('Login error:', error.message);
+      
+      // Check if it's an email confirmation error
+      if (error.message?.includes('confirmar tu correo') || 
+          error.message?.includes('email') && error.message?.includes('confirm')) {
+        Alert.alert(
+          'Email no confirmado',
+          'Debes confirmar tu correo electrónico antes de iniciar sesión.\n\n¿Quieres que reenviemos el email de confirmación?',
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            { 
+              text: 'Reenviar email', 
+              onPress: handleResendConfirmation 
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Error', error.message || 'Error al iniciar sesión');
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    if (!email.trim()) {
+      Alert.alert('Error', 'Por favor ingresa tu correo electrónico primero');
+      return;
+    }
+
+    setResendingEmail(true);
+    try {
+      console.log('Resending confirmation email for:', email);
+      
+      // Call our resend function
+      const { resendConfirmationEmail } = await import('../../utils/emailConfirmation');
+      const result = await resendConfirmationEmail(email.toLowerCase().trim());
+      
+      if (result.success) {
+        Alert.alert(
+          '✅ Email reenviado',
+          `Se ha enviado un nuevo enlace de confirmación a:\n${email}\n\nPor favor revisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace.\n\nEl enlace expira en 24 horas.`,
+          [{ text: 'Entendido' }]
+        );
+      } else {
+        Alert.alert('Error', result.error || 'No se pudo reenviar el email de confirmación');
+      }
+    } catch (error: any) {
+      console.error('Error resending confirmation email:', error);
+      Alert.alert('Error', 'No se pudo reenviar el email de confirmación');
+    } finally {
+      setResendingEmail(false);
     }
   };
 

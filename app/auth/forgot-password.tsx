@@ -111,6 +111,46 @@ export default function ForgotPassword() {
         >
           <Text style={styles.backToLoginText}>Volver al inicio de sesión</Text>
         </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.resendConfirmationButton}
+          onPress={() => {
+            Alert.alert(
+              'Reenviar confirmación',
+              '¿Necesitas reenviar el email de confirmación de cuenta?',
+              [
+                { text: 'No', style: 'cancel' },
+                { 
+                  text: 'Sí, reenviar', 
+                  onPress: async () => {
+                    if (!email.trim()) {
+                      Alert.alert('Error', 'Por favor ingresa tu correo electrónico');
+                      return;
+                    }
+                    
+                    try {
+                      const { resendConfirmationEmail } = await import('../../utils/emailConfirmation');
+                      const result = await resendConfirmationEmail(email.toLowerCase().trim());
+                      
+                      if (result.success) {
+                        Alert.alert(
+                          '✅ Email reenviado',
+                          `Se ha enviado un nuevo enlace de confirmación a:\n${email}\n\nPor favor revisa tu bandeja de entrada y haz clic en el enlace.`
+                        );
+                      } else {
+                        Alert.alert('Error', result.error || 'No se pudo reenviar el email');
+                      }
+                    } catch (error) {
+                      Alert.alert('Error', 'No se pudo reenviar el email de confirmación');
+                    }
+                  }
+                }
+              ]
+            );
+          }}
+        >
+          <Text style={styles.resendConfirmationText}>¿No recibiste el email de confirmación?</Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -166,5 +206,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter-Medium',
     color: '#3B82F6',
+  },
+  resendConfirmationButton: {
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  resendConfirmationText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textDecorationLine: 'underline',
   },
 });
