@@ -340,7 +340,7 @@ export default function DeleteAccount() {
       try {
           setDeletionProgress(prev => [...prev, `⚠️ Error API auth (${response.status})`]);
           setDeletionProgress(prev => [...prev, '⚠️ Continuando con logout forzado...']);
-        }
+        
       } catch (authError) {
         console.warn('Error deleting from auth system:', authError);
         setDeletionProgress(prev => [...prev, `⚠️ Error eliminando de auth: ${authError.message}`]);
