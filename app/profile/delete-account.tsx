@@ -291,6 +291,16 @@ export default function DeleteAccount() {
         console.log('Service reviews deleted successfully');
       }
 
+      // Delete user profile
+      console.log('Step 19: Deleting user profile...');
+      const { error: profileError } = await supabaseClient
+        .from('profiles')
+        .delete()
+        .eq('id', currentUser.id);
+      
+      if (profileError) {
+        console.error('Error deleting profile:', profileError);
+        
         if (profileError.message?.includes('JWT expired')) {
           Alert.alert('Sesión expirada', 'Por favor inicia sesión nuevamente.');
           router.replace('/auth/login');
@@ -729,6 +739,17 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     fontFamily: 'Inter-Medium',
+    marginBottom: 16,
+  },
+  progressContainer: {
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  progressTitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#374151',
+    marginBottom: 8,
   },
   progressScroll: {
     maxHeight: 150,
@@ -738,5 +759,19 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
     marginBottom: 4,
+  },
+  confirmationNote: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#991B1B',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  finalActions: {
+    gap: 12,
+    marginBottom: 24,
+  },
+  deleteButton: {
+    backgroundColor: '#EF4444',
   },
 });
