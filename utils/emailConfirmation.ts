@@ -203,6 +203,54 @@ export const isEmailConfirmed = async (userId: string): Promise<boolean> => {
 };
 
 /**
+ * Complete user registration after email confirmation
+ * This creates the user profile and all necessary records
+ */
+export const completeUserRegistration = async (
+  userId: string,
+  email: string,
+  displayName: string
+): Promise<{ success: boolean; error?: string }> => {
+  try {
+    console.log('Completing user registration for:', userId);
+    
+    // Use service client to create profile
+    const serviceClient = getServiceClient();
+    
+    // Create user profile
+    const { error: profileError } = await serviceClient
+      .from('profiles')
+      .insert({
+        id: userId,
+        email: email,
+        display_name: displayName,
+        is_owner: true,
+        is_partner: false,
+        email_confirmed: true,
+        email_confirmed_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        followers: [],
+        following: []
+      });
+
+    if (profileError) {
+      console.error('Error creating user profile:', profileError);
+      return { success: false, error: 'Error creating user profile' };
+    }
+
+    console.log('User profile created successfully');
+    
+    // Here you can add other initial records if needed
+    // For example: default settings, welcome notifications, etc.
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error completing user registration:', error);
+    return { success: false, error: 'Internal error completing registration' };
+  }
+};
+/**
  * Generate confirmation URL
  */
 export const generateConfirmationUrl = (token: string, type: 'signup' | 'password_reset' = 'signup'): string => {

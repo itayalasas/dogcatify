@@ -43,12 +43,38 @@ export default function Register() {
 
     setLoading(true);
     try {
-      await register(email, password, fullName);
+      // Call our custom user creation function instead of auth.signUp
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/create-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          email: email.toLowerCase().trim(),
+          password: password,
+          displayName: fullName.trim()
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Error creating account');
+      }
+
+      console.log('Account created successfully:', result.userId);
       
-      // Navegar directamente al login sin mostrar nada
-      router.replace('/auth/login');
+      // Navigate to login with success message
+      Alert.alert(
+        'Cuenta creada',
+        'Tu cuenta ha sido creada. Revisa tu email para confirmarla y luego podrás iniciar sesión.',
+        [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
+      );
     } catch (error: any) {
       // Solo mostrar errores reales de registro
+      console.error('Registration error:', error);
       Alert.alert('Error', error.message || 'Error al crear la cuenta');
     } finally {
       setLoading(false);

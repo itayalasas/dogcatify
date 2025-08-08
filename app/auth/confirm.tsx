@@ -41,6 +41,27 @@ export default function EmailConfirmationScreen() {
 
         if (result.success) {
           console.log('✅ Email confirmed successfully for user:', result.userId);
+          
+          // Complete user registration by creating profile and other records
+          if (result.userId && result.email && type === 'signup') {
+            console.log('Completing user registration...');
+            const { completeUserRegistration } = await import('../../utils/emailConfirmation');
+            const registrationResult = await completeUserRegistration(
+              result.userId,
+              result.email,
+              'Usuario' // Default display name, user can update later
+            );
+            
+            if (!registrationResult.success) {
+              console.error('Error completing registration:', registrationResult.error);
+              setError('Email confirmado pero error completando registro. Contacta con soporte.');
+              setLoading(false);
+              return;
+            }
+            
+            console.log('User registration completed successfully');
+          }
+          
           setConfirmed(true);
           setUserEmail(result.email || null);
           setError(null);
