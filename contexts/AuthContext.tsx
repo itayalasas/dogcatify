@@ -658,15 +658,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
       
-      console.log('AuthContext - Registration successful, immediately signing out to prevent modal');
-      
-      // IMMEDIATELY sign out to prevent any Supabase modals
-      await supabaseClient.auth.signOut();
-      
-      // Clear any potential session state
-      setCurrentUser(null);
-      setSession(null);
-      setIsEmailConfirmed(false);
+      console.log('AuthContext - Registration successful');
       
       if (data.user) {
         console.log('Creating custom email confirmation token for user:', data.user.id);
@@ -687,6 +679,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         );
         console.log('Custom confirmation email sent successfully');
       }
+      
+      // Sign out AFTER sending email to prevent modal
+      await supabaseClient.auth.signOut();
       
       console.log('Registration completed successfully, user needs to confirm email');
     } catch (error) {
