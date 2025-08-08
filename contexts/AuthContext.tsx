@@ -620,7 +620,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('AuthContext - Attempting registration for:', email);
       
-      // Create user and immediately sign out to prevent automatic modals
+      // Disable auto-refresh and session persistence to prevent modals
+      const originalAutoRefresh = supabaseClient.auth.autoRefreshToken;
+      supabaseClient.auth.autoRefreshToken = false;
+      
       const { data, error } = await supabaseClient.auth.signUp({
         email,
         password,
@@ -628,14 +631,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           data: {
             display_name: displayName,
           },
+          emailRedirectTo: undefined, // Prevent redirect
         }
       });
       
       if (error) throw error;
       console.log('AuthContext - Registration successful, user created');
       
-      // Immediately sign out to prevent Supabase from showing confirmation modals
+      // Immediately sign out and clear all session data
       await supabaseClient.auth.signOut();
+      
+      // Force clear any remaining session state
+      setCurrentUser(null);
+      setSession(null);
+      setIsEmailConfirmed(false);
+      
+      // Restore auto-refresh setting
+      supabaseClient.auth.autoRefreshToken = originalAutoRefresh;
       
       if (data.user) {
         // Create our custom email confirmation token

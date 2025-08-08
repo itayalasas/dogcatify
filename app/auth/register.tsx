@@ -45,8 +45,11 @@ export default function Register() {
     try {
       await register(email, password, fullName);
       
-      // Immediately clear loading and show success message
+      // Clear loading state
       setLoading(false);
+      
+      // Small delay to ensure Supabase processes are complete
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       Alert.alert(
         '¡Registro exitoso! 🎉',
@@ -54,7 +57,10 @@ export default function Register() {
         [{ 
           text: 'ENTENDIDO',
           onPress: () => {
-            router.replace('/auth/login');
+            // Ensure clean navigation
+            setTimeout(() => {
+              router.replace('/auth/login');
+            }, 100);
           }
         }]
       );
