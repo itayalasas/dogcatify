@@ -601,15 +601,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('Custom confirmation email sent successfully');
       }
       
-      try {
-      } catch (emailError) {
-        console.error('Error sending custom confirmation email:', emailError);
-        // Don't throw error, registration was successful
-      }
-      
-      // Don't sign out, just set user to null and show confirmation message
+      // Clear any session but don't throw error - registration was successful
       setCurrentUser(null);
       setSession(null);
+      
+      console.log('Registration completed successfully, user needs to confirm email');
     } catch (error) {
       console.error('Register error:', error);
       throw error;

@@ -44,15 +44,26 @@ export default function Register() {
       console.log('Registering user:', email, displayName);
       await register(email, password, displayName);
       console.log('User registered successfully');
+      
+      // No redirigir automáticamente, mostrar mensaje de éxito
       Alert.alert(
-        '¡Registro exitoso!',
-        `Tu cuenta ha sido creada. Hemos enviado un correo de confirmación a ${email}.\n\nPor favor revisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace de confirmación antes de iniciar sesión.\n\nEl enlace expira en 24 horas.`,
+        '¡Registro exitoso! 🎉',
+        `Tu cuenta ha sido creada exitosamente.\n\n📧 Hemos enviado un correo de confirmación a:\n${email}\n\nPor favor revisa tu bandeja de entrada (y la carpeta de spam) y haz clic en el enlace de confirmación.\n\n⏰ El enlace expira en 24 horas.`,
         [
           {
-            text: 'OK',
-            onPress: () => router.replace('/auth/login')
+            text: 'Entendido',
+            onPress: () => {
+              // Limpiar formulario y redirigir al login
+              setEmail('');
+              setPassword('');
+              setDisplayName('');
+              setConfirmPassword('');
+              setAcceptedPolicies(false);
+              router.replace('/auth/login');
+            }
           }
-        ]
+        ],
+        { cancelable: false }
       );
     } catch (error: any) {
       console.error('Registration error:', error);
