@@ -370,7 +370,7 @@ export default function DeleteAccount() {
       
       console.log('=== PROFILE DELETION DEBUG END ===');
 
-      // 8. Try to delete user from auth.users table (optional)
+      // 8. Try to delete user from auth.users table (optional - don't fail if it doesn't work)
       setDeletionProgress(prev => [...prev, '🔐 Intentando eliminar del sistema de autenticación...']);
       console.log('Attempting to delete user from auth.users table...');
       
