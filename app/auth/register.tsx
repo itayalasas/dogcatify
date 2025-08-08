@@ -45,7 +45,7 @@ export default function Register() {
     try {
       await register(email, password, fullName);
       
-      // Simplemente navegar al login sin mostrar Alert
+      // Navegar directamente al login sin mostrar nada
       router.replace('/auth/login');
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Error al crear la cuenta');
