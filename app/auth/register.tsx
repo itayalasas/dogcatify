@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, Image } from 'react-native';
 import { router, Stack } from 'expo-router';
-import { ArrowLeft, User, Mail, Lock } from 'lucide-react-native';
+import { ArrowLeft, User, Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../contexts/AuthContext';
@@ -96,6 +96,7 @@ export default function Register() {
           placeholder="Mínimo 6 caracteres"
           value={password}
           onChangeText={setPassword}
+          secureTextEntry={!showPassword}
           leftIcon={<Lock size={20} color="#6B7280" />}
           showPasswordToggle={true}
           isPasswordVisible={showPassword}
@@ -107,6 +108,7 @@ export default function Register() {
           placeholder="Repite tu contraseña"
           value={confirmPassword}
           onChangeText={setConfirmPassword}
+          secureTextEntry={!showConfirmPassword}
           leftIcon={<Lock size={20} color="#6B7280" />}
           showPasswordToggle={true}
           isPasswordVisible={showConfirmPassword}
