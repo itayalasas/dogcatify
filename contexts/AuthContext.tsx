@@ -339,7 +339,6 @@ export default function DeleteAccount() {
       try {
           setDeletionProgress(prev => [...prev, `⚠️ Error API auth (${response.status})`]);
           setDeletionProgress(prev => [...prev, '⚠️ Continuando con logout forzado...']);
-        }
       } catch (authError) {
         console.warn('Error deleting from auth system:', authError);
         setDeletionProgress(prev => [...prev, `⚠️ Error eliminando de auth: ${authError.message}`]);
@@ -358,6 +357,7 @@ export default function DeleteAccount() {
       await supabaseClient.auth.signOut();
       
       console.log('Registration completed successfully - user signed out to prevent modal');
+      Alert.alert(
         'Cuenta eliminada',
         'Todos tus datos han sido eliminados de DogCatiFy. Puedes crear una nueva cuenta con el mismo email si lo deseas.',
         [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
