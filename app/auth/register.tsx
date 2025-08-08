@@ -45,10 +45,16 @@ export default function Register() {
     try {
       await register(email, password, fullName);
       
-      // Navegar directamente al login sin mostrar nada
+      // Navegar directamente al login
       router.replace('/auth/login');
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Error al crear la cuenta');
+      // Solo mostrar errores reales de registro, no de confirmación
+      if (!error.message?.includes('confirm')) {
+        Alert.alert('Error', error.message || 'Error al crear la cuenta');
+      } else {
+        // Si es error de confirmación, ir al login sin mostrar error
+        router.replace('/auth/login');
+      }
     } finally {
       setLoading(false);
     }
