@@ -131,36 +131,21 @@ export default function Login() {
           await clearSavedCredentials();
         }
         
-        // Show biometric setup only if login was successful and biometric is supported but not enabled
-        if (isBiometricSupported && !isBiometricEnabled && loginEmail && loginPassword) {
-          try {
-            Alert.alert(
-              'Habilitar acceso rápido',
-              `¿Quieres usar tu ${biometricType || 'biometría'} para iniciar sesión más rápido?`,
-              [
-                { text: 'Ahora no', style: 'cancel' },
-                {
-                  text: 'Habilitar',
-                  onPress: () => {
-                    // Navigate to profile to set up biometric
-                    router.push('/(tabs)/profile');
-                    setTimeout(() => {
-                      Alert.alert(
-                        'Configurar biometría',
-                        'Ve a la configuración de tu perfil para habilitar la autenticación biométrica.',
-                        [{ text: 'Entendido' }]
-                      );
-                    }, 1000);
-                  }
-                }
-              ]
-            );
-          } catch (error) {
-            console.error('Error showing biometric setup:', error);
-          }
+        // Check if should show biometric setup
+        if (isBiometricSupported && !isBiometricEnabled) {
+          // Navigate to biometric setup screen instead of directly to tabs
+          router.replace({
+            pathname: '/auth/biometric-setup',
+            params: { 
+              email: loginEmail, 
+              password: loginPassword,
+              userName: result.displayName || 'Usuario'
+            }
+          });
+        } else {
+          // Go directly to main app
+          router.replace('/(tabs)');
         }
-        
-        router.replace('/(tabs)');
       }
     } catch (error: any) {
       console.error('Login error:', error);

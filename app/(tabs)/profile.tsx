@@ -475,29 +475,27 @@ export default function Profile() {
         <Card style={styles.menuCard}>
           {/* Biometric Authentication Setup */}
           {isBiometricSupported && (
-            <View style={styles.biometricSection}>
-              <View style={styles.biometricHeader}>
-                <View style={styles.biometricInfo}>
-                  <Fingerprint size={24} color="#2D6A6F" />
-                  <View style={styles.biometricDetails}>
-                    <Text style={styles.biometricTitle}>
-                      Autenticación {biometricType || 'Biométrica'}
-                    </Text>
-                    <Text style={styles.biometricDescription}>
-                      {isBiometricEnabled ? 
-                        `Acceso rápido con ${biometricType || 'biometría'} habilitado` :
-                        `Habilita ${biometricType || 'la biometría'} para acceso rápido`
-                      }
-                    </Text>
-                  </View>
+            <View style={styles.menuOption}>
+              <View style={styles.menuOptionLeft}>
+                <Fingerprint size={20} color="#6B7280" />
+                <View style={styles.biometricTextContainer}>
+                  <Text style={styles.menuOptionText}>
+                    Autenticación {biometricType || 'Biométrica'}
+                  </Text>
+                  <Text style={styles.biometricSubtext}>
+                    {isBiometricEnabled ? 
+                      `Acceso rápido habilitado` :
+                      `Habilita para acceso rápido`
+                    }
+                  </Text>
                 </View>
-                <Switch
-                  value={isBiometricEnabled}
-                  onValueChange={handleToggleBiometric}
-                  trackColor={{ false: '#E5E7EB', true: '#2D6A6F' }}
-                  thumbColor="#FFFFFF"
-                />
               </View>
+              <Switch
+                value={isBiometricEnabled}
+                onValueChange={handleToggleBiometric}
+                trackColor={{ false: '#E5E7EB', true: '#2D6A6F' }}
+                thumbColor="#FFFFFF"
+              />
             </View>
           )}
 
@@ -813,38 +811,14 @@ const styles = StyleSheet.create({
   dangerText: {
     color: '#EF4444',
   },
-  biometricSection: {
-    backgroundColor: '#F0F9FF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#BAE6FD',
-  },
-  biometricHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  biometricInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  biometricDetails: {
+  biometricTextContainer: {
     marginLeft: 12,
     flex: 1,
   },
-  biometricTitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#0369A1',
-    marginBottom: 2,
-  },
-  biometricDescription: {
+  biometricSubtext: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
-    color: '#0369A1',
-    lineHeight: 18,
+    color: '#9CA3AF',
+    marginTop: 2,
   },
 });
