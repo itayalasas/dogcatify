@@ -881,7 +881,6 @@ export default function AdminPromotions() {
                       value={discountPercentage}
                       onChangeText={setDiscountPercentage}
                       keyboardType="numeric"
-                      leftIcon={<Percent size={20} color="#6B7280" />}
                     />
                     <Text style={styles.discountHint}>
                       Ingresa solo el número (ej: 15 para 15% de descuento)
