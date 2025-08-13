@@ -38,9 +38,12 @@ export default function AdminPromotions() {
   const [promoStartDate, setPromoStartDate] = useState('');
   const [promoEndDate, setPromoEndDate] = useState('');
   const [promoTargetAudience, setPromoTargetAudience] = useState('all');
+  const [promoType, setPromoType] = useState('feed');
+  const [ctaText, setCtaText] = useState('Más información');
   const [promoLinkType, setPromoLinkType] = useState<'none' | 'external' | 'internal'>('none');
   const [promoInternalType, setPromoInternalType] = useState<'service' | 'product' | 'partner'>('service');
   const [promoInternalId, setPromoInternalId] = useState('');
+  const [manualId, setManualId] = useState('');
   
   // Date picker states
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
@@ -268,20 +271,20 @@ export default function AdminPromotions() {
         title: promoTitle.trim(),
         description: promoDescription.trim(),
         image_url: imageUrl,
+        cta_text: ctaText.trim(),
         cta_url: ctaUrl,
         start_date: new Date(promoStartDate).toISOString(),
         end_date: new Date(promoEndDate).toISOString(),
         target_audience: promoTargetAudience,
+        promotion_type: promoType,
         is_active: true,
         views: 0,
         clicks: 0,
         likes: [],
-        promotion_type: 'feed',
-        cta_text: 'Más información',
-        created_at: new Date().toISOString(),
-        created_by: currentUser?.id,
         has_discount: hasDiscount,
         discount_percentage: hasDiscount ? parseFloat(discountPercentage) || 0 : null,
+        created_at: new Date().toISOString(),
+        created_by: currentUser?.id,
       };
 
       if (selectedPartnerId) {
@@ -333,9 +336,11 @@ export default function AdminPromotions() {
     setPromoDescription('');
     setPromoImage(null);
     setPromoUrl('');
+    setCtaText('Más información');
     setPromoStartDate('');
     setPromoEndDate('');
     setPromoTargetAudience('all');
+    setPromoType('feed');
     setPromoLinkType('none');
     setPromoInternalType('service');
     setPromoInternalId('');
@@ -347,6 +352,7 @@ export default function AdminPromotions() {
     setServiceSearchQuery('');
     setHasDiscount(false);
     setDiscountPercentage('');
+    setManualId('');
   };
 
   const isPromotionActive = (startDate: Date, endDate: Date) => {
@@ -563,6 +569,13 @@ export default function AdminPromotions() {
                 onChangeText={setPromoDescription}
                 multiline
                 numberOfLines={3}
+              />
+
+              <Input
+                label="Texto del botón (CTA)"
+                placeholder="Ej: Ver oferta, Comprar ahora, Más información"
+                value={ctaText}
+                onChangeText={setCtaText}
               />
 
               {/* Image Selection */}
