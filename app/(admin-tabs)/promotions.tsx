@@ -239,15 +239,36 @@ export default function AdminPromotions() {
   };
 
   const handleCreatePromotion = async () => {
+    console.log('=== CREATING PROMOTION DEBUG START ===');
+    console.log('Form validation check...');
+    console.log('promoTitle:', promoTitle);
+    console.log('promoDescription:', promoDescription);
+    console.log('promoStartDate:', promoStartDate);
+    console.log('promoEndDate:', promoEndDate);
+    console.log('promoImage:', promoImage ? 'Image selected' : 'No image');
+    
     if (!promoTitle || !promoDescription || !promoStartDate || !promoEndDate || !promoImage) {
       Alert.alert('Error', 'Por favor completa todos los campos obligatorios');
+      console.log('❌ Validation failed - missing required fields');
       return;
     }
+    
+    console.log('✅ Validation passed, starting creation process...');
 
     setLoading(true);
     try {
+      console.log('Step 1: Uploading image...');
       let imageUrl = null;
       if (promoImage) {
+        console.log('Image URI:', promoImage);
+        try {
+          imageUrl = await uploadImage(promoImage);
+          console.log('✅ Image uploaded successfully:', imageUrl);
+        } catch (uploadError) {
+          console.error('❌ Image upload failed:', uploadError);
+          throw new Error(`Error subiendo imagen: ${uploadError.message}`);
+        }
+      }
         imageUrl = await uploadImage(promoImage);
       }
 
@@ -267,6 +288,7 @@ export default function AdminPromotions() {
         }
       }
 
+      console.log('Step 2: Preparing promotion data...');
       const promotionData = {
         title: promoTitle.trim(),
         description: promoDescription.trim(),
@@ -285,47 +307,98 @@ export default function AdminPromotions() {
         discount_percentage: hasDiscount ? parseFloat(discountPercentage) || 0 : null,
         created_at: new Date().toISOString(),
         created_by: currentUser?.id,
+        has_discount: hasDiscount,
+        discount_percentage: hasDiscount ? parseFloat(discountPercentage) || 0 : null,
       };
 
+      console.log('Promotion data prepared:', promotionData);
+      
       if (selectedPartnerId) {
         promotionData.partner_id = selectedPartnerId;
+        console.log('Partner ID added:', selectedPartnerId);
       }
 
+      console.log('Step 3: Inserting into database...');
+      console.log('Using Supabase client to insert promotion...');
+      
       const { error } = await supabaseClient
         .from('promotions')
         .insert([promotionData]);
 
       if (error) {
+        console.error('❌ Database insert error:', error);
+        console.error('Error details:', JSON.stringify(error, null, 2));
         Alert.alert('Error', `No se pudo crear la promoción: ${error.message}`);
         return;
       }
 
+      console.log('✅ Promotion inserted successfully into database');
+      console.log('Step 4: Cleaning up form...');
       resetForm();
       setShowPromotionModal(false);
+      console.log('Step 5: Refreshing promotions list...');
       fetchPromotions();
+      console.log('✅ Promotion creation completed successfully');
       Alert.alert('Éxito', 'Promoción creada correctamente');
     } catch (error) {
+      console.error('❌ Error in handleCreatePromotion:', error);
+      console.error('Error type:', typeof error);
+      console.error('Error message:', error?.message);
+      console.error('Error stack:', error?.stack);
       console.error('Error creating promotion:', error);
       Alert.alert('Error', 'No se pudo crear la promoción');
     } finally {
       setLoading(false);
+      console.log('=== CREATING PROMOTION DEBUG END ===');
     }
   };
 
+    console.log('=== IMAGE UPLOAD DEBUG START ===');
+    console.log('Image URI to upload:', imageUri);
+    
   const handleTogglePromotion = async (promotionId: string, isActive: boolean) => {
+      console.log('Step 1: Fetching image from URI...');
     try {
+      console.log('Fetch response status:', response.status);
+      console.log('Fetch response ok:', response.ok);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+      }
+      
+      console.log('Step 2: Converting to blob...');
       const { error } = await supabaseClient
+      console.log('Blob created, size:', blob.size, 'bytes');
+      console.log('Blob type:', blob.type);
+      
+      console.log('Step 3: Generating filename...');
         .from('promotions')
+      console.log('Generated filename:', filename);
+      
+      console.log('Step 4: Uploading to Supabase Storage...');
         .update({ is_active: !isActive })
         .eq('id', promotionId);
 
+        
       if (error) {
+        console.error('❌ Supabase storage error:', error);
+        console.error('Storage error details:', JSON.stringify(error, null, 2));
         throw error;
       }
+      
+      console.log('✅ File uploaded successfully to storage');
+      console.log('Step 5: Getting public URL...');
 
       // Refresh the list after the update
+        
+      console.log('✅ Public URL generated:', publicUrl);
+      console.log('=== IMAGE UPLOAD DEBUG END ===');
       fetchPromotions();
     } catch (error) {
+      console.error('❌ Error in uploadImage:', error);
+      console.error('Upload error type:', typeof error);
+      console.error('Upload error message:', error?.message);
+      console.log('=== IMAGE UPLOAD DEBUG END (ERROR) ===');
       console.error('Error toggling promotion:', error);
       Alert.alert('Error', 'No se pudo actualizar la promoción');
     }
