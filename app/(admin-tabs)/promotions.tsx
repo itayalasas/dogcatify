@@ -16,9 +16,17 @@ export default function AdminPromotions() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showPromotionModal, setShowPromotionModal] = useState(false);
   const [showPartnerModal, setShowPartnerModal] = useState(false);
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [showServiceModal, setShowServiceModal] = useState(false);
   const [partners, setPartners] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [services, setServices] = useState<any[]>([]);
   const [selectedPartnerId, setSelectedPartnerId] = useState<string | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [partnerSearchQuery, setPartnerSearchQuery] = useState('');
+  const [productSearchQuery, setProductSearchQuery] = useState('');
+  const [serviceSearchQuery, setServiceSearchQuery] = useState('');
   
   // Promotion form state
   const [promoTitle, setPromoTitle] = useState('');
@@ -54,6 +62,8 @@ export default function AdminPromotions() {
     console.log('Fetching promotions data...');
     fetchPromotions();
     fetchPartners();
+    fetchProducts();
+    fetchServices();
   }, [currentUser]);
 
   useEffect(() => {
@@ -124,6 +134,36 @@ export default function AdminPromotions() {
       setPartners(data || []);
     } catch (error) {
       console.error('Error fetching partners:', error);
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      const { data, error } = await supabaseClient
+        .from('partner_products')
+        .select('id, name, price, partner_id, images')
+        .eq('is_active', true)
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+      setProducts(data || []);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    }
+  };
+
+  const fetchServices = async () => {
+    try {
+      const { data, error } = await supabaseClient
+        .from('partner_services')
+        .select('id, name, price, partner_id, images')
+        .eq('is_active', true)
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+      setServices(data || []);
+    } catch (error) {
+      console.error('Error fetching services:', error);
     }
   };
 
@@ -210,8 +250,16 @@ export default function AdminPromotions() {
       let ctaUrl = null;
       if (promoLinkType === 'external') {
         ctaUrl = promoUrl.trim();
-      } else if (promoLinkType === 'internal' && promoInternalType && promoInternalId) {
-        ctaUrl = `dogcatify://${promoInternalType}s/${promoInternalId}`;
+      } else if (promoLinkType === 'internal') {
+        if (promoInternalType === 'service' && selectedServiceId) {
+          ctaUrl = `dogcatify://services/${selectedServiceId}`;
+        } else if (promoInternalType === 'product' && selectedProductId) {
+          ctaUrl = `dogcatify://products/${selectedProductId}`;
+        } else if (promoInternalType === 'partner' && selectedPartnerId) {
+          ctaUrl = `dogcatify://partners/${selectedPartnerId}`;
+        } else if (promoInternalId) {
+          ctaUrl = `dogcatify://${promoInternalType}s/${promoInternalId}`;
+        }
       }
 
       const promotionData = {
@@ -288,7 +336,11 @@ export default function AdminPromotions() {
     setPromoInternalType('service');
     setPromoInternalId('');
     setSelectedPartnerId(null);
+    setSelectedProductId(null);
+    setSelectedServiceId(null);
     setPartnerSearchQuery('');
+    setProductSearchQuery('');
+    setServiceSearchQuery('');
   };
 
   const isPromotionActive = (startDate: Date, endDate: Date) => {
@@ -314,11 +366,40 @@ export default function AdminPromotions() {
     setShowPartnerModal(false);
   };
 
+  const handleSelectProduct = (product: any) => {
+    setSelectedProductId(product.id);
+    setPromoInternalId(product.id);
+    setShowProductModal(false);
+  };
+
+  const handleSelectService = (service: any) => {
+    setSelectedServiceId(service.id);
+    setPromoInternalId(service.id);
+    setShowServiceModal(false);
+  };
+
   const filteredPartners = partners.filter(partner =>
     partner.business_name.toLowerCase().includes(partnerSearchQuery.toLowerCase())
   );
 
+  const filteredProducts = products.filter(product =>
+    product.name.toLowerCase().includes(productSearchQuery.toLowerCase())
+  );
+
+  const filteredServices = services.filter(service =>
+    service.name.toLowerCase().includes(serviceSearchQuery.toLowerCase())
+  );
+
   const selectedPartner = partners.find(p => p.id === selectedPartnerId);
+  const selectedProduct = products.find(p => p.id === selectedProductId);
+  const selectedService = services.find(s => s.id === selectedServiceId);
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: 'ARS',
+    }).format(price);
+  };
 
   const isAdmin = currentUser?.email?.toLowerCase() === 'admin@dogcatify.com';
   if (!isAdmin) {
@@ -616,27 +697,129 @@ export default function AdminPromotions() {
                     <View style={styles.internalTypeSelector}>
                       <TouchableOpacity
                         style={[styles.internalTypeOption, promoInternalType === 'service' && styles.selectedInternalType]}
-                        onPress={() => setPromoInternalType('service')}
+                        onPress={() => {
+                          setPromoInternalType('service');
+                          setSelectedProductId(null);
+                          setSelectedServiceId(null);
+                          setPromoInternalId('');
+                        }}
                       >
-                        <Text style={styles.internalTypeText}>Servicio</Text>
+                        <Text style={[styles.internalTypeText, promoInternalType === 'service' && styles.selectedInternalTypeText]}>Servicio</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[styles.internalTypeOption, promoInternalType === 'product' && styles.selectedInternalType]}
-                        onPress={() => setPromoInternalType('product')}
+                        onPress={() => {
+                          setPromoInternalType('product');
+                          setSelectedProductId(null);
+                          setSelectedServiceId(null);
+                          setPromoInternalId('');
+                        }}
                       >
-                        <Text style={styles.internalTypeText}>Producto</Text>
+                        <Text style={[styles.internalTypeText, promoInternalType === 'product' && styles.selectedInternalTypeText]}>Producto</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[styles.internalTypeOption, promoInternalType === 'partner' && styles.selectedInternalType]}
-                        onPress={() => setPromoInternalType('partner')}
+                        onPress={() => {
+                          setPromoInternalType('partner');
+                          setSelectedProductId(null);
+                          setSelectedServiceId(null);
+                          setPromoInternalId('');
+                        }}
                       >
-                        <Text style={styles.internalTypeText}>Aliado</Text>
+                        <Text style={[styles.internalTypeText, promoInternalType === 'partner' && styles.selectedInternalTypeText]}>Aliado</Text>
                       </TouchableOpacity>
                     </View>
                     
+                    {/* Service Selector */}
+                    {promoInternalType === 'service' && (
+                      <View style={styles.selectorSection}>
+                        <TouchableOpacity 
+                          style={styles.selectorButton}
+                          onPress={() => setShowServiceModal(true)}
+                        >
+                          <Text style={styles.selectorButtonText}>
+                            {selectedService ? selectedService.name : 'Buscar y seleccionar servicio'}
+                          </Text>
+                          <Search size={16} color="#6B7280" />
+                        </TouchableOpacity>
+                        
+                        {selectedService && (
+                          <View style={styles.selectedItemInfo}>
+                            <Text style={styles.selectedItemName}>{selectedService.name}</Text>
+                            <Text style={styles.selectedItemPrice}>{formatPrice(selectedService.price)}</Text>
+                            <TouchableOpacity onPress={() => {
+                              setSelectedServiceId(null);
+                              setPromoInternalId('');
+                            }}>
+                              <Text style={styles.removeItemText}>✕</Text>
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                      </View>
+                    )}
+
+                    {/* Product Selector */}
+                    {promoInternalType === 'product' && (
+                      <View style={styles.selectorSection}>
+                        <TouchableOpacity 
+                          style={styles.selectorButton}
+                          onPress={() => setShowProductModal(true)}
+                        >
+                          <Text style={styles.selectorButtonText}>
+                            {selectedProduct ? selectedProduct.name : 'Buscar y seleccionar producto'}
+                          </Text>
+                          <Search size={16} color="#6B7280" />
+                        </TouchableOpacity>
+                        
+                        {selectedProduct && (
+                          <View style={styles.selectedItemInfo}>
+                            <Text style={styles.selectedItemName}>{selectedProduct.name}</Text>
+                            <Text style={styles.selectedItemPrice}>{formatPrice(selectedProduct.price)}</Text>
+                            <TouchableOpacity onPress={() => {
+                              setSelectedProductId(null);
+                              setPromoInternalId('');
+                            }}>
+                              <Text style={styles.removeItemText}>✕</Text>
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                      </View>
+                    )}
+
+                    {/* Partner Selector for Internal Links */}
+                    {promoInternalType === 'partner' && (
+                      <View style={styles.selectorSection}>
+                        <TouchableOpacity 
+                          style={styles.selectorButton}
+                          onPress={() => setShowPartnerModal(true)}
+                        >
+                          <Text style={styles.selectorButtonText}>
+                            {selectedPartner ? selectedPartner.business_name : 'Buscar y seleccionar aliado'}
+                          </Text>
+                          <Search size={16} color="#6B7280" />
+                        </TouchableOpacity>
+                        
+                        {selectedPartner && (
+                          <View style={styles.selectedItemInfo}>
+                            <Text style={styles.selectedItemIcon}>
+                              {getBusinessTypeIcon(selectedPartner.business_type)}
+                            </Text>
+                            <Text style={styles.selectedItemName}>{selectedPartner.business_name}</Text>
+                            <TouchableOpacity onPress={() => {
+                              setSelectedPartnerId(null);
+                              setPromoInternalId('');
+                            }}>
+                              <Text style={styles.removeItemText}>✕</Text>
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                      </View>
+                    )}
+
+                    {/* Manual ID Input as fallback */}
                     <Input
-                      label={`ID del ${promoInternalType}`}
-                      placeholder={`ID del ${promoInternalType} a enlazar`}
+                      label={`ID del ${promoInternalType} (manual)`}
+                      placeholder={`O ingresa manualmente el ID del ${promoInternalType}`}
                       value={promoInternalId}
                       onChangeText={setPromoInternalId}
                     />
@@ -644,7 +827,7 @@ export default function AdminPromotions() {
                 )}
               </View>
 
-              {/* Partner Association */}
+              {/* Partner Association (for promotion attribution) */}
               <View style={styles.partnerSection}>
                 <Text style={styles.partnerLabel}>Aliado asociado (opcional)</Text>
                 <TouchableOpacity 
@@ -748,6 +931,110 @@ export default function AdminPromotions() {
                          partner.business_type === 'boarding' ? 'Pensión' :
                          partner.business_type === 'shop' ? 'Tienda' :
                          partner.business_type === 'shelter' ? 'Refugio' : partner.business_type}
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Product Selection Modal */}
+      <Modal
+        visible={showProductModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowProductModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.partnerModalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Seleccionar Producto</Text>
+              <TouchableOpacity onPress={() => setShowProductModal(false)}>
+                <X size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+            
+            <Input
+              placeholder="Buscar producto..."
+              value={productSearchQuery}
+              onChangeText={setProductSearchQuery}
+              leftIcon={<Search size={20} color="#9CA3AF" />}
+            />
+            
+            <ScrollView style={styles.partnersList} showsVerticalScrollIndicator={false}>
+              {filteredProducts.map((product) => (
+                <TouchableOpacity
+                  key={product.id}
+                  style={styles.partnerOption}
+                  onPress={() => handleSelectProduct(product)}
+                >
+                  <View style={styles.partnerOptionContent}>
+                    {product.images && product.images.length > 0 ? (
+                      <Image source={{ uri: product.images[0] }} style={styles.productImage} />
+                    ) : (
+                      <View style={styles.productImagePlaceholder}>
+                        <Text style={styles.productImagePlaceholderText}>📦</Text>
+                      </View>
+                    )}
+                    <View style={styles.partnerOptionInfo}>
+                      <Text style={styles.partnerOptionName}>{product.name}</Text>
+                      <Text style={styles.partnerOptionType}>
+                        {formatPrice(product.price)}
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Service Selection Modal */}
+      <Modal
+        visible={showServiceModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowServiceModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.partnerModalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Seleccionar Servicio</Text>
+              <TouchableOpacity onPress={() => setShowServiceModal(false)}>
+                <X size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+            
+            <Input
+              placeholder="Buscar servicio..."
+              value={serviceSearchQuery}
+              onChangeText={setServiceSearchQuery}
+              leftIcon={<Search size={20} color="#9CA3AF" />}
+            />
+            
+            <ScrollView style={styles.partnersList} showsVerticalScrollIndicator={false}>
+              {filteredServices.map((service) => (
+                <TouchableOpacity
+                  key={service.id}
+                  style={styles.partnerOption}
+                  onPress={() => handleSelectService(service)}
+                >
+                  <View style={styles.partnerOptionContent}>
+                    {service.images && service.images.length > 0 ? (
+                      <Image source={{ uri: service.images[0] }} style={styles.productImage} />
+                    ) : (
+                      <View style={styles.productImagePlaceholder}>
+                        <Text style={styles.productImagePlaceholderText}>🛠️</Text>
+                      </View>
+                    )}
+                    <View style={styles.partnerOptionInfo}>
+                      <Text style={styles.partnerOptionName}>{service.name}</Text>
+                      <Text style={styles.partnerOptionType}>
+                        {formatPrice(service.price)}
                       </Text>
                     </View>
                   </View>
@@ -1116,14 +1403,69 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 6,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   selectedInternalType: {
     backgroundColor: '#3B82F6',
+    borderColor: '#3B82F6',
   },
   internalTypeText: {
     fontSize: 12,
     fontFamily: 'Inter-Medium',
     color: '#6B7280',
+  },
+  selectedInternalTypeText: {
+    color: '#FFFFFF',
+  },
+  selectorSection: {
+    marginBottom: 16,
+  },
+  selectorButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  selectorButtonText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+    flex: 1,
+  },
+  selectedItemInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EBF8FF',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  selectedItemIcon: {
+    fontSize: 16,
+    marginRight: 8,
+  },
+  selectedItemName: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#1E40AF',
+    flex: 1,
+  },
+  selectedItemPrice: {
+    fontSize: 12,
+    fontFamily: 'Inter-SemiBold',
+    color: '#10B981',
+    marginRight: 8,
+  },
+  removeItemText: {
+    fontSize: 16,
+    color: '#6B7280',
+    padding: 4,
   },
   partnerSection: {
     marginBottom: 20,
@@ -1216,5 +1558,23 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
     fontStyle: 'italic',
+  },
+  productImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    marginRight: 12,
+  },
+  productImagePlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  productImagePlaceholderText: {
+    fontSize: 20,
   },
 });
