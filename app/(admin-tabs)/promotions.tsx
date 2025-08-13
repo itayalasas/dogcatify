@@ -364,6 +364,16 @@ export default function AdminPromotions() {
       console.log('✅ Promotion creation completed successfully');
       Alert.alert('Éxito', 'Promoción creada correctamente');
     } catch (error) {
+      console.error('ERROR in handleCreatePromotion:', error);
+      console.error('Error type:', typeof error);
+      console.error('Error message:', error?.message);
+      console.error('Error stack:', error?.stack);
+      Alert.alert('Error', `No se pudo crear la promoción: ${error?.message || 'Error desconocido'}`);
+    } finally {
+      console.log('Finally: Cleaning up loading state');
+      setLoading(false);
+    }
+    } catch (error) {
       console.error('❌ Error in handleCreatePromotion:', error);
       console.error('Error type:', typeof error);
       console.error('Error message:', error?.message);
