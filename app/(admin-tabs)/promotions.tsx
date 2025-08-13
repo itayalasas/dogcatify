@@ -27,6 +27,8 @@ export default function AdminPromotions() {
   const [partnerSearchQuery, setPartnerSearchQuery] = useState('');
   const [productSearchQuery, setProductSearchQuery] = useState('');
   const [serviceSearchQuery, setServiceSearchQuery] = useState('');
+  const [hasDiscount, setHasDiscount] = useState(false);
+  const [discountPercentage, setDiscountPercentage] = useState('');
   
   // Promotion form state
   const [promoTitle, setPromoTitle] = useState('');
@@ -278,6 +280,8 @@ export default function AdminPromotions() {
         cta_text: 'Más información',
         created_at: new Date().toISOString(),
         created_by: currentUser?.id,
+        has_discount: hasDiscount,
+        discount_percentage: hasDiscount ? parseFloat(discountPercentage) || 0 : null,
       };
 
       if (selectedPartnerId) {
@@ -341,6 +345,8 @@ export default function AdminPromotions() {
     setPartnerSearchQuery('');
     setProductSearchQuery('');
     setServiceSearchQuery('');
+    setHasDiscount(false);
+    setDiscountPercentage('');
   };
 
   const isPromotionActive = (startDate: Date, endDate: Date) => {
@@ -851,6 +857,35 @@ export default function AdminPromotions() {
                     <TouchableOpacity onPress={() => setSelectedPartnerId(null)}>
                       <Text style={styles.removePartnerText}>✕</Text>
                     </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+
+              {/* Descuento */}
+              <View style={styles.discountSection}>
+                <TouchableOpacity 
+                  style={styles.discountCheckbox}
+                  onPress={() => setHasDiscount(!hasDiscount)}
+                >
+                  <View style={[styles.checkbox, hasDiscount && styles.checkedCheckbox]}>
+                    {hasDiscount && <Text style={styles.checkmark}>✓</Text>}
+                  </View>
+                  <Text style={styles.discountCheckboxLabel}>Esta promoción incluye descuento</Text>
+                </TouchableOpacity>
+                
+                {hasDiscount && (
+                  <View style={styles.discountInputContainer}>
+                    <Input
+                      label="Porcentaje de descuento"
+                      placeholder="Ej: 15"
+                      value={discountPercentage}
+                      onChangeText={setDiscountPercentage}
+                      keyboardType="numeric"
+                      leftIcon={<Percent size={20} color="#6B7280" />}
+                    />
+                    <Text style={styles.discountHint}>
+                      Ingresa solo el número (ej: 15 para 15% de descuento)
+                    </Text>
                   </View>
                 )}
               </View>
@@ -1576,5 +1611,54 @@ const styles = StyleSheet.create({
   },
   productImagePlaceholderText: {
     fontSize: 20,
+  },
+  partnerSearchInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#111827',
+  },
+  discountSection: {
+    marginBottom: 20,
+  },
+  discountCheckbox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkedCheckbox: {
+    backgroundColor: '#DC2626',
+    borderColor: '#DC2626',
+  },
+  checkmark: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  discountCheckboxLabel: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#111827',
+    marginLeft: 12,
+  },
+  discountInputContainer: {
+    marginTop: 8,
+  },
+  discountHint: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginTop: 4,
+    fontStyle: 'italic',
   },
 });
