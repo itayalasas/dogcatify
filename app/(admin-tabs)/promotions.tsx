@@ -221,20 +221,47 @@ export default function AdminPromotions() {
   };
 
   const uploadImage = async (imageUri: string): Promise<string> => {
+    console.log('=== IMAGE UPLOAD DEBUG START ===');
+    console.log('Image URI to upload:', imageUri);
+    
+    console.log('Step 1: Fetching image from URI...');
     const response = await fetch(imageUri);
+    console.log('Fetch response status:', response.status);
+    console.log('Fetch response ok:', response.ok);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+    }
+    
+    console.log('Step 2: Converting to blob...');
     const blob = await response.blob();
+    console.log('Blob created, size:', blob.size, 'bytes');
+    console.log('Blob type:', blob.type);
+    
+    console.log('Step 3: Generating filename...');
     const filename = `promotions/${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
-
+    console.log('Generated filename:', filename);
+    
+    console.log('Step 4: Uploading to Supabase Storage...');
     const { error } = await supabaseClient.storage
       .from('dogcatify')
       .upload(filename, blob);
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Supabase storage error:', error);
+      console.error('Storage error details:', JSON.stringify(error, null, 2));
+      throw error;
+    }
+    
+    console.log('✅ File uploaded successfully to storage');
+    console.log('Step 5: Getting public URL...');
 
     const { data: { publicUrl } } = supabaseClient.storage
       .from('dogcatify')
       .getPublicUrl(filename);
 
+    console.log('✅ Public URL generated:', publicUrl);
+    console.log('=== IMAGE UPLOAD DEBUG END ===');
     return publicUrl;
   };
 
@@ -268,8 +295,6 @@ export default function AdminPromotions() {
           console.error('❌ Image upload failed:', uploadError);
           throw new Error(`Error subiendo imagen: ${uploadError.message}`);
         }
-      }
-        imageUrl = await uploadImage(promoImage);
       }
 
       // Determine CTA URL based on link type
@@ -307,8 +332,6 @@ export default function AdminPromotions() {
         discount_percentage: hasDiscount ? parseFloat(discountPercentage) || 0 : null,
         created_at: new Date().toISOString(),
         created_by: currentUser?.id,
-        has_discount: hasDiscount,
-        discount_percentage: hasDiscount ? parseFloat(discountPercentage) || 0 : null,
       };
 
       console.log('Promotion data prepared:', promotionData);
@@ -353,52 +376,18 @@ export default function AdminPromotions() {
     }
   };
 
-    console.log('=== IMAGE UPLOAD DEBUG START ===');
-    console.log('Image URI to upload:', imageUri);
-    
   const handleTogglePromotion = async (promotionId: string, isActive: boolean) => {
-      console.log('Step 1: Fetching image from URI...');
     try {
-      console.log('Fetch response status:', response.status);
-      console.log('Fetch response ok:', response.ok);
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
-      }
-      
-      console.log('Step 2: Converting to blob...');
       const { error } = await supabaseClient
-      console.log('Blob created, size:', blob.size, 'bytes');
-      console.log('Blob type:', blob.type);
-      
-      console.log('Step 3: Generating filename...');
         .from('promotions')
-      console.log('Generated filename:', filename);
-      
-      console.log('Step 4: Uploading to Supabase Storage...');
         .update({ is_active: !isActive })
         .eq('id', promotionId);
 
-        
-      if (error) {
-        console.error('❌ Supabase storage error:', error);
-        console.error('Storage error details:', JSON.stringify(error, null, 2));
-        throw error;
-      }
-      
-      console.log('✅ File uploaded successfully to storage');
-      console.log('Step 5: Getting public URL...');
+      if (error) throw error;
 
       // Refresh the list after the update
-        
-      console.log('✅ Public URL generated:', publicUrl);
-      console.log('=== IMAGE UPLOAD DEBUG END ===');
       fetchPromotions();
     } catch (error) {
-      console.error('❌ Error in uploadImage:', error);
-      console.error('Upload error type:', typeof error);
-      console.error('Upload error message:', error?.message);
-      console.log('=== IMAGE UPLOAD DEBUG END (ERROR) ===');
       console.error('Error toggling promotion:', error);
       Alert.alert('Error', 'No se pudo actualizar la promoción');
     }
