@@ -41,6 +41,16 @@ export default function AdminPromotions() {
   const [billingNotes, setBillingNotes] = useState('');
   const [billingLoading, setBillingLoading] = useState(false);
 
+  // Add missing promotion form states
+  const [showPromotionModal, setShowPromotionModal] = useState(false);
+  const [promoTitle, setPromoTitle] = useState('');
+  const [promoDescription, setPromoDescription] = useState('');
+  const [promoImage, setPromoImage] = useState<string | null>(null);
+  const [promoStartDate, setPromoStartDate] = useState('');
+  const [promoEndDate, setPromoEndDate] = useState('');
+  const [promoTargetAudience, setPromoTargetAudience] = useState('all');
+  const [promoUrl, setPromoUrl] = useState('');
+
   const [partners, setPartners] = useState<any[]>([]);
 
   function getSelectedPartner() {
@@ -355,17 +365,7 @@ export default function AdminPromotions() {
       console.log('Promotion created successfully:', data);
       
       // Reset form
-      setPromoTitle('');
-      setPromoDescription('');
-      setPromoImage(null);
-      setPromoStartDate('');
-      setPromoEndDate('');
-      setPromoTargetAudience('all');
-      setPromoUrl('');
-      setPromoLinkType('none');
-      setSelectedInternalId(null);
-      setSelectedPartnerId(null);
-      setPartnerSearchQuery('');
+      resetForm();
       setShowPromotionModal(false);
       
       // Refresh promotions list
@@ -378,6 +378,20 @@ export default function AdminPromotions() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const resetForm = () => {
+    setPromoTitle('');
+    setPromoDescription('');
+    setPromoImage(null);
+    setPromoUrl('');
+    setPromoStartDate('');
+    setPromoEndDate('');
+    setPromoTargetAudience('all');
+    setPromoLinkType('none');
+    setSelectedInternalId(null);
+    setSelectedPartnerId(null);
+    setPartnerSearchQuery('');
   };
 
   const handleTogglePromotion = async (promotionId: string, isActive: boolean) => {
