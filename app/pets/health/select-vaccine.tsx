@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Tex
 import { router, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Search, Syringe, Shield, Clock, TriangleAlert as AlertTriangle } from 'lucide-react-native';
 import { Card } from '../../../components/ui/Card';
-import { supabaseClient } from '../../../lib/supabase';
+import { supabaseClient } from '@/lib/supabase';
 
 export default function SelectVaccine() {
   const { petId, species, returnPath, currentValue, currentVeterinarian, currentNotes, currentNextDueDate } = useLocalSearchParams<{

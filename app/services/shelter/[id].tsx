@@ -5,7 +5,7 @@ import { ArrowLeft, Phone, MessageCircle, Heart, MapPin, Calendar, Scale, Star }
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { useAuth } from '../../../contexts/AuthContext';
-import { supabaseClient } from '../../../lib/supabase';
+import { supabaseClient } from '@/lib/supabase';
 
 export default function ShelterAdoptions() {
   const { id } = useLocalSearchParams<{ id: string }>();

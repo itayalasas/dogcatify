@@ -5,7 +5,7 @@ import { ArrowLeft, Trash2, TriangleAlert as AlertTriangle, Shield } from 'lucid
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabaseClient } from '../../lib/supabase';
+import { supabaseClient } from '@/lib/supabase';
 
 export default function DeleteAccount() {
   const { currentUser, logout } = useAuth();

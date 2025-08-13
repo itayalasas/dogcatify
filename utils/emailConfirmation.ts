@@ -1,4 +1,4 @@
-import { supabaseClient } from '../lib/supabase';
+import { supabaseClient } from '@/lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 
 export interface EmailConfirmationToken {

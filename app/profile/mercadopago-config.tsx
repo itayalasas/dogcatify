@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Alert, ScrollView, TouchableOpacity, SafeAreaVi
 import { router } from 'expo-router';
 import { ArrowLeft, CreditCard, CircleCheck as CheckCircle, CircleAlert as AlertCircle, ExternalLink } from 'lucide-react-native';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabaseClient } from '../../lib/supabase';
+import { supabaseClient } from '@/lib/supabase';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';

@@ -5,7 +5,7 @@ import { ArrowLeft, MapPin, Clock, Phone, Calendar, Star, User } from 'lucide-re
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabaseClient } from '../../lib/supabase';
+import { supabaseClient } from '@/lib/supabase';
 
 const { width } = Dimensions.get('window');
 

@@ -1,4 +1,4 @@
-import { supabaseClient } from '../lib/supabase';
+import { supabaseClient } from '@/lib/supabase';
 
 /**
  * Mercado Pago OAuth2 Marketplace Implementation

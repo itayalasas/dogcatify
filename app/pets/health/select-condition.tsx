@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Tex
 import { router, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Search, Heart } from 'lucide-react-native';
 import { Card } from '../../../components/ui/Card';
-import { supabaseClient } from '../../../lib/supabase';
+import { supabaseClient } from '@/lib/supabase';
 
 export default function SelectCondition() {
   const { petId, species, returnPath, currentValue, currentTreatment, currentVeterinarian, currentNotes } = useLocalSearchParams<{
