@@ -812,11 +812,10 @@ export default function AdminPromotions() {
                 ) : (
                   <View style={styles.imageActions}>
                     <TouchableOpacity style={styles.imageActionButton} onPress={handleTakePhoto}>
-                      <Camera size={24} color="#6B7280" />
-                      <Text style={styles.imageActionText}>Tomar foto</Text>
+                      <Text style={styles.imageActionText}>📷 Tomar foto</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.imageActionButton} onPress={handleSelectImage}>
-                      <Text style={styles.imageActionText}>📷 Galería</Text>
+                      <Text style={styles.imageActionText}>🖼️ Galería</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -894,12 +893,11 @@ export default function AdminPromotions() {
               </View>
               
               {promoLinkType === 'external' && (
-                    <Text style={styles.imageActionIcon}>📷</Text>
+                <Input
                   label="URL externa"
                   placeholder="https://ejemplo.com"
                   value={promoUrl}
-                    <Text style={styles.imageActionIcon}>🖼️</Text>
-                    <Text style={styles.imageActionText}>Galería</Text>
+                  onChangeText={setPromoUrl}
                 />
               )}
               
