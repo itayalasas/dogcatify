@@ -5,7 +5,7 @@ import { Plus } from 'lucide-react-native';
 import { PetCard } from '../../components/PetCard'; 
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { getPets, supabaseClient, deletePet } from '../../lib/supabase';
+import { getPets, supabaseClient, deletePet } from '@/lib/supabase';
 
 export default function Pets() {
   const [pets, setPets] = useState<Pet[]>([]);

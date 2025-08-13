@@ -6,7 +6,7 @@ import { ProductCard } from '../../components/ProductCard';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
-import { supabaseClient } from '../../lib/supabase';
+import { supabaseClient } from '@/lib/supabase';
 import { router } from 'expo-router';
 
 

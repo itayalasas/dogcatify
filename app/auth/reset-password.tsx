@@ -5,7 +5,7 @@ import { CircleCheck as CheckCircle, Lock, ArrowLeft } from 'lucide-react-native
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { supabaseClient } from '../../lib/supabase';
+import { supabaseClient } from '@/lib/supabase';
 
 export default function ResetPasswordScreen() {
   const params = useLocalSearchParams();

@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { supabaseClient } from '../lib/supabase';
+import { supabaseClient } from '@/lib/supabase';
 import { NotificationService } from '@/utils/notifications';
 
 const businessTypes = [

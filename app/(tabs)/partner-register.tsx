@@ -10,7 +10,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNotifications } from '../../contexts/NotificationContext';
 import * as ImagePicker from 'expo-image-picker';
 import { Modal, TextInput } from 'react-native';
-import { supabaseClient } from '../../lib/supabase';
+import { supabaseClient } from '@/lib/supabase';
 import { NotificationService } from '@/utils/notifications';
 
 const replicateMercadoPagoConfig = async (userId: string) => {

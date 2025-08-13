@@ -7,7 +7,7 @@ import { Button } from '../../../../components/ui/Button';
 import { Card } from '../../../../components/ui/Card';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
-import { supabaseClient } from '../../../../lib/supabase';
+import { supabaseClient } from '@/lib/supabase';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { detectPetInImage, validateImagesForPets } from '../../../../utils/petDetection';
 

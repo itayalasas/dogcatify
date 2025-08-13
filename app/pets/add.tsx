@@ -8,7 +8,7 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { supabaseClient } from '../../lib/supabase';
+import { supabaseClient } from '@/lib/supabase';
 
 interface BreedInfo {
   name: string;

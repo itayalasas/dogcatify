@@ -5,7 +5,7 @@ import { ArrowLeft, Calendar, Clock, CircleAlert as AlertCircle, CircleCheck as 
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { useAuth } from '../../../contexts/AuthContext';
-import { supabaseClient, getPet } from '../../../lib/supabase';
+import { supabaseClient, getPet } from '@/lib/supabase';
 
 export default function PetAppointments() {
   const { id } = useLocalSearchParams<{ id: string }>();

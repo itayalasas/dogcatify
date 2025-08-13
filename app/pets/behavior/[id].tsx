@@ -8,7 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { supabaseClient } from '../../../lib/supabase';
+import { supabaseClient } from '@/lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';

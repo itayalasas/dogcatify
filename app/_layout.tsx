@@ -10,7 +10,7 @@ import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import { supabaseClient } from '../lib/supabase';
+import { supabaseClient } from '@/lib/supabase';
 
 // Configure notifications for production
 Notifications.setNotificationHandler({

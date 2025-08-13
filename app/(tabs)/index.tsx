@@ -11,7 +11,7 @@ import { NotificationPermissionPrompt } from '../../components/NotificationPermi
 import { LocationPermissionPrompt } from '../../components/LocationPermissionPrompt';
 import { MedicalAlertsWidget } from '../../components/MedicalAlertsWidget';
 import { useNotifications } from '../../contexts/NotificationContext';
-import { supabaseClient } from '../../lib/supabase';
+import { supabaseClient } from '@/lib/supabase';
 
 // Debug component for production notification testing
 const NotificationDebugInfo = () => {

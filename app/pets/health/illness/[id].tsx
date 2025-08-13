@@ -6,7 +6,7 @@ import { Input } from '../../../../components/ui/Input';
 import { Button } from '../../../../components/ui/Button';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Card } from '../../../../components/ui/Card';
-import { supabaseClient } from '../../../../lib/supabase';
+import { supabaseClient } from '@/lib/supabase';
 import { useAuth } from '../../../../contexts/AuthContext';
 
 export default function AddIllness() {

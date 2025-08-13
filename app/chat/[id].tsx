@@ -13,7 +13,7 @@ import {
   Image,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { supabaseClient } from '../../lib/supabase';
+import { supabaseClient } from '@/lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotifications } from '../../contexts/NotificationContext';
 import { Send, ArrowLeft, User } from 'lucide-react-native';

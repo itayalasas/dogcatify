@@ -5,7 +5,7 @@ import { FlatGrid } from 'react-native-super-grid';
 import { ServiceCard } from '../../components/ServiceCard'; 
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabaseClient } from '../../lib/supabase';
+import { supabaseClient } from '@/lib/supabase';
 import { router } from 'expo-router';
 
 // Ignore specific Firebase warnings that appear on logout

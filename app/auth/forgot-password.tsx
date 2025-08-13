@@ -5,7 +5,7 @@ import { ArrowLeft, Mail } from 'lucide-react-native';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { createEmailConfirmationToken, generateConfirmationUrl } from '../../utils/emailConfirmation';
-import { supabaseClient } from '../../lib/supabase';
+import { supabaseClient } from '@/lib/supabase';
 import { useLanguage } from '../../contexts/LanguageContext'; 
 
 export default function ForgotPassword() {

@@ -7,7 +7,7 @@ import PromotionCard from '../components/PromotionCard';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { NotificationPermissionPrompt } from '../components/NotificationPermissionPrompt';
-import { supabaseClient } from '../lib/supabase';
+import { supabaseClient } from '@/lib/supabase';
 
 // Componente wrapper para manejar las vistas de promociones
 const PromotionWrapper = ({ promotion, onPress, onLike }: { promotion: any; onPress: () => void; onLike: (promotionId: string) => void }) => {

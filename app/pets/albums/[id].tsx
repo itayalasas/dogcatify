@@ -7,7 +7,7 @@ import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
-import { supabaseClient } from '../../../lib/supabase';
+import { supabaseClient } from '@/lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
 
 export default function AlbumDetail() {
