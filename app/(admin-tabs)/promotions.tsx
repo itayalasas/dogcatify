@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Modal, Alert, Image } from 'react-native';
-import { Plus, Megaphone, Calendar, Eye, Target, Search, DollarSign, FileText } from 'lucide-react-native';
+import { Plus, DollarSign, Percent, Calendar, Package, Search, ChevronDown, Check, X } from 'lucide-react-native';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -894,11 +894,12 @@ export default function AdminPromotions() {
               </View>
               
               {promoLinkType === 'external' && (
-                <Input
+                    <Text style={styles.imageActionIcon}>📷</Text>
                   label="URL externa"
                   placeholder="https://ejemplo.com"
                   value={promoUrl}
-                  onChangeText={setPromoUrl}
+                    <Text style={styles.imageActionIcon}>🖼️</Text>
+                    <Text style={styles.imageActionText}>Galería</Text>
                 />
               )}
               
@@ -1559,12 +1560,15 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     borderStyle: 'dashed',
   },
+  imageActionIcon: {
+    fontSize: 24,
+    marginBottom: 8,
+  },
   imageActionText: {
     fontSize: 14,
     fontFamily: 'Inter-Medium',
     color: '#6B7280',
     textAlign: 'center',
-    marginTop: 8,
   },
   dateSection: {
     marginBottom: 16,
