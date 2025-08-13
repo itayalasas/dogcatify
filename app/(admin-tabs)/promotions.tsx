@@ -760,6 +760,328 @@ export default function AdminPromotions() {
         </View>
       </ScrollView>
 
+      {/* Add Promotion Modal */}
+      <Modal
+        visible={showPromotionModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowPromotionModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <ScrollView 
+            contentContainerStyle={styles.modalScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Crear Nueva Promoción</Text>
+                <TouchableOpacity onPress={() => setShowPromotionModal(false)}>
+                  <Text style={styles.modalCloseText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              
+              <Input
+                label="Título de la promoción *"
+                placeholder="Ej: ¡50% de descuento en consultas!"
+                value={promoTitle}
+                onChangeText={setPromoTitle}
+              />
+              
+              <Input
+                label="Descripción *"
+                placeholder="Describe la promoción en detalle..."
+                value={promoDescription}
+                onChangeText={setPromoDescription}
+                multiline
+                numberOfLines={3}
+              />
+              
+              <View style={styles.imageSection}>
+                <Text style={styles.imageLabel}>Imagen de la promoción</Text>
+                
+                {promoImage ? (
+                  <View style={styles.imagePreviewContainer}>
+                    <Image source={{ uri: promoImage }} style={styles.selectedImage} />
+                    <TouchableOpacity 
+                      style={styles.changeImageButton}
+                      onPress={() => setPromoImage(null)}
+                    >
+                      <Text style={styles.changeImageText}>Cambiar imagen</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.imageActions}>
+                    <TouchableOpacity style={styles.imageActionButton} onPress={handleTakePhoto}>
+                      <Camera size={24} color="#6B7280" />
+                      <Text style={styles.imageActionText}>Tomar foto</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.imageActionButton} onPress={handleSelectImage}>
+                      <Text style={styles.imageActionText}>📷 Galería</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+              
+              <View style={styles.dateSection}>
+                <View style={styles.dateRow}>
+                  <View style={styles.dateInput}>
+                    <Input
+                      label="Fecha de inicio *"
+                      placeholder="YYYY-MM-DD"
+                      value={promoStartDate}
+                      onChangeText={setPromoStartDate}
+                    />
+                  </View>
+                  <View style={styles.dateInput}>
+                    <Input
+                      label="Fecha de fin *"
+                      placeholder="YYYY-MM-DD"
+                      value={promoEndDate}
+                      onChangeText={setPromoEndDate}
+                    />
+                  </View>
+                </View>
+              </View>
+              
+              <View style={styles.linkSection}>
+                <Text style={styles.linkLabel}>Tipo de enlace</Text>
+                <View style={styles.linkTypeButtons}>
+                  <TouchableOpacity
+                    style={[
+                      styles.linkTypeButton,
+                      promoLinkType === 'none' && styles.selectedLinkType
+                    ]}
+                    onPress={() => setPromoLinkType('none')}
+                  >
+                    <Text style={[
+                      styles.linkTypeText,
+                      promoLinkType === 'none' && styles.selectedLinkTypeText
+                    ]}>
+                      Sin enlace
+                    </Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={[
+                      styles.linkTypeButton,
+                      promoLinkType === 'external' && styles.selectedLinkType
+                    ]}
+                    onPress={() => setPromoLinkType('external')}
+                  >
+                    <Text style={[
+                      styles.linkTypeText,
+                      promoLinkType === 'external' && styles.selectedLinkTypeText
+                    ]}>
+                      Enlace externo
+                    </Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={[
+                      styles.linkTypeButton,
+                      promoLinkType === 'internal' && styles.selectedLinkType
+                    ]}
+                    onPress={() => setPromoLinkType('internal')}
+                  >
+                    <Text style={[
+                      styles.linkTypeText,
+                      promoLinkType === 'internal' && styles.selectedLinkTypeText
+                    ]}>
+                      Enlace interno
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+              
+              {promoLinkType === 'external' && (
+                <Input
+                  label="URL externa"
+                  placeholder="https://ejemplo.com"
+                  value={promoUrl}
+                  onChangeText={setPromoUrl}
+                />
+              )}
+              
+              {promoLinkType === 'internal' && (
+                <View style={styles.internalLinkSection}>
+                  <Text style={styles.internalLinkLabel}>Tipo de enlace interno</Text>
+                  <View style={styles.internalLinkButtons}>
+                    <TouchableOpacity
+                      style={[
+                        styles.internalLinkButton,
+                        internalLinkType === 'partner' && styles.selectedInternalLink
+                      ]}
+                      onPress={() => setInternalLinkType('partner')}
+                    >
+                      <Text style={styles.internalLinkButtonText}>Aliado</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                      style={[
+                        styles.internalLinkButton,
+                        internalLinkType === 'service' && styles.selectedInternalLink
+                      ]}
+                      onPress={() => setInternalLinkType('service')}
+                    >
+                      <Text style={styles.internalLinkButtonText}>Servicio</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                      style={[
+                        styles.internalLinkButton,
+                        internalLinkType === 'product' && styles.selectedInternalLink
+                      ]}
+                      onPress={() => setInternalLinkType('product')}
+                    >
+                      <Text style={styles.internalLinkButtonText}>Producto</Text>
+                    </TouchableOpacity>
+                  </View>
+                  
+                  {internalItems.length > 0 && (
+                    <View style={styles.internalItemsContainer}>
+                      <Text style={styles.internalItemsLabel}>
+                        Seleccionar {internalLinkType === 'partner' ? 'aliado' : internalLinkType}:
+                      </Text>
+                      <ScrollView style={styles.internalItemsList} showsVerticalScrollIndicator={false}>
+                        {internalItems.map((item) => (
+                          <TouchableOpacity
+                            key={item.id}
+                            style={[
+                              styles.internalItem,
+                              selectedInternalId === item.id && styles.selectedInternalItem
+                            ]}
+                            onPress={() => setSelectedInternalId(item.id)}
+                          >
+                            <Text style={styles.internalItemName}>
+                              {item.name || item.business_name}
+                            </Text>
+                            {item.price && (
+                              <Text style={styles.internalItemPrice}>
+                                ${item.price.toLocaleString()}
+                              </Text>
+                            )}
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
+              )}
+              
+              <View style={styles.partnerSection}>
+                <Text style={styles.partnerLabel}>Aliado asociado (opcional)</Text>
+                <TouchableOpacity 
+                  style={styles.partnerSelector}
+                  onPress={() => setShowPartnerSelector(true)}
+                >
+                  <Text style={styles.partnerSelectorText}>
+                    {getSelectedPartner()?.businessName || 'Seleccionar aliado...'}
+                  </Text>
+                  <ChevronDown size={20} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.modalActions}>
+                <TouchableOpacity 
+                  style={styles.cancelModalButton}
+                  onPress={() => {
+                    setShowPromotionModal(false);
+                    // Reset form
+                    setPromoTitle('');
+                    setPromoDescription('');
+                    setPromoImage(null);
+                    setPromoStartDate('');
+                    setPromoEndDate('');
+                    setPromoUrl('');
+                    setPromoLinkType('none');
+                    setSelectedInternalId(null);
+                    setSelectedPartnerId(null);
+                  }}
+                >
+                  <Text style={styles.cancelModalButtonText}>Cancelar</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={[styles.createModalButton, loading && styles.disabledButton]}
+                  onPress={handleCreatePromotion}
+                  disabled={loading}
+                >
+                  <Text style={styles.createModalButtonText}>
+                    {loading ? 'Creando...' : 'Crear Promoción'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Partner Selector Modal */}
+      <Modal
+        visible={showPartnerSelector}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowPartnerSelector(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.partnerModalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Seleccionar Aliado</Text>
+              <TouchableOpacity onPress={() => setShowPartnerSelector(false)}>
+                <Text style={styles.modalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <Input
+              placeholder="Buscar aliado..."
+              value={partnerSearchQuery}
+              onChangeText={setPartnerSearchQuery}
+              leftIcon={<Search size={20} color="#9CA3AF" />}
+            />
+            
+            <ScrollView style={styles.partnersList} showsVerticalScrollIndicator={false}>
+              <TouchableOpacity
+                style={[
+                  styles.partnerItem,
+                  !selectedPartnerId && styles.selectedPartnerItem
+                ]}
+                onPress={() => {
+                  setSelectedPartnerId(null);
+                  setShowPartnerSelector(false);
+                }}
+              >
+                <Text style={styles.partnerItemName}>Sin aliado asociado</Text>
+                <Text style={styles.partnerItemType}>Promoción general</Text>
+              </TouchableOpacity>
+              
+              {getFilteredPartners().map((partner) => (
+                <TouchableOpacity
+                  key={partner.id}
+                  style={[
+                    styles.partnerItem,
+                    selectedPartnerId === partner.id && styles.selectedPartnerItem
+                  ]}
+                  onPress={() => {
+                    setSelectedPartnerId(partner.id);
+                    setShowPartnerSelector(false);
+                  }}
+                >
+                  <View style={styles.partnerItemHeader}>
+                    <Text style={styles.partnerItemIcon}>
+                      {getBusinessTypeIcon(partner.businessType)}
+                    </Text>
+                    <View style={styles.partnerItemInfo}>
+                      <Text style={styles.partnerItemName}>{partner.businessName}</Text>
+                      <Text style={styles.partnerItemType}>{partner.businessType}</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       {/* Billing Modal */}
       <Modal
         visible={showBillingModal}
@@ -1174,6 +1496,290 @@ const styles = StyleSheet.create({
   modalActions: {
     flexDirection: 'row',
     gap: 12,
+  },
+  modalScrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 40,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 20,
+    width: '100%',
+    maxWidth: 500,
+    alignSelf: 'center',
+  },
+  imageSection: {
+    marginBottom: 16,
+  },
+  imageLabel: {
+    fontSize: 15,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  imagePreviewContainer: {
+    marginBottom: 12,
+  },
+  selectedImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  changeImageButton: {
+    backgroundColor: '#3B82F6',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    alignSelf: 'center',
+  },
+  changeImageText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#FFFFFF',
+  },
+  imageActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    gap: 12,
+  },
+  imageActionButton: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 40,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
+  },
+  imageActionText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  dateSection: {
+    marginBottom: 16,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  dateInput: {
+    flex: 1,
+  },
+  linkSection: {
+    marginBottom: 16,
+  },
+  linkLabel: {
+    fontSize: 15,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  linkTypeButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  linkTypeButton: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    alignItems: 'center',
+  },
+  selectedLinkType: {
+    backgroundColor: '#DC2626',
+    borderColor: '#DC2626',
+  },
+  linkTypeText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+  },
+  selectedLinkTypeText: {
+    color: '#FFFFFF',
+  },
+  internalLinkSection: {
+    marginBottom: 16,
+  },
+  internalLinkLabel: {
+    fontSize: 15,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  internalLinkButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  internalLinkButton: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    alignItems: 'center',
+  },
+  selectedInternalLink: {
+    backgroundColor: '#3B82F6',
+    borderColor: '#3B82F6',
+  },
+  internalLinkButtonText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+  },
+  internalItemsContainer: {
+    marginTop: 12,
+  },
+  internalItemsLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  internalItemsList: {
+    maxHeight: 150,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+  },
+  internalItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  selectedInternalItem: {
+    backgroundColor: '#EBF8FF',
+  },
+  internalItemName: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#111827',
+    flex: 1,
+  },
+  internalItemPrice: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#10B981',
+  },
+  partnerSection: {
+    marginBottom: 20,
+  },
+  partnerLabel: {
+    fontSize: 15,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  partnerSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    minHeight: 50,
+  },
+  partnerSelectorText: {
+    fontSize: 15,
+    fontFamily: 'Inter-Regular',
+    color: '#111827',
+    flex: 1,
+  },
+  cancelModalButton: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#DC2626',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  cancelModalButtonText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#DC2626',
+  },
+  createModalButton: {
+    flex: 1,
+    backgroundColor: '#DC2626',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  createModalButtonText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#FFFFFF',
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  partnerModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: '70%',
+    width: '100%',
+  },
+  partnersList: {
+    maxHeight: 400,
+    marginTop: 16,
+  },
+  partnerItem: {
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  selectedPartnerItem: {
+    backgroundColor: '#F0F9FF',
+  },
+  partnerItemHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  partnerItemIcon: {
+    fontSize: 20,
+    marginRight: 12,
+  },
+  partnerItemInfo: {
+    flex: 1,
+  },
+  partnerItemName: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#111827',
+    marginBottom: 2,
+  },
+  partnerItemType: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
   },
   billingModalOverlay: {
     flex: 1,
