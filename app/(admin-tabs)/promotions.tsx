@@ -230,10 +230,7 @@ export default function AdminPromotions() {
     console.log('Generated filename:', filename);
     
     console.log('Step 4: Uploading to Supabase Storage...');
-    const { error } = await supabaseClient.storage
-      .from('dogcatify')
-      .upload(filename, blob);
-      
+    
       // Create FormData for React Native
       const formData = new FormData();
       formData.append('file', {
@@ -245,6 +242,10 @@ export default function AdminPromotions() {
       console.log('FormData created for upload');
       
       const { data, error } = await supabaseClient.storage
+        .from('dogcatify')
+        .upload(filename, formData, {
+          upsert: false,
+        });
     if (error) {
       console.error('❌ Supabase storage error:', error);
       console.error('Storage error details:', JSON.stringify(error, null, 2));
@@ -345,10 +346,8 @@ export default function AdminPromotions() {
 
       console.log('Step 3: Inserting into database...');
       console.log('Using Supabase client to insert promotion...');
-        .upload(filename, formData, {
       const { error } = await supabaseClient
         .from('promotions')
-          upsert: false,
         .insert([promotionData]);
 
       if (error) {
