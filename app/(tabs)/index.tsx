@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, Alert, RefreshControl, Image, Animated } from 'react-native';
+import { View, Text, StyleSheet, FlatList, SafeAreaView, Alert, RefreshControl, Image, Animated, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { Platform, Linking, InteractionManager } from 'react-native';
 import Constants from 'expo-constants';
@@ -143,12 +143,20 @@ export default function Home() {
   const [promotions, setPromotions] = useState<any[]>([]);
   const [feedItems, setFeedItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [postsLoaded, setPostsLoaded] = useState(false);
   const [promotionsLoaded, setPromotionsLoaded] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [hasMorePosts, setHasMorePosts] = useState(true);
+  const [allPostsLoaded, setAllPostsLoaded] = useState(false);
   const { t } = useLanguage();
   const { currentUser } = useAuth();
+  
+  // Configuración de paginación
+  const POSTS_PER_PAGE = 5; // Cargar 5 posts por página
+  const INITIAL_LOAD = 3; // Carga inicial más pequeña
 
   useEffect(() => {
     if (currentUser) {
@@ -162,8 +170,13 @@ export default function Home() {
   const fetchFeedData = async () => {
     setLoading(true);
     try {
-      // Load posts first (more important), then promotions
-      await fetchPosts();
+      // Reset pagination for fresh load
+      setCurrentPage(0);
+      setHasMorePosts(true);
+      setAllPostsLoaded(false);
+      
+      // Load initial posts and promotions
+      await fetchInitialPosts();
       // Small delay to prevent blocking
       setTimeout(() => {
         fetchPromotions();
@@ -179,13 +192,14 @@ export default function Home() {
     }
   };
 
-  const fetchPosts = async () => {
+  const fetchInitialPosts = async () => {
     try {
+      console.log('🔄 Fetching initial posts...');
       const { data: postsData, error } = await supabaseClient
         .from('posts')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(10); // Reduce initial load
+        .limit(INITIAL_LOAD); // Carga inicial muy pequeña
 
       if (error) throw error;
 
@@ -205,7 +219,11 @@ export default function Home() {
       })) || [];
 
       setPosts(processedPosts);
+      setCurrentPage(1); // Ya cargamos la primera "página"
+      setHasMorePosts(processedPosts.length === INITIAL_LOAD);
       setPostsLoaded(true);
+      
+      console.log(`✅ Initial posts loaded: ${processedPosts.length}`);
     } catch (error) {
       console.error('Error fetching posts:', error);
     } finally {
@@ -213,13 +231,73 @@ export default function Home() {
     }
   };
 
+  const fetchMorePosts = async () => {
+    if (loadingMore || !hasMorePosts || allPostsLoaded) {
+      console.log('⏭️ Skipping fetch more posts:', { loadingMore, hasMorePosts, allPostsLoaded });
+      return;
+    }
+
+    console.log(`🔄 Fetching more posts - Page ${currentPage + 1}...`);
+    setLoadingMore(true);
+    
+    try {
+      const offset = currentPage * POSTS_PER_PAGE;
+      
+      const { data: morePosts, error } = await supabaseClient
+        .from('posts')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(offset, offset + POSTS_PER_PAGE - 1);
+
+      if (error) throw error;
+
+      if (!morePosts || morePosts.length === 0) {
+        console.log('📄 No more posts to load');
+        setHasMorePosts(false);
+        setAllPostsLoaded(true);
+        return;
+      }
+
+      const processedNewPosts = morePosts.map(post => ({
+        id: post.id,
+        userId: post.user_id,
+        petId: post.pet_id,
+        content: post.content,
+        imageURL: post.image_url,
+        albumImages: post.album_images || [],
+        likes: post.likes || [],
+        createdAt: new Date(post.created_at),
+        author: post.author || { name: 'Usuario', avatar: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=100' },
+        pet: post.pet || { name: 'Mascota', species: 'Perro' },
+        timeAgo: getTimeAgo(new Date(post.created_at)),
+        type: post.type || 'single'
+      }));
+
+      // Append new posts to existing ones
+      setPosts(prevPosts => [...prevPosts, ...processedNewPosts]);
+      setCurrentPage(prev => prev + 1);
+      
+      // Check if we got fewer posts than requested (end of data)
+      if (morePosts.length < POSTS_PER_PAGE) {
+        console.log('📄 Reached end of posts');
+        setHasMorePosts(false);
+        setAllPostsLoaded(true);
+      }
+      
+      console.log(`✅ Loaded ${morePosts.length} more posts. Total: ${posts.length + processedNewPosts.length}`);
+    } catch (error) {
+      console.error('Error fetching more posts:', error);
+      setHasMorePosts(false);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
   const fetchPromotions = async () => {
     try {
+      console.log('🎯 Fetching promotions...');
       const now = new Date();
       const nowISO = now.toISOString();
-      
-      console.log('=== PROMOTIONS FETCH DEBUG ===');
-      console.log('Current date/time:', nowISO);
       
       const { data: promotionsData, error } = await supabaseClient
         .from('promotions')
@@ -231,18 +309,6 @@ export default function Home() {
         .limit(5); // Limit promotions
 
       if (error) throw error;
-      
-      console.log('Raw promotions from DB:', promotionsData?.length || 0);
-      if (promotionsData && promotionsData.length > 0) {
-        console.log('Sample promotion dates:');
-        promotionsData.forEach((promo, index) => {
-          console.log(`${index + 1}. ${promo.title}:`);
-          console.log(`   Start: ${promo.start_date}`);
-          console.log(`   End: ${promo.end_date}`);
-          console.log(`   Active: ${promo.is_active}`);
-          console.log(`   In range: ${promo.start_date <= nowISO && promo.end_date >= nowISO}`);
-        });
-      }
 
       const processedPromotions = promotionsData?.map(promo => ({
         id: promo.id,
@@ -257,7 +323,7 @@ export default function Home() {
         likes: promo.likes || []
       })) || [];
 
-      console.log('Processed promotions:', processedPromotions.length);
+      console.log(`✅ Promotions loaded: ${processedPromotions.length}`);
       setPromotions(processedPromotions);
       setPromotionsLoaded(true);
     } catch (error) {
@@ -272,15 +338,12 @@ export default function Home() {
     // Only process when both data sources are loaded
     if (!postsLoaded || !promotionsLoaded) return;
     
-    console.log('=== FEED INTERLEAVING DEBUG ===');
-    console.log('Posts loaded:', posts.length);
-    console.log('Promotions loaded:', promotions.length);
+    console.log(`🔄 Interleaving feed: ${posts.length} posts, ${promotions.length} promotions`);
     
     const interleaveFeedItems = () => {
       const items = [];
       
       if (promotions.length > 0) {
-        console.log('Processing promotions for feed...');
         // Crear una copia aleatoria de promociones para variar el orden
         const shuffledPromotions = [...promotions].sort(() => Math.random() - 0.5);
         let promoIndex = 0;
@@ -300,7 +363,6 @@ export default function Home() {
           
           // Insertar promoción según el intervalo dinámico
           if ((i + 1) % interval === 0 && promoIndex < shuffledPromotions.length) {
-            console.log(`Adding promotion at position ${i + 1}:`, shuffledPromotions[promoIndex].title);
             items.push({ type: 'promotion', data: shuffledPromotions[promoIndex] });
             promoIndex++;
             
@@ -314,22 +376,15 @@ export default function Home() {
         
         // Si no se insertó ninguna promoción y hay posts, agregar una al final
         if (posts.length > 0 && !items.some(item => item.type === 'promotion')) {
-          console.log('Adding promotion at the end');
           items.push({ type: 'promotion', data: shuffledPromotions[0] });
         }
       } else {
-        console.log('No promotions available, only adding posts');
         // Si no hay promociones, solo agregar posts
         posts.forEach(post => {
           items.push({ type: 'post', data: post });
         });
       }
 
-      console.log('Final feed items:', items.length, 'total');
-      console.log('Feed composition:', {
-        posts: items.filter(i => i.type === 'post').length,
-        promotions: items.filter(i => i.type === 'promotion').length
-      });
       setFeedItems(items);
     };
 
@@ -604,6 +659,78 @@ export default function Home() {
     }
   };
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      // Reset pagination
+      setCurrentPage(0);
+      setHasMorePosts(true);
+      setAllPostsLoaded(false);
+      
+      // Fetch fresh data
+      await Promise.all([
+        fetchInitialPosts(),
+        fetchPromotions()
+      ]);
+    } catch (error) {
+      console.error('Error refreshing feed:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const handleEndReached = () => {
+    console.log('🔚 End reached, loading more posts...');
+    fetchMorePosts();
+  };
+
+  const renderFeedItem = ({ item, index }: { item: any; index: number }) => {
+    if (item.type === 'promotion') {
+      return (
+        <PromotionWrapper
+          key={`promotion-${item.data.id}-${index}`}
+          promotion={item.data}
+          onPress={() => handlePromotionPress(item.data)}
+          onLike={handlePromotionLike}
+        />
+      );
+    } else {
+      return (
+        <PostCard
+          key={`post-${item.data.id}-${index}`}
+          post={item.data}
+          onLike={handleLike}
+          onComment={handleComment}
+          onShare={handleShare}
+        />
+      );
+    }
+  };
+
+  const renderFooter = () => {
+    if (!loadingMore) return null;
+    
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color="#2D6A6F" />
+        <Text style={styles.footerLoaderText}>Cargando más publicaciones...</Text>
+      </View>
+    );
+  };
+
+  const renderEmpty = () => {
+    if (loading || initialLoading) return null;
+    
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyTitle}>{t('noPostsYet')}</Text>
+        <Text style={styles.emptySubtitle}>
+          {t('beFirstToPost')}
+        </Text>
+      </View>
+    );
+  };
+
   // Manejar redirección cuando no hay usuario - FUERA del render condicional
   useEffect(() => {
     if (!currentUser) {
@@ -629,57 +756,31 @@ export default function Home() {
         <Text style={styles.headerTitle}>DogCatiFy</Text>
       </View>
 
-      <ScrollView 
-        style={styles.content} 
+      <FlatList
+        data={feedItems}
+        renderItem={renderFeedItem}
+        keyExtractor={(item, index) => `${item.type}-${item.data.id}-${index}`}
+        style={styles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={fetchFeedData}
+            onRefresh={onRefresh}
             colors={['#2D6A6F']}
             tintColor="#2D6A6F"
           />
         }
-      >
-        <MedicalAlertsWidget />
-        
-        {(loading || !postsLoaded) && !refreshing ? (
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Cargando feed...</Text>
-          </View>
-        ) : feedItems.length === 0 && postsLoaded && promotionsLoaded ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyTitle}>{t('noPostsYet')}</Text>
-            <Text style={styles.emptySubtitle}>
-              {t('beFirstToPost')}
-            </Text>
-          </View>
-        ) : (
-          feedItems.map((item, index) => {
-            if (item.type === 'promotion') {
-              return (
-                <PromotionWrapper
-                  key={`promotion-${item.data.id}-${index}`}
-                  promotion={item.data}
-                  onPress={() => handlePromotionPress(item.data)}
-                  onLike={handlePromotionLike}
-                />
-              );
-            } else {
-              return (
-                <PostCard
-                  key={`post-${item.data.id}-${index}`}
-                  post={item.data}
-                  onLike={handleLike}
-                  onComment={handleComment}
-                  onShare={handleShare}
-                  currentUserId={currentUser?.id}
-                />
-              );
-            }
-          })
-        )}
-      </ScrollView>
+        onEndReached={handleEndReached}
+        onEndReachedThreshold={0.3} // Cargar más cuando esté al 70% del scroll
+        ListHeaderComponent={<MedicalAlertsWidget />}
+        ListFooterComponent={renderFooter}
+        ListEmptyComponent={renderEmpty}
+        initialNumToRender={INITIAL_LOAD}
+        maxToRenderPerBatch={POSTS_PER_PAGE}
+        windowSize={10}
+        removeClippedSubviews={true}
+        getItemLayout={undefined} // Let FlatList calculate automatically
+      />
     </SafeAreaView>
   );
 }
@@ -823,5 +924,17 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     color: '#DC2626',
     marginTop: 8,
+  },
+  footerLoader: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 20,
+    gap: 8,
+  },
+  footerLoaderText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
   },
 });
