@@ -323,6 +323,8 @@ export default function AdminPromotions() {
         promotion_type: promoType,
         views: 0,
         clicks: 0,
+        discount_percentage: promoDiscountPercentage || null,
+        has_discount: promoDiscountPercentage > 0,
         likes: [],
         has_discount: hasDiscount,
         discount_percentage: hasDiscount ? parseFloat(discountPercentage) || 0 : null,
