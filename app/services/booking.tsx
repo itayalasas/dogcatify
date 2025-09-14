@@ -131,7 +131,7 @@ export default function ServiceBooking() {
         const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
         
         // Find the next available day in the schedule
-        const availableDays = scheduleData.map(item => item.dayOfWeek);
+        const availableDays = scheduleData.map(item => item.day_of_week);
         let nextDay = dayOfWeek;
         let daysToAdd = 0;
         
@@ -224,26 +224,26 @@ export default function ServiceBooking() {
 
   const generateAvailableTimes = (date: Date, scheduleData: any[]) => {
     const dayOfWeek = date.getDay();
-    const daySchedule = scheduleData.find(item => item.dayOfWeek === dayOfWeek);
+    const daySchedule = scheduleData.find(item => item.day_of_week === dayOfWeek);
     
     if (!daySchedule) { 
       setAvailableTimes([]);
       return;
     }
     
-    const { startTime, endTime, slotDuration } = daySchedule;
+    const { start_time, end_time, slot_duration } = daySchedule;
     const times: string[] = [];
     
     // Parse start and end times
-    const [startHour, startMinute] = startTime.split(':').map(Number);
-    const [endHour, endMinute] = endTime.split(':').map(Number);
+    const [startHour, startMinute] = start_time.split(':').map(Number);
+    const [endHour, endMinute] = end_time.split(':').map(Number);
     
     // Convert to minutes for easier calculation
     let currentMinutes = startHour * 60 + startMinute;
     const endMinutes = endHour * 60 + endMinute;
     
     // Generate time slots
-    while (currentMinutes + (service?.duration || slotDuration) <= endMinutes) {
+    while (currentMinutes + (service?.duration || slot_duration) <= endMinutes) {
       const hour = Math.floor(currentMinutes / 60);
       const minute = currentMinutes % 60; 
       const timeSlot = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
@@ -254,10 +254,10 @@ export default function ServiceBooking() {
 
       // Check if subsequent slots needed for this service duration are available
       let hasConflict = false;
-      if (service && service.duration > slotDuration) {
-        const slotsNeeded = Math.ceil(service.duration / slotDuration);
+      if (service && service.duration > slot_duration) {
+        const slotsNeeded = Math.ceil(service.duration / slot_duration);
         for (let i = 1; i < slotsNeeded; i++) {
-          const nextSlotMinutes = currentMinutes + (i * slotDuration);
+          const nextSlotMinutes = currentMinutes + (i * slot_duration);
           if (nextSlotMinutes > endMinutes) {
             hasConflict = true;
             break;
@@ -274,7 +274,7 @@ export default function ServiceBooking() {
       
       if (!isBooked && !hasConflict) times.push(timeSlot);
       
-      currentMinutes += slotDuration;
+      currentMinutes += slot_duration;
     }
     
     setAvailableTimes(times);
@@ -306,7 +306,7 @@ export default function ServiceBooking() {
     try {
       // Create booking date by combining selected date and time
       const bookingDate = new Date(selectedDate);
-      const [hours, minutes] = selectedTime.split(':').map(Number);
+      const [hours, minutes] = selectedTime!.split(':').map(Number);
       bookingDate.setHours(hours, minutes, 0, 0);
       
       // Calculate end time based on service duration
@@ -394,7 +394,7 @@ export default function ServiceBooking() {
           service.name,
           partnerInfo?.businessName || 'Proveedor',
           selectedDate.toLocaleDateString(),
-          selectedTime,
+          selectedTime!,
           pet.name
         );
         console.log('Booking confirmation email sent successfully');
@@ -459,6 +459,13 @@ export default function ServiceBooking() {
       month: date.toLocaleString('es-ES', { month: 'short' }),
       isToday: date.toDateString() === new Date().toDateString(),
     };
+  };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: 'ARS',
+    }).format(price);
   };
 
   if (loading) {
@@ -616,7 +623,7 @@ export default function ServiceBooking() {
           </Card>
         )}
 
-        {/* Booking Button */}
+        {/* Notes */}
         <Card style={styles.notesCard}>
           <Text style={styles.sectionTitle}>Notas para el proveedor</Text>
           <Input
@@ -656,14 +663,7 @@ export default function ServiceBooking() {
       />
     </SafeAreaView>
   );
-};
-
-const formatPrice = (price: number) => {
-  return new Intl.NumberFormat('es-AR', {
-    style: 'currency',
-    currency: 'ARS',
-  }).format(price);
-};
+}
 
 const styles = StyleSheet.create({
   container: {
