@@ -510,7 +510,6 @@ export default function AdminPromotions() {
             leftIcon={<Search size={20} color="#9CA3AF" />}
           />
         </View>
-
         {/* Promotions Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>🎯 Promociones Activas ({filteredPromotions.length})</Text>
