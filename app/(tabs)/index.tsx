@@ -215,18 +215,34 @@ export default function Home() {
 
   const fetchPromotions = async () => {
     try {
-      const now = new Date().toISOString();
+      const now = new Date();
+      const nowISO = now.toISOString();
+      
+      console.log('=== PROMOTIONS FETCH DEBUG ===');
+      console.log('Current date/time:', nowISO);
       
       const { data: promotionsData, error } = await supabaseClient
         .from('promotions')
         .select('*')
         .eq('is_active', true)
-        .lte('start_date', now)
-        .gte('end_date', now)
+        .lte('start_date', nowISO)
+        .gte('end_date', nowISO)
         .order('created_at', { ascending: false })
         .limit(5); // Limit promotions
 
       if (error) throw error;
+      
+      console.log('Raw promotions from DB:', promotionsData?.length || 0);
+      if (promotionsData && promotionsData.length > 0) {
+        console.log('Sample promotion dates:');
+        promotionsData.forEach((promo, index) => {
+          console.log(`${index + 1}. ${promo.title}:`);
+          console.log(`   Start: ${promo.start_date}`);
+          console.log(`   End: ${promo.end_date}`);
+          console.log(`   Active: ${promo.is_active}`);
+          console.log(`   In range: ${promo.start_date <= nowISO && promo.end_date >= nowISO}`);
+        });
+      }
 
       const processedPromotions = promotionsData?.map(promo => ({
         id: promo.id,
@@ -241,6 +257,7 @@ export default function Home() {
         likes: promo.likes || []
       })) || [];
 
+      console.log('Processed promotions:', processedPromotions.length);
       setPromotions(processedPromotions);
       setPromotionsLoaded(true);
     } catch (error) {
@@ -255,10 +272,15 @@ export default function Home() {
     // Only process when both data sources are loaded
     if (!postsLoaded || !promotionsLoaded) return;
     
+    console.log('=== FEED INTERLEAVING DEBUG ===');
+    console.log('Posts loaded:', posts.length);
+    console.log('Promotions loaded:', promotions.length);
+    
     const interleaveFeedItems = () => {
       const items = [];
       
       if (promotions.length > 0) {
+        console.log('Processing promotions for feed...');
         // Crear una copia aleatoria de promociones para variar el orden
         const shuffledPromotions = [...promotions].sort(() => Math.random() - 0.5);
         let promoIndex = 0;
@@ -278,6 +300,7 @@ export default function Home() {
           
           // Insertar promoción según el intervalo dinámico
           if ((i + 1) % interval === 0 && promoIndex < shuffledPromotions.length) {
+            console.log(`Adding promotion at position ${i + 1}:`, shuffledPromotions[promoIndex].title);
             items.push({ type: 'promotion', data: shuffledPromotions[promoIndex] });
             promoIndex++;
             
@@ -291,15 +314,22 @@ export default function Home() {
         
         // Si no se insertó ninguna promoción y hay posts, agregar una al final
         if (posts.length > 0 && !items.some(item => item.type === 'promotion')) {
+          console.log('Adding promotion at the end');
           items.push({ type: 'promotion', data: shuffledPromotions[0] });
         }
       } else {
+        console.log('No promotions available, only adding posts');
         // Si no hay promociones, solo agregar posts
         posts.forEach(post => {
           items.push({ type: 'post', data: post });
         });
       }
 
+      console.log('Final feed items:', items.length, 'total');
+      console.log('Feed composition:', {
+        posts: items.filter(i => i.type === 'post').length,
+        promotions: items.filter(i => i.type === 'promotion').length
+      });
       setFeedItems(items);
     };
 

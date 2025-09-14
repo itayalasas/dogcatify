@@ -320,8 +320,8 @@ export default function AdminPromotions() {
         image_url: imageUrl,
         cta_text: ctaText.trim(),
         cta_url: ctaUrl,
-        start_date: new Date(promoStartDate).toISOString(),
-        end_date: new Date(promoEndDate).toISOString(),
+        start_date: promoStartDate ? new Date(promoStartDate).toISOString() : new Date().toISOString(),
+        end_date: promoEndDate ? new Date(promoEndDate).toISOString() : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now if not set
         target_audience: promoTargetAudience,
         promotion_type: promoType,
         is_active: true,
@@ -335,6 +335,11 @@ export default function AdminPromotions() {
       };
 
       console.log('Promotion data prepared:', promotionData);
+      console.log('Date validation:');
+      console.log('Start date valid:', !isNaN(new Date(promotionData.start_date).getTime()));
+      console.log('End date valid:', !isNaN(new Date(promotionData.end_date).getTime()));
+      console.log('Start date:', promotionData.start_date);
+      console.log('End date:', promotionData.end_date);
       
       if (selectedPartnerId) {
         promotionData.partner_id = selectedPartnerId;
