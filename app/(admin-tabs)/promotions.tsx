@@ -22,7 +22,6 @@ export default function AdminPromotions() {
   const [products, setProducts] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
   const [selectedPartnerId, setSelectedPartnerId] = useState<string | null>(null);
-  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [partnerSearchQuery, setPartnerSearchQuery] = useState('');
   const [productSearchQuery, setProductSearchQuery] = useState('');
@@ -322,7 +321,6 @@ export default function AdminPromotions() {
         end_date: promoEndDate ? new Date(promoEndDate).toISOString() : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now if not set
         target_audience: promoTargetAudience,
         promotion_type: promoType,
-        is_active: true,
         views: 0,
         clicks: 0,
         likes: [],
@@ -407,7 +405,6 @@ export default function AdminPromotions() {
     setPromoInternalType('service');
     setPromoInternalId('');
     setSelectedPartnerId(null);
-    setSelectedProductId(null);
     setSelectedServiceId(null);
     setPartnerSearchQuery('');
     setProductSearchQuery('');
