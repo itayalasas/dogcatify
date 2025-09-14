@@ -23,6 +23,7 @@ export default function AdminPromotions() {
   const [services, setServices] = useState<any[]>([]);
   const [selectedPartnerId, setSelectedPartnerId] = useState<string | null>(null);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [partnerSearchQuery, setPartnerSearchQuery] = useState('');
   const [productSearchQuery, setProductSearchQuery] = useState('');
   const [serviceSearchQuery, setServiceSearchQuery] = useState('');
@@ -509,7 +510,7 @@ export default function AdminPromotions() {
             leftIcon={<Search size={20} color="#9CA3AF" />}
           />
         </View>
-          {selectedProducts.length > 0 && (
+
         {/* Promotions Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>🎯 Promociones Activas ({filteredPromotions.length})</Text>
@@ -592,9 +593,7 @@ export default function AdminPromotions() {
                     size="medium"
                   />
                 </View>
-              {selectedProducts.map((product, index) => (
-                <Text key={index} style={styles.selectedProductText}>{product}</Text>
-              ))}
+              </Card>
             ))
           )}
         </View>
@@ -984,15 +983,10 @@ export default function AdminPromotions() {
                 />
                 <Button
                   title="Crear Promoción"
-                  value=""
-                  onChangeText={() => {}}
+                  onPress={handleCreatePromotion}
                   size="large"
-                  editable={false}
-                  style={styles.disabledInput}
+                  loading={loading}
                 />
-                <Text style={styles.comingSoonText}>
-                  🚧 Próximamente disponible
-                </Text>
               </View>
             </View>
           </ScrollView>
