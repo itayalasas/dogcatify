@@ -286,9 +286,12 @@ export default function AdminPromotions() {
 
     setLoading(true);
     try {
+      console.log('Creating promotion with image:', promoImage ? 'Yes' : 'No');
+      
       console.log('Step 1: Uploading image...');
       let imageUrl = null;
       if (promoImage) {
+        console.log('Uploading promotion image...');
         console.log('Image URI:', promoImage);
         try {
           imageUrl = await uploadImage(promoImage);
@@ -313,6 +316,9 @@ export default function AdminPromotions() {
         } else if (promoInternalId) {
           ctaUrl = `dogcatify://${promoInternalType}s/${promoInternalId}`;
         }
+        console.log('Image uploaded successfully, URL:', imageUrl);
+      } else {
+        console.log('No image to upload');
       }
 
       const promotionData = {
@@ -341,6 +347,10 @@ export default function AdminPromotions() {
       console.log('Start date:', promotionData.start_date);
       console.log('End date:', promotionData.end_date);
       
+      console.log('Final promotion data to insert:', {
+        ...promotionData,
+        image_url: imageUrl ? 'URL_PROVIDED' : 'NULL'
+      });
       if (selectedPartnerId) {
         promotionData.partner_id = selectedPartnerId;
         console.log('Partner ID added:', selectedPartnerId);
@@ -353,11 +363,14 @@ export default function AdminPromotions() {
         .insert([promotionData]);
 
       if (error) {
+        console.error('Database insert error:', error);
         console.error('❌ Database insertion error:', error);
         console.error('Database error details:', JSON.stringify(error, null, 2));
         Alert.alert('Error', 'No se pudo crear la promoción');
         return;
       }
+      
+      console.log('Promotion created successfully in database');
 
       console.log('✅ Promotion inserted successfully into database');
       console.log('Step 4: Cleaning up form...');
