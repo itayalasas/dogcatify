@@ -316,8 +316,6 @@ export default function AdminPromotions() {
         title: promoTitle.trim(),
         description: promoDescription.trim(),
         discount_percentage: promoDiscountPercentage ? parseFloat(promoDiscountPercentage) : null,
-        image_url: imageUrl,
-        cta_text: ctaText.trim(),
         cta_url: ctaUrl,
         start_date: promoStartDate ? new Date(promoStartDate).toISOString() : new Date().toISOString(),
         end_date: promoEndDate ? new Date(promoEndDate).toISOString() : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now if not set
@@ -984,10 +982,15 @@ export default function AdminPromotions() {
                 />
                 <Button
                   title="Crear Promoción"
-                  onPress={handleCreatePromotion}
-                  loading={loading}
+                  value=""
+                  onChangeText={() => {}}
                   size="large"
+                  editable={false}
+                  style={styles.disabledInput}
                 />
+                <Text style={styles.comingSoonText}>
+                  🚧 Próximamente disponible
+                </Text>
               </View>
             </View>
           </ScrollView>
@@ -1742,5 +1745,16 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 4,
     fontStyle: 'italic',
+  },
+  disabledInput: {
+    backgroundColor: '#F9FAFB',
+    opacity: 0.6,
+  },
+  comingSoonText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    fontStyle: 'italic',
+    marginTop: 4,
   },
 });
