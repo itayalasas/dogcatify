@@ -509,7 +509,7 @@ export default function AdminPromotions() {
             leftIcon={<Search size={20} color="#9CA3AF" />}
           />
         </View>
-
+          {selectedProducts.length > 0 && (
         {/* Promotions Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>🎯 Promociones Activas ({filteredPromotions.length})</Text>
@@ -592,7 +592,9 @@ export default function AdminPromotions() {
                     size="medium"
                   />
                 </View>
-              </Card>
+              {selectedProducts.map((product, index) => (
+                <Text key={index} style={styles.selectedProductText}>{product}</Text>
+              ))}
             ))
           )}
         </View>
