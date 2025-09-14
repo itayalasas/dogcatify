@@ -10,7 +10,7 @@ import { supabaseClient } from '@/lib/supabase';
 import { NotificationService } from '../../utils/notifications';
 import { PaymentModal } from '../../components/PaymentModal';
 
-const ServiceBooking = () => {
+export default function ServiceBooking() {
   const { serviceId, partnerId, petId } = useLocalSearchParams<{ 
     serviceId: string;
     partnerId: string;
@@ -902,5 +902,3 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
 });
-
-export default ServiceBooking;
