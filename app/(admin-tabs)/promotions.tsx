@@ -289,11 +289,23 @@ export default function AdminPromotions() {
       if (promoImage) {
         console.log('Image URI:', promoImage);
         try {
+          imageUrl = await uploadImage(promoImage);
+          console.log('✅ Image uploaded successfully, URL:', imageUrl);
+        } catch (uploadError) {
+          console.error('❌ Image upload failed:', uploadError);
+          Alert.alert('Error', 'No se pudo subir la imagen');
+          return;
+        }
+      }
+
+      console.log('Step 2: Preparing promotion data...');
       // Determine CTA URL based on link type
       let ctaUrl = null;
       if (promoLinkType === 'external') {
         ctaUrl = promoUrl.trim();
       } else if (promoLinkType === 'internal') {
+        if (promoInternalType === 'service' && selectedServiceId) {
+          ctaUrl = `dogcatify://services/${selectedServiceId}`;
         } else if (promoInternalType === 'product' && selectedProductId) {
           ctaUrl = `dogcatify://products/${selectedProductId}`;
         } else if (promoInternalId) {
@@ -336,15 +348,20 @@ export default function AdminPromotions() {
       console.log('Step 3: Inserting into database...');
       console.log('Using Supabase client to insert promotion...');
       
+      const { error } = await supabaseClient
         .from('promotions')
         .insert([promotionData]);
 
       if (error) {
+        console.error('❌ Database insertion error:', error);
+        console.error('Database error details:', JSON.stringify(error, null, 2));
+        Alert.alert('Error', 'No se pudo crear la promoción');
         return;
       }
 
       console.log('✅ Promotion inserted successfully into database');
       console.log('Step 4: Cleaning up form...');
+      resetForm();
       setShowPromotionModal(false);
       console.log('Step 5: Refreshing promotions list...');
       fetchPromotions();
@@ -354,6 +371,7 @@ export default function AdminPromotions() {
       console.error('Error type:', typeof error);
       console.error('Error message:', error?.message);
       console.error('Error stack:', error?.stack);
+      Alert.alert('Error', 'Ocurrió un error inesperado');
     } finally {
       console.log('Finally: Cleaning up loading state');
       setLoading(false);
