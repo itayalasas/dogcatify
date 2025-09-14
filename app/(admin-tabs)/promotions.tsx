@@ -32,6 +32,7 @@ export default function AdminPromotions() {
   // Promotion form state
   const [promoTitle, setPromoTitle] = useState('');
   const [promoDescription, setPromoDescription] = useState('');
+  const [promoDiscountPercentage, setPromoDiscountPercentage] = useState('');
   const [promoImage, setPromoImage] = useState<string | null>(null);
   const [promoUrl, setPromoUrl] = useState('');
   const [promoStartDate, setPromoStartDate] = useState('');
@@ -314,6 +315,7 @@ export default function AdminPromotions() {
       const promotionData = {
         title: promoTitle.trim(),
         description: promoDescription.trim(),
+        discount_percentage: promoDiscountPercentage ? parseFloat(promoDiscountPercentage) : null,
         image_url: imageUrl,
         cta_text: ctaText.trim(),
         cta_url: ctaUrl,
@@ -394,6 +396,7 @@ export default function AdminPromotions() {
   const resetForm = () => {
     setPromoTitle('');
     setPromoDescription('');
+    setPromoDiscountPercentage('');
     setPromoImage(null);
     setPromoUrl('');
     setCtaText('Más información');
@@ -628,6 +631,14 @@ export default function AdminPromotions() {
                 onChangeText={setPromoDescription}
                 multiline
                 numberOfLines={3}
+              />
+
+              <Input
+                label="Porcentaje de descuento"
+                placeholder="Ej: 20, 50, 30..."
+                value={promoDiscountPercentage}
+                onChangeText={setPromoDiscountPercentage}
+                keyboardType="numeric"
               />
 
               <Input
