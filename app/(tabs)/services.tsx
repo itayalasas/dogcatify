@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, LogBox } from 'react-native';
 import { Search } from 'lucide-react-native';
-import { FlatGrid } from 'react-native-super-grid';
+import { FlatList } from 'react-native';
 import { ServiceCard } from '../../components/ServiceCard'; 
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -17,16 +17,23 @@ LogBox.ignoreLogs([
 
 export default function Services() {
   const [partners, setPartners] = useState<any[]>([]);
+  const [displayedPartners, setDisplayedPartners] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [hasMoreData, setHasMoreData] = useState(true);
   const { t } = useLanguage();
   const { currentUser } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
+  // Configuración de paginación
+  const ITEMS_PER_PAGE = 6;
+  const INITIAL_LOAD = 4;
   React.useEffect(() => {
     if (!currentUser) {
       setLoading(false);
-      setPartners([]);
+      setDisplayedPartners([]);
       return;
     }
     
@@ -36,14 +43,19 @@ export default function Services() {
 
   const fetchPartners = async () => {
     try {
+      console.log('🔄 Fetching partners...');
+      setLoading(true);
+      
       const { data: partnersData, error } = await supabaseClient
         .from('partners')
         .select('*')
         .eq('is_verified', true)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
 
       if (partnersData && !error) {
-        const partnersWithServices = [];
+        console.log(`📊 Found ${partnersData.length} verified partners`);
+        const allPartnersWithServices = [];
 
         for (const partner of partnersData) {
           if (partner.business_type === 'shelter') {
@@ -57,7 +69,7 @@ export default function Services() {
             
             if (adoptionPets && adoptionPets.length > 0 && !adoptionError) {
               const pet = adoptionPets[0];
-              partnersWithServices.push({
+              allPartnersWithServices.push({
                 id: `adoption-${pet.id}`,
                 partnerId: partner.id,
                 partnerName: partner.business_name,
@@ -84,17 +96,15 @@ export default function Services() {
               .eq('partner_id', partner.id)
               .eq('is_active', true)
               .order('created_at', { ascending: false })
-              .limit(3);
+              .limit(1); // Solo el primer servicio para carga inicial
 
             if (servicesData && servicesData.length > 0 && !servicesError) {
               const serviceData = servicesData[0];
               
-              // Collect all service images
-              const allServiceImages = servicesData
-                .filter(s => s.images && s.images.length > 0)
-                .flatMap(s => s.images);
+              // Solo usar imágenes del primer servicio para carga inicial
+              const serviceImages = serviceData.images || [];
               
-              partnersWithServices.push({
+              allPartnersWithServices.push({
                 id: serviceData.id,
                 partnerId: partner.id,
                 partnerName: partner.business_name,
@@ -108,13 +118,21 @@ export default function Services() {
                 price: serviceData.price,
                 duration: serviceData.duration,
                 category: partner.business_type,
-                serviceImages: allServiceImages,
+                serviceImages: serviceImages,
                 images: serviceData.images || [],
               });
             }
           }
         }
-        setPartners(partnersWithServices);
+        
+        console.log(`✅ Processed ${allPartnersWithServices.length} partners with services`);
+        setPartners(allPartnersWithServices);
+        
+        // Carga inicial paginada
+        const initialPartners = allPartnersWithServices.slice(0, INITIAL_LOAD);
+        setDisplayedPartners(initialPartners);
+        setCurrentPage(1);
+        setHasMoreData(allPartnersWithServices.length > INITIAL_LOAD);
       }
     } catch (err) {
       console.error("Error fetching partners:", err);
@@ -124,11 +142,36 @@ export default function Services() {
     }
   };
 
+  const loadMorePartners = () => {
+    if (loadingMore || !hasMoreData) return;
+    
+    console.log(`🔄 Loading more partners - Page ${currentPage + 1}...`);
+    setLoadingMore(true);
+    
+    const startIndex = currentPage * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const newPartners = partners.slice(startIndex, endIndex);
+    
+    if (newPartners.length === 0) {
+      setHasMoreData(false);
+      setLoadingMore(false);
+      return;
+    }
+    
+    setTimeout(() => {
+      setDisplayedPartners(prev => [...prev, ...newPartners]);
+      setCurrentPage(prev => prev + 1);
+      setHasMoreData(endIndex < partners.length);
+      setLoadingMore(false);
+      console.log(`✅ Loaded ${newPartners.length} more partners. Total displayed: ${displayedPartners.length + newPartners.length}`);
+    }, 300); // Small delay to prevent overwhelming
+  };
+
   // Clean up function to handle component unmount or user logout
   React.useEffect(() => {
     return () => {
       // Clean up any subscriptions or state when component unmounts
-      setPartners([]);
+      setDisplayedPartners([]);
       setError(null);
     };
   }, []);
@@ -139,10 +182,10 @@ export default function Services() {
 
   const getFilteredPartners = () => {
     if (selectedCategory === 'all') {
-      return partners;
+      return displayedPartners;
     }
     
-    return partners.filter(partner => {
+    return displayedPartners.filter(partner => {
       // Map category IDs to business types
       const categoryToBusinessType: Record<string, string> = {
         'consulta': 'veterinary',
@@ -158,6 +201,15 @@ export default function Services() {
 
   const filteredPartners = getFilteredPartners();
 
+  const renderFooter = () => {
+    if (!loadingMore) return null;
+    
+    return (
+      <View style={styles.footerLoader}>
+        <Text style={styles.footerLoaderText}>Cargando más servicios...</Text>
+      </View>
+    );
+  };
   const categories = [
     { id: 'all', name: t('all') },
     { id: 'consulta', name: t('consultation') },
@@ -223,15 +275,26 @@ export default function Services() {
           )}
           
           {!loading && !error && currentUser && filteredPartners.length > 0 && (
-            <>
-              {filteredPartners.map((partner) => (
+            <FlatList
+              data={filteredPartners}
+              renderItem={({ item }) => (
                 <ServiceCard
-                  key={partner.partnerId}
-                  service={partner}
-                  onPress={() => handlePartnerPress(partner.partnerId)}
+                  key={item.partnerId}
+                  service={item}
+                  onPress={() => handlePartnerPress(item.partnerId)}
                 />
-              ))}
-            </>
+              )}
+              keyExtractor={(item) => item.partnerId}
+              onEndReached={loadMorePartners}
+              onEndReachedThreshold={0.3}
+              ListFooterComponent={renderFooter}
+              showsVerticalScrollIndicator={false}
+              initialNumToRender={INITIAL_LOAD}
+              maxToRenderPerBatch={ITEMS_PER_PAGE}
+              windowSize={10}
+              removeClippedSubviews={true}
+              scrollEventThrottle={16}
+            />
           )}
         </View>
       </ScrollView>
@@ -337,5 +400,14 @@ const styles = StyleSheet.create({
     color: '#6B7280', 
     textAlign: 'center',
     lineHeight: 24,
+  },
+  footerLoader: {
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+  footerLoaderText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
   },
 });
