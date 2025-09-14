@@ -323,8 +323,6 @@ export default function AdminPromotions() {
         promotion_type: promoType,
         views: 0,
         clicks: 0,
-        discount_percentage: promoDiscountPercentage || null,
-        has_discount: promoDiscountPercentage > 0,
         likes: [],
         has_discount: hasDiscount,
         discount_percentage: hasDiscount ? parseFloat(discountPercentage) || 0 : null,
@@ -635,7 +633,7 @@ export default function AdminPromotions() {
 
               <Input
                 label="Porcentaje de descuento"
-                placeholder="Ej: 20, 50, 30..."
+                placeholder="Ej: 20 (opcional)"
                 value={promoDiscountPercentage}
                 onChangeText={setPromoDiscountPercentage}
                 keyboardType="numeric"
