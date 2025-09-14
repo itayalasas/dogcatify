@@ -226,19 +226,6 @@ export default function AdminPromotions() {
     
     console.log('Step 1: Fetching image from URI...');
     const response = await fetch(imageUri);
-    console.log('Fetch response status:', response.status);
-    console.log('Fetch response ok:', response.ok);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
-    }
-    
-    console.log('Step 2: Converting to blob...');
-    const blob = await response.blob();
-    console.log('Blob created, size:', blob.size, 'bytes');
-    console.log('Blob type:', blob.type);
-    
-    console.log('Step 3: Generating filename...');
     const filename = `promotions/${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
     console.log('Generated filename:', filename);
     
@@ -246,7 +233,18 @@ export default function AdminPromotions() {
     const { error } = await supabaseClient.storage
       .from('dogcatify')
       .upload(filename, blob);
-
+      
+      // Create FormData for React Native
+      const formData = new FormData();
+      formData.append('file', {
+        uri: imageUri,
+        type: 'image/jpeg',
+        name: filename,
+      } as any);
+      
+      console.log('FormData created for upload');
+      
+      const { data, error } = await supabaseClient.storage
     if (error) {
       console.error('❌ Supabase storage error:', error);
       console.error('Storage error details:', JSON.stringify(error, null, 2));
@@ -347,9 +345,10 @@ export default function AdminPromotions() {
 
       console.log('Step 3: Inserting into database...');
       console.log('Using Supabase client to insert promotion...');
-      
+        .upload(filename, formData, {
       const { error } = await supabaseClient
         .from('promotions')
+          upsert: false,
         .insert([promotionData]);
 
       if (error) {
