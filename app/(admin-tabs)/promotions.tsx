@@ -289,31 +289,18 @@ export default function AdminPromotions() {
       if (promoImage) {
         console.log('Image URI:', promoImage);
         try {
-          imageUrl = await uploadImage(promoImage);
-          console.log('✅ Image uploaded successfully:', imageUrl);
-        } catch (uploadError) {
-          console.error('❌ Image upload failed:', uploadError);
-          throw new Error(`Error subiendo imagen: ${uploadError.message}`);
-        }
-      }
-
       // Determine CTA URL based on link type
       let ctaUrl = null;
       if (promoLinkType === 'external') {
         ctaUrl = promoUrl.trim();
       } else if (promoLinkType === 'internal') {
-        if (promoInternalType === 'service' && selectedServiceId) {
-          ctaUrl = `dogcatify://services/${selectedServiceId}`;
         } else if (promoInternalType === 'product' && selectedProductId) {
           ctaUrl = `dogcatify://products/${selectedProductId}`;
-        } else if (promoInternalType === 'partner' && selectedPartnerId) {
-          ctaUrl = `dogcatify://partners/${selectedPartnerId}`;
         } else if (promoInternalId) {
           ctaUrl = `dogcatify://${promoInternalType}s/${promoInternalId}`;
         }
       }
 
-      console.log('Step 2: Preparing promotion data...');
       const promotionData = {
         title: promoTitle.trim(),
         description: promoDescription.trim(),
@@ -349,35 +336,27 @@ export default function AdminPromotions() {
       console.log('Step 3: Inserting into database...');
       console.log('Using Supabase client to insert promotion...');
       
-      const { error } = await supabaseClient
         .from('promotions')
         .insert([promotionData]);
 
       if (error) {
-        console.error('❌ Database insert error:', error);
-        console.error('Error details:', JSON.stringify(error, null, 2));
-        Alert.alert('Error', `No se pudo crear la promoción: ${error.message}`);
         return;
       }
 
       console.log('✅ Promotion inserted successfully into database');
       console.log('Step 4: Cleaning up form...');
-      resetForm();
       setShowPromotionModal(false);
       console.log('Step 5: Refreshing promotions list...');
       fetchPromotions();
       console.log('✅ Promotion creation completed successfully');
-      Alert.alert('Éxito', 'Promoción creada correctamente');
     } catch (error) {
       console.error('ERROR in handleCreatePromotion:', error);
       console.error('Error type:', typeof error);
       console.error('Error message:', error?.message);
       console.error('Error stack:', error?.stack);
-      Alert.alert('Error', `No se pudo crear la promoción: ${error?.message || 'Error desconocido'}`);
     } finally {
       console.log('Finally: Cleaning up loading state');
       setLoading(false);
-      console.log('=== CREATING PROMOTION DEBUG END ===');
     }
   };
 
