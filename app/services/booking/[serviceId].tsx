@@ -63,6 +63,7 @@ export default function ServiceBooking() {
       fetchAvailableTimeSlots(selectedDate);
     }
   }, [selectedDate, partnerSchedule]);
+  
   const fetchBookingData = async () => {
     try {
       console.log('Fetching booking data...');
@@ -368,40 +369,6 @@ export default function ServiceBooking() {
       setBooking(false);
     }
   };
-      const bookingData = {
-        service_id: serviceId,
-        partner_id: partnerId,
-        customer_id: currentUser!.id,
-        pet_id: petId,
-        date: selectedDate.toISOString(),
-        time: selectedTime,
-        status: 'pending',
-        notes: notes.trim() || null,
-        total_amount: service?.price || 0,
-        service_name: service?.name,
-        partner_name: partner?.business_name,
-        pet_name: pet?.name,
-        created_at: new Date().toISOString()
-      };
-
-      const { error } = await supabaseClient
-        .from('bookings')
-        .insert([bookingData]);
-
-      if (error) throw error;
-
-      Alert.alert(
-        'Reserva confirmada',
-        'Tu reserva ha sido confirmada exitosamente',
-        [{ text: 'OK', onPress: () => router.push('/(tabs)/services') }]
-      );
-    } catch (error) {
-      console.error('Error creating booking:', error);
-      Alert.alert('Error', 'No se pudo crear la reserva');
-    } finally {
-      setBooking(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -440,19 +407,8 @@ export default function ServiceBooking() {
         <Card style={styles.partnerCard}>
           <Text style={styles.sectionTitle}>Proveedor</Text>
           <View style={styles.partnerInfo}>
-            {partner?.logo ? (
+            {partner?.logo && (
               <Image source={{ uri: partner.logo }} style={styles.partnerLogo} />
-            ) : (
-              <View style={styles.partnerLogoPlaceholder}>
-                <Text style={styles.partnerLogoPlaceholderText}>
-                  {partner?.business_type === 'veterinary' ? '🏥' : 
-                   partner?.business_type === 'grooming' ? '✂️' : 
-                   partner?.business_type === 'walking' ? '🚶' : 
-                   partner?.business_type === 'boarding' ? '🏠' : 
-                   partner?.business_type === 'shop' ? '🛍️' : 
-                   partner?.business_type === 'shelter' ? '🐾' : '🏢'}
-                </Text>
-              </View>
             )}
             <View style={styles.partnerDetails}>
               <Text style={styles.partnerName}>{partner?.business_name}</Text>
@@ -465,15 +421,8 @@ export default function ServiceBooking() {
         <Card style={styles.petCard}>
           <Text style={styles.sectionTitle}>Mascota</Text>
           <View style={styles.petInfo}>
-            {pet?.photo_url ? (
+            {pet?.photo_url && (
               <Image source={{ uri: pet.photo_url }} style={styles.petPhoto} />
-            ) : (
-              <View style={styles.petPhotoPlaceholder}>
-                <Text style={styles.petPhotoPlaceholderText}>
-                  {pet?.species === 'dog' ? '🐕' : 
-                   pet?.species === 'cat' ? '🐱' : '🐾'}
-                </Text>
-              </View>
             )}
             <View style={styles.petDetails}>
               <Text style={styles.petName}>{pet?.name}</Text>
@@ -604,14 +553,8 @@ export default function ServiceBooking() {
 
       {/* Fixed Bottom Button */}
       <View style={styles.bottomButtonContainer}>
-        <View style={styles.paymentInfo}>
-          <CreditCard size={16} color="#6B7280" />
-          <Text style={styles.paymentInfoText}>
-            Pago seguro con Mercado Pago
-          </Text>
-        </View>
         <Button
-          title={`Pagar y Confirmar - ${service?.price ? formatPrice(service.price) : 'Gratis'}`}
+          title={`Confirmar Reserva - ${service?.price ? formatPrice(service.price) : 'Gratis'}`}
           onPress={handleConfirmBooking}
           loading={booking}
           disabled={!selectedDate || !selectedTime}
@@ -681,7 +624,7 @@ const styles = StyleSheet.create({
   bottomButtonContainer: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingVertical: 16,
     paddingBottom: 20,
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
@@ -693,18 +636,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 10,
-  },
-  paymentInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  paymentInfoText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    marginLeft: 6,
   },
   dateSelectionContainer: {
     marginBottom: 24,
@@ -850,23 +781,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   partnerLogo: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     marginRight: 12,
-  },
-  partnerLogoPlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#3B82F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  partnerLogoPlaceholderText: {
-    fontSize: 24,
-    color: '#FFFFFF',
   },
   partnerDetails: {
     flex: 1,
@@ -892,19 +810,6 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     marginRight: 12,
   },
-  petPhotoPlaceholder: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#10B981',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  petPhotoPlaceholderText: {
-    fontSize: 20,
-    color: '#FFFFFF',
-  },
   petDetails: {
     flex: 1,
   },
@@ -912,7 +817,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
     color: '#111827',
-    marginBottom: 2,
+    marginBottom: 4,
   },
   petBreed: {
     fontSize: 14,
