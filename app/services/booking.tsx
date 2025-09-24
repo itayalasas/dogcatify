@@ -304,6 +304,10 @@ export default function ServiceBooking() {
     console.log('Payment successful:', paymentResult);
     setBookingLoading(true);
     try {
+      if (!currentUser || !selectedDate || !selectedTime || !service || !pet || !partnerInfo) {
+        throw new Error('Información incompleta para crear la reserva');
+      }
+      
       // Create booking date by combining selected date and time
       const bookingDate = new Date(selectedDate);
       const [hours, minutes] = selectedTime!.split(':').map(Number);
@@ -318,15 +322,6 @@ export default function ServiceBooking() {
       const formatTime = (date: Date) => {
         return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
       };
-      
-      console.log('Creating booking with data:', {
-        partner_id: partnerId,
-        service_id: serviceId,
-        customer_id: currentUser.id,
-        pet_id: petId,
-        date: bookingDate.toISOString(),
-        time: formatTime(bookingDate)
-      });
       
       const bookingData = {
         partner_id: partnerId,
@@ -362,7 +357,6 @@ export default function ServiceBooking() {
       
       if (error) {
         console.error('Supabase booking insert error:', error);
-        console.error('Error details:', JSON.stringify(error, null, 2));
         throw new Error(`Error al crear la reserva: ${error.message || error.details || 'Error desconocido'}`);
       }
       

@@ -86,6 +86,19 @@ export default function ServiceDetail() {
 
   const fetchServiceReviews = async () => {
     try {
+      // Validate service ID is a proper UUID before making the query
+      if (!id || typeof id !== 'string') {
+        console.log('Invalid service ID for reviews:', id);
+        return;
+      }
+      
+      // Check if ID is a valid UUID format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(id)) {
+        console.log('Service ID is not a valid UUID:', id);
+        return;
+      }
+      
       const { data: reviewsData, error } = await supabaseClient
         .from('service_reviews')
         .select(`

@@ -75,11 +75,28 @@ export default function PetAppointments() {
       
       // Validate that all booking IDs are valid UUIDs
       const validBookingIds = bookingIds.filter(id => {
-        if (typeof id !== 'string' || id.length === 0) return false;
-        if (id === 'booking' || id === 'undefined' || id === 'null') return false;
+        // More strict validation
+        if (!id || typeof id !== 'string' || id.length === 0) {
+          console.log('Invalid booking ID (empty or not string):', id);
+          return false;
+        }
+        
+        // Filter out obviously invalid values
+        const invalidValues = ['booking', 'undefined', 'null', 'temp-', 'order_'];
+        if (invalidValues.some(invalid => id.includes(invalid))) {
+          console.log('Invalid booking ID (contains invalid pattern):', id);
+          return false;
+        }
+        
         // Check if it's a valid UUID format
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-        return uuidRegex.test(id);
+        const isValidUUID = uuidRegex.test(id);
+        
+        if (!isValidUUID) {
+          console.log('Invalid booking ID (not UUID format):', id);
+        }
+        
+        return isValidUUID;
       });
       
       if (validBookingIds.length === 0) {

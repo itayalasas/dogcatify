@@ -72,12 +72,14 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service, onPress }) =>
       // Validate partner ID is a valid UUID
       if (!service.partnerId || typeof service.partnerId !== 'string') {
         console.error('Invalid partner ID:', service.partnerId);
+        setLoadingReviews(false);
         return;
       }
       
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       if (!uuidRegex.test(service.partnerId)) {
         console.error('Partner ID is not a valid UUID:', service.partnerId);
+        setLoadingReviews(false);
         return;
       }
       
@@ -98,6 +100,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service, onPress }) =>
 
       if (error) {
         console.error('Error fetching reviews:', error);
+        setLoadingReviews(false);
         return; // Don't throw, just return
       }
 
