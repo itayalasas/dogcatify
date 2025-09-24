@@ -407,23 +407,32 @@ export default function ServiceBooking() {
         <Card style={styles.partnerCard}>
           <Text style={styles.sectionTitle}>Proveedor</Text>
           <View style={styles.partnerInfo}>
-            {partner?.logo ? (
-              <Image source={{ uri: partner.logo }} style={styles.partnerLogo} />
-            ) : (
-              <View style={styles.partnerLogoPlaceholder}>
-                <Text style={styles.partnerLogoPlaceholderText}>
-                  {partner?.business_type === 'veterinary' ? '🏥' : 
-                   partner?.business_type === 'grooming' ? '✂️' : 
-                   partner?.business_type === 'walking' ? '🚶' : 
-                   partner?.business_type === 'boarding' ? '🏠' : 
-                   partner?.business_type === 'shop' ? '🛍️' : 
-                   partner?.business_type === 'shelter' ? '🐾' : '🏢'}
-                </Text>
-              </View>
-            )}
+            <View style={styles.partnerLogoContainer}>
+              {partner?.logo ? (
+                <Image source={{ uri: partner.logo }} style={styles.partnerLogo} />
+              ) : (
+                <View style={styles.partnerLogoPlaceholder}>
+                  <Text style={styles.partnerLogoPlaceholderText}>
+                    {partner?.business_type === 'veterinary' ? '🏥' : 
+                     partner?.business_type === 'grooming' ? '✂️' : 
+                     partner?.business_type === 'walking' ? '🚶' : 
+                     partner?.business_type === 'boarding' ? '🏠' : 
+                     partner?.business_type === 'shop' ? '🛍️' : 
+                     partner?.business_type === 'shelter' ? '🐾' : '🏢'}
+                  </Text>
+                </View>
+              )}
+            </View>
             <View style={styles.partnerDetails}>
               <Text style={styles.partnerName}>{partner?.business_name}</Text>
-              <Text style={styles.partnerAddress}>{partner?.address}</Text>
+              <View style={styles.partnerAddressContainer}>
+                <MapPin size={14} color="#6B7280" />
+                <Text style={styles.partnerAddress}>{partner?.address}</Text>
+              </View>
+              <View style={styles.partnerPhoneContainer}>
+                <Phone size={14} color="#6B7280" />
+                <Text style={styles.partnerPhone}>{partner?.phone || 'No disponible'}</Text>
+              </View>
             </View>
           </View>
         </Card>
@@ -432,19 +441,27 @@ export default function ServiceBooking() {
         <Card style={styles.petCard}>
           <Text style={styles.sectionTitle}>Mascota</Text>
           <View style={styles.petInfo}>
-            {pet?.photo_url ? (
-              <Image source={{ uri: pet.photo_url }} style={styles.petPhoto} />
-            ) : (
-              <View style={styles.petPhotoPlaceholder}>
-                <Text style={styles.petPhotoPlaceholderText}>
-                  {pet?.species === 'dog' ? '🐕' : 
-                   pet?.species === 'cat' ? '🐱' : '🐾'}
-                </Text>
-              </View>
-            )}
+            <View style={styles.petPhotoContainer}>
+              {pet?.photo_url ? (
+                <Image source={{ uri: pet.photo_url }} style={styles.petPhoto} />
+              ) : (
+                <View style={styles.petPhotoPlaceholder}>
+                  <Text style={styles.petPhotoPlaceholderText}>
+                    {pet?.species === 'dog' ? '🐕' : 
+                     pet?.species === 'cat' ? '🐱' : '🐾'}
+                  </Text>
+                </View>
+              )}
+            </View>
             <View style={styles.petDetails}>
               <Text style={styles.petName}>{pet?.name}</Text>
-              <Text style={styles.petBreed}>{pet?.breed}</Text>
+              <Text style={styles.petBreed}>
+                {pet?.breed} • {pet?.age} {pet?.age_display?.unit === 'years' ? 'años' : 
+                                         pet?.age_display?.unit === 'months' ? 'meses' : 'días'}
+              </Text>
+              <Text style={styles.petGender}>
+                {pet?.gender === 'male' ? '♂️ Macho' : '♀️ Hembra'}
+              </Text>
             </View>
           </View>
         </Card>
@@ -804,23 +821,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  partnerLogoContainer: {
+    marginRight: 16,
+  },
   partnerLogo: {
-    width: 48,
-    height: 48,
+    width: 60,
+    height: 60,
     borderRadius: 8,
-    marginRight: 12,
   },
   partnerLogoPlaceholder: {
-    width: 48,
-    height: 48,
+    width: 60,
+    height: 60,
     borderRadius: 8,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#3B82F6',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
   },
   partnerLogoPlaceholderText: {
-    fontSize: 20,
+    fontSize: 24,
+    color: '#FFFFFF',
   },
   partnerDetails: {
     flex: 1,
@@ -829,34 +848,53 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
     color: '#111827',
-    marginBottom: 2,
+    marginBottom: 8,
+  },
+  partnerAddressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
   },
   partnerAddress: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
+    marginLeft: 6,
+    flex: 1,
+  },
+  partnerPhoneContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  partnerPhone: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginLeft: 6,
   },
   petInfo: {
     flexDirection: 'row',
     alignItems: 'center',
   },
+  petPhotoContainer: {
+    marginRight: 16,
+  },
   petPhoto: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    marginRight: 12,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
   },
   petPhotoPlaceholder: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#F3F4F6',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#10B981',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
   },
   petPhotoPlaceholderText: {
-    fontSize: 20,
+    fontSize: 24,
+    color: '#FFFFFF',
   },
   petDetails: {
     flex: 1,
@@ -865,12 +903,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
     color: '#111827',
-    marginBottom: 2,
+    marginBottom: 4,
   },
   petBreed: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
+    marginBottom: 4,
+  },
+  petGender: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#3B82F6',
   },
   paymentInfo: {
     flexDirection: 'row',
