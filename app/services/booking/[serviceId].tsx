@@ -311,9 +311,9 @@ export default function ServiceBooking() {
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('es-AR', {
+    return new Intl.NumberFormat('es-UY', {
       style: 'currency',
-      currency: 'ARS',
+      currency: 'UYU',
     }).format(price);
   };
 
@@ -539,7 +539,10 @@ export default function ServiceBooking() {
             numberOfLines={3}
           />
         </Card>
+      </ScrollView>
 
+      {/* Fixed Bottom Button */}
+      <View style={styles.bottomButtonContainer}>
         <Button
           title={`Confirmar Reserva - ${service?.price ? formatPrice(service.price) : 'Gratis'}`}
           onPress={handleConfirmBooking}
@@ -547,7 +550,7 @@ export default function ServiceBooking() {
           disabled={!selectedDate || !selectedTime}
           size="large"
         />
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -606,7 +609,23 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   notesCard: {
-    marginBottom: 24,
+    marginBottom: 16,
+  },
+  bottomButtonContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    paddingBottom: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 10,
   },
   dateSelectionContainer: {
     marginBottom: 24,

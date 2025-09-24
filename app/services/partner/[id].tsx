@@ -392,9 +392,9 @@ export default function PartnerServices() {
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('es-AR', {
+    return new Intl.NumberFormat('es-UY', {
       style: 'currency',
-      currency: 'ARS',
+      currency: 'UYU',
     }).format(price);
   };
 

@@ -224,9 +224,9 @@ export default function AdminAnalytics() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-AR', {
+    return new Intl.NumberFormat('es-UY', {
       style: 'currency',
-      currency: 'ARS',
+      currency: 'UYU',
     }).format(amount);
   };
 
