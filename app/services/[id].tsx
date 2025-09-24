@@ -258,46 +258,37 @@ export default function ServiceDetail() {
       console.log('=== EXECUTING NAVIGATION ===');
       console.log('About to call router.push with serviceId:', id);
       
-    try {
-      // Navigate to booking screen with service and pet info
-      router.push({
-        pathname: '/services/booking',
-        params: { 
-          serviceId: id,
-          partnerId: service.partnerId,
-          petId: petId
-        }
-      });
-    } catch (navigationError) {
-      console.error('Navigation error:', navigationError);
-      Alert.alert('Error', 'No se pudo navegar a la pantalla de reserva');
-    }
-    
-    setShowBookingModal(false);
-  };
-        const navigationParams = {
-          pathname: '/services/booking/[serviceId]' as const,
+      try {
+        // Navigate to booking screen with service and pet info
+        router.push({
+          pathname: '/services/booking',
           params: { 
             serviceId: id,
             partnerId: service.partnerId,
             petId: petId
           }
-        };
-        
-        console.log('Navigation params object:', navigationParams);
-        console.log('Calling router.push...');
-        
-        router.push(navigationParams);
-        
-        console.log('router.push called successfully');
-    reviews.forEach(review => {
-        console.error('=== NAVIGATION ERROR ===', navigationError);
-        counts[review.rating - 1]++;
+        });
+      } catch (navigationError) {
+        console.error('Navigation error:', navigationError);
+        Alert.alert('Error', 'No se pudo navegar a la pantalla de reserva');
       }
-    });
       
       console.log('=== handleSelectPet END ===');
     }, 100);
+  };
+
+  const handleShowReviews = () => {
+    setShowReviewsModal(true);
+  };
+
+  const calculateReviewPercentages = () => {
+    const counts = [0, 0, 0, 0, 0]; // For 1-5 stars
+    
+    reviews.forEach(review => {
+      counts[review.rating - 1]++;
+    });
+    
+    return counts.map((count, index) => ({
       stars: index + 1,
       count,
       percentage: reviews.length > 0 ? (count / reviews.length) * 100 : 0
