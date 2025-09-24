@@ -214,15 +214,43 @@ export default function ServiceDetail() {
 
   const handleSelectPet = (petId: string) => {
     setSelectedPet(petId);
-    // Navigate to booking screen with service and pet info
-    router.push({
-      pathname: '/services/booking',
-      params: { 
-        serviceId: id,
-        partnerId: service.partnerId,
-        petId: petId
-      }
+    
+    // Validate all required data before navigation
+    if (!id || !service?.partnerId || !petId) {
+      console.error('Missing required data for booking:', { serviceId: id, partnerId: service?.partnerId, petId });
+      Alert.alert('Error', 'Información incompleta para la reserva');
+      return;
+    }
+    
+    // Validate UUIDs
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id) || !uuidRegex.test(service.partnerId) || !uuidRegex.test(petId)) {
+      console.error('Invalid UUID format:', { serviceId: id, partnerId: service.partnerId, petId });
+      Alert.alert('Error', 'Datos de identificación inválidos');
+      return;
+    }
+    
+    console.log('Navigating to booking with validated data:', {
+      serviceId: id,
+      partnerId: service.partnerId,
+      petId: petId
     });
+    
+    try {
+      // Navigate to booking screen with service and pet info
+      router.push({
+        pathname: '/services/booking',
+        params: { 
+          serviceId: id,
+          partnerId: service.partnerId,
+          petId: petId
+        }
+      });
+    } catch (navigationError) {
+      console.error('Navigation error:', navigationError);
+      Alert.alert('Error', 'No se pudo navegar a la pantalla de reserva');
+    }
+    
     setShowBookingModal(false);
   };
 

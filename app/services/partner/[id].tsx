@@ -299,8 +299,13 @@ export default function PartnerServices() {
       return;
     }
     
-    console.log('Navigating to service with valid UUID:', serviceId);
-    router.push(`/services/${serviceId}`);
+    console.log('Navigating to service detail with valid UUID:', serviceId);
+    try {
+      router.push(`/services/${serviceId}`);
+    } catch (navigationError) {
+      console.error('Navigation error to service detail:', navigationError);
+      Alert.alert('Error', 'No se pudo navegar al detalle del servicio');
+    }
   };
 
   const handleShowReviews = () => {

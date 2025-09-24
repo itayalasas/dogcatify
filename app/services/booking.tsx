@@ -32,9 +32,32 @@ export default function ServiceBooking() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   useEffect(() => {
-    if (!serviceId || !partnerId || !petId || !currentUser) {
-      Alert.alert('Error', 'Información incompleta para la reserva');
-      router.back();
+    console.log('ServiceBooking - Received params:', { serviceId, partnerId, petId });
+    
+    // Validate all required parameters
+    if (!serviceId || !partnerId || !petId) {
+      console.error('Missing required parameters:', { serviceId, partnerId, petId });
+      Alert.alert('Error', 'Información incompleta para la reserva', [
+        { text: 'OK', onPress: () => router.back() }
+      ]);
+      return;
+    }
+    
+    if (!currentUser) {
+      console.error('No current user');
+      Alert.alert('Error', 'Debes iniciar sesión para hacer una reserva', [
+        { text: 'OK', onPress: () => router.replace('/auth/login') }
+      ]);
+      return;
+    }
+    
+    // Validate UUID formats
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(serviceId) || !uuidRegex.test(partnerId) || !uuidRegex.test(petId)) {
+      console.error('Invalid UUID format in booking params:', { serviceId, partnerId, petId });
+      Alert.alert('Error', 'Datos de identificación inválidos', [
+        { text: 'OK', onPress: () => router.back() }
+      ]);
       return;
     }
     
