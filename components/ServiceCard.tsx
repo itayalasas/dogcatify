@@ -12,6 +12,17 @@ interface ServiceCardProps {
 
 export const ServiceCard: React.FC<ServiceCardProps> = ({ service, onPress }) => {
   const { t } = useLanguage();
+  
+  // Debug service data
+  React.useEffect(() => {
+    console.log('ServiceCard - Service data:', {
+      id: service?.id,
+      partnerId: service?.partnerId,
+      name: service?.name,
+      partnerType: service?.partnerType
+    });
+  }, [service]);
+  
   const [reviews, setReviews] = React.useState<any[]>([]);
   const [averageRating, setAverageRating] = React.useState(0);
   const [totalReviews, setTotalReviews] = React.useState(0);

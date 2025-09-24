@@ -284,6 +284,22 @@ export default function PartnerServices() {
   };
 
   const handleServicePress = (serviceId: string) => {
+    // Validate service ID before navigation
+    if (!serviceId || typeof serviceId !== 'string') {
+      console.error('Invalid service ID for navigation:', serviceId);
+      Alert.alert('Error', 'ID de servicio inválido');
+      return;
+    }
+    
+    // Check if ID is a valid UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(serviceId)) {
+      console.error('Service ID is not a valid UUID for navigation:', serviceId);
+      Alert.alert('Error', 'ID de servicio no válido');
+      return;
+    }
+    
+    console.log('Navigating to service with valid UUID:', serviceId);
     router.push(`/services/${serviceId}`);
   };
 

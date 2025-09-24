@@ -12,6 +12,14 @@ const { width } = Dimensions.get('window');
 export default function ServiceDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { currentUser } = useAuth();
+  
+  // Debug the received ID
+  useEffect(() => {
+    console.log('ServiceDetail - Received ID:', id);
+    console.log('ServiceDetail - ID type:', typeof id);
+    console.log('ServiceDetail - ID length:', id?.length);
+  }, [id]);
+  
   const [service, setService] = useState<any>(null);
   const [partnerInfo, setPartnerInfo] = useState<any>(null);
   const [reviews, setReviews] = useState<any[]>([]);
@@ -33,6 +41,21 @@ export default function ServiceDetail() {
 
   const fetchServiceDetails = async () => {
     try {
+      // Validate service ID before making any queries
+      if (!id || typeof id !== 'string') {
+        console.error('Invalid service ID received:', id);
+        setLoading(false);
+        return;
+      }
+      
+      // Check if ID is a valid UUID format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(id)) {
+        console.error('Service ID is not a valid UUID:', id);
+        setLoading(false);
+        return;
+      }
+      
       const { data: serviceData, error } = await supabaseClient
         .from('partner_services')
         .select('*')
@@ -88,14 +111,14 @@ export default function ServiceDetail() {
     try {
       // Validate service ID is a proper UUID before making the query
       if (!id || typeof id !== 'string') {
-        console.log('Invalid service ID for reviews:', id);
+        console.error('Invalid service ID for reviews:', id);
         return;
       }
       
       // Check if ID is a valid UUID format
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       if (!uuidRegex.test(id)) {
-        console.log('Service ID is not a valid UUID:', id);
+        console.error('Service ID is not a valid UUID:', id);
         return;
       }
       

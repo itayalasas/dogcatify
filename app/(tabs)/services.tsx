@@ -105,7 +105,7 @@ export default function Services() {
               const serviceImages = serviceData.images || [];
               
               allPartnersWithServices.push({
-                id: serviceData.id,
+                id: serviceData.id, // This should be the service ID
                 partnerId: partner.id,
                 partnerName: partner.business_name,
                 partnerAddress: partner.address,
@@ -117,9 +117,13 @@ export default function Services() {
                 name: serviceData.name,
                 price: serviceData.price,
                 duration: serviceData.duration,
-                category: partner.business_type,
+                category: partner.business_type, // This is the partner's business type
                 serviceImages: serviceImages,
                 images: serviceData.images || [],
+                // Add debug info
+                debug_service_id: serviceData.id,
+                debug_partner_id: partner.id,
+                debug_business_type: partner.business_type
               });
             }
           }
@@ -177,6 +181,22 @@ export default function Services() {
   }, []);
 
   const handlePartnerPress = (partnerId: string) => {
+    // Validate partner ID before navigation
+    if (!partnerId || typeof partnerId !== 'string') {
+      console.error('Invalid partner ID for navigation:', partnerId);
+      Alert.alert('Error', 'ID de partner inválido');
+      return;
+    }
+    
+    // Check if ID is a valid UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(partnerId)) {
+      console.error('Partner ID is not a valid UUID for navigation:', partnerId);
+      Alert.alert('Error', 'ID de partner no válido');
+      return;
+    }
+    
+    console.log('Navigating to partner with valid UUID:', partnerId);
     router.push(`/services/partner/${partnerId}`);
   };
 
