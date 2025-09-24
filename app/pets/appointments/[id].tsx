@@ -74,24 +74,30 @@ export default function PetAppointments() {
       const bookingIds = completedAppointments.map(apt => apt.id);
       
       // Validate that all booking IDs are valid UUIDs
-      const validBookingIds = bookingIds.filter(id => 
-        typeof id === 'string' && 
-        id.length > 0 && 
-        id !== 'booking' &&
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
-      );
+      const validBookingIds = bookingIds.filter(id => {
+        if (typeof id !== 'string' || id.length === 0) return false;
+        if (id === 'booking' || id === 'undefined' || id === 'null') return false;
+        // Check if it's a valid UUID format
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        return uuidRegex.test(id);
+      });
       
       if (validBookingIds.length === 0) {
         console.log('No valid booking IDs found for reviews');
         return;
       }
       
+      console.log('Valid booking IDs for reviews:', validBookingIds);
+      
       const { data: reviews, error } = await supabaseClient
         .from('service_reviews')
         .select('*')
         .in('booking_id', validBookingIds);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching reviews:', error);
+        return; // Don't throw, just return
+      }
       
       const reviewsMap: {[key: string]: any} = {};
       reviews?.forEach(review => {

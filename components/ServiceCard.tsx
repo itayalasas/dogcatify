@@ -53,7 +53,10 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service, onPress }) =>
       setAverageRating(service.rating || 0);
       setTotalReviews(service.reviews || 0);
       
-      // Only fetch detailed reviews when modal is opened
+      console.log('Service reviews set from partner data:', {
+        rating: service.rating || 0,
+        reviews: service.reviews || 0
+      });
     } catch (error) {
       console.error('Error setting service reviews:', error);
     }
@@ -65,6 +68,19 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service, onPress }) =>
     setLoadingReviews(true);
     try {
       console.log('Fetching detailed reviews for partner:', service.partnerId);
+      
+      // Validate partner ID is a valid UUID
+      if (!service.partnerId || typeof service.partnerId !== 'string') {
+        console.error('Invalid partner ID:', service.partnerId);
+        return;
+      }
+      
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(service.partnerId)) {
+        console.error('Partner ID is not a valid UUID:', service.partnerId);
+        return;
+      }
+      
       const { data: reviewsData, error } = await supabaseClient
         .from('service_reviews')
         .select(`
@@ -80,7 +96,10 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service, onPress }) =>
         .order('created_at', { ascending: false })
         .limit(50); // Load more reviews for the modal
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching reviews:', error);
+        return; // Don't throw, just return
+      }
 
       console.log('Reviews data received:', reviewsData?.length || 0);
       

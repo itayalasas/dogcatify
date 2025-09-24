@@ -298,6 +298,13 @@ export default function PartnerServices() {
     setLoadingDetailedReviews(true);
     try {
       console.log('Fetching detailed reviews for partner:', partner?.id);
+      
+      // Validate partner ID
+      if (!partner?.id || typeof partner.id !== 'string') {
+        console.error('Invalid partner ID for reviews:', partner?.id);
+        return;
+      }
+      
       const { data: reviewsData, error } = await supabaseClient
         .from('service_reviews')
         .select(`
@@ -313,7 +320,10 @@ export default function PartnerServices() {
         .order('created_at', { ascending: false })
         .limit(50);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching detailed reviews:', error);
+        return; // Don't throw, just return
+      }
 
       console.log('Reviews data received:', reviewsData?.length || 0);
       

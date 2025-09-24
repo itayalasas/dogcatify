@@ -411,16 +411,16 @@ export default function ServiceDetail() {
                     style={styles.petItem}
                     onPress={() => handleSelectPet(pet.id)}
                   >
-                    <View style={styles.petImage}>
-                      {pet.photo_url ? (
-                        <Image source={{ uri: pet.photo_url }} style={styles.petImage} />
-                      ) : (
-                        <Text style={styles.logoPlaceholderText}>
+                    {pet.photo_url ? (
+                      <Image source={{ uri: pet.photo_url }} style={styles.petItemImage} />
+                    ) : (
+                      <View style={styles.petItemImagePlaceholder}>
+                        <Text style={styles.petItemImageText}>
                           {pet.species === 'dog' ? '🐕' : 
                            pet.species === 'cat' ? '🐱' : '🐾'}
                         </Text>
-                      )}
-                    </View>
+                      </View>
+                    )}
                     <View style={styles.petInfo}>
                       <Text style={styles.petName}>{pet.name}</Text>
                       <Text style={styles.petBreed}>
@@ -813,7 +813,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
-  petImage: {
+  petItemImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 12,
+  },
+  petItemImagePlaceholder: {
     width: 50,
     height: 50,
     borderRadius: 25,
@@ -821,6 +827,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  petItemImageText: {
+    fontSize: 20,
   },
   petInfo: {
     flex: 1,
