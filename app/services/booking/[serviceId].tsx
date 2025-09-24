@@ -37,14 +37,16 @@ export default function ServiceBooking() {
   const [service, setService] = useState<any>(null);
   const [partner, setPartner] = useState<any>(null);
   const [pet, setPet] = useState<any>(null);
+  const [partnerSchedule, setPartnerSchedule] = useState<any[]>([]);
+  const [availableDates, setAvailableDates] = useState<Date[]>([]);
+  const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
+  const [existingBookings, setExistingBookings] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedTime, setSelectedTime] = useState<string>('');
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
-  const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState(false);
+  const [loadingTimeSlots, setLoadingTimeSlots] = useState(false);
 
   useEffect(() => {
     if (serviceId && partnerId && petId) {
@@ -55,6 +57,11 @@ export default function ServiceBooking() {
     }
   }, [serviceId, partnerId, petId]);
 
+  useEffect(() => {
+    if (selectedDate && partnerSchedule.length > 0) {
+      fetchAvailableTimeSlots(selectedDate);
+    }
+  }, [selectedDate, partnerSchedule]);
   const fetchBookingData = async () => {
     try {
       console.log('Fetching booking data...');
@@ -89,10 +96,13 @@ export default function ServiceBooking() {
       if (petError) throw petError;
       setPet(petData);
       
-      console.log('All booking data fetched successfully');
+      // Fetch partner schedule
+      await fetchPartnerSchedule();
       
-      // Generate available time slots for today and future dates
-      generateAvailableTimeSlots();
+      // Fetch existing bookings
+      await fetchExistingBookings();
+      
+      console.log('All booking data fetched successfully');
     } catch (error) {
       console.error('Error fetching booking data:', error);
       Alert.alert('Error', 'No se pudo cargar la información de la reserva');
@@ -101,40 +111,179 @@ export default function ServiceBooking() {
     }
   };
 
-  const generateAvailableTimeSlots = () => {
-    // Generate time slots from 9 AM to 6 PM with 1-hour intervals
+  const fetchPartnerSchedule = async () => {
+    try {
+      console.log('Fetching partner schedule for:', partnerId);
+      
+      const { data: scheduleData, error } = await supabaseClient
+        .from('partner_schedules')
+        .select('*')
+        .eq('partner_id', partnerId)
+        .eq('is_active', true)
+        .order('day_of_week', { ascending: true });
+      
+      if (error) {
+        console.error('Error fetching schedule:', error);
+        // Si no hay horarios configurados, usar horarios por defecto
+        generateDefaultSchedule();
+        return;
+      }
+      
+      console.log('Partner schedule found:', scheduleData?.length || 0, 'days');
+      setPartnerSchedule(scheduleData || []);
+      
+      if (!scheduleData || scheduleData.length === 0) {
+        generateDefaultSchedule();
+      } else {
+        generateAvailableDates(scheduleData);
+      }
+    } catch (error) {
+      console.error('Error fetching partner schedule:', error);
+      generateDefaultSchedule();
+    }
+  };
+
+  const generateDefaultSchedule = () => {
+    console.log('Generating default schedule (Mon-Fri 9-18)');
+    const defaultSchedule = [];
+    
+    // Lunes a Viernes (1-5), 9:00 AM a 6:00 PM
+    for (let day = 1; day <= 5; day++) {
+      defaultSchedule.push({
+        day_of_week: day,
+        start_time: '09:00',
+        end_time: '18:00',
+        slot_duration: 60, // 60 minutos por cita
+        max_slots: 8, // 8 citas por día
+        is_active: true
+      });
+    }
+    
+    setPartnerSchedule(defaultSchedule);
+    generateAvailableDates(defaultSchedule);
+  };
+
+  const generateAvailableDates = (schedule: any[]) => {
+    const dates = [];
+    const today = new Date();
+    
+    // Generar fechas para los próximos 30 días
+    for (let i = 0; i < 30; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      
+      const dayOfWeek = date.getDay(); // 0 = Domingo, 1 = Lunes, etc.
+      
+      // Verificar si el negocio está abierto este día
+      const isOpenThisDay = schedule.some(s => s.day_of_week === dayOfWeek && s.is_active);
+      
+      if (isOpenThisDay) {
+        dates.push(date);
+      }
+    }
+    
+    console.log('Available dates generated:', dates.length);
+    setAvailableDates(dates);
+  };
+
+  const fetchExistingBookings = async () => {
+    try {
+      console.log('Fetching existing bookings for partner:', partnerId);
+      
+      const { data: bookingsData, error } = await supabaseClient
+        .from('bookings')
+        .select('date, time, status')
+        .eq('partner_id', partnerId)
+        .in('status', ['pending', 'confirmed'])
+        .gte('date', new Date().toISOString());
+      
+      if (error) {
+        console.error('Error fetching bookings:', error);
+        setExistingBookings([]);
+        return;
+      }
+      
+      console.log('Existing bookings found:', bookingsData?.length || 0);
+      setExistingBookings(bookingsData || []);
+    } catch (error) {
+      console.error('Error fetching existing bookings:', error);
+      setExistingBookings([]);
+    }
+  };
+
+  const fetchAvailableTimeSlots = async (date: Date) => {
+    setLoadingTimeSlots(true);
+    try {
+      console.log('Fetching time slots for date:', date.toDateString());
+      
+      const dayOfWeek = date.getDay();
+      
+      // Encontrar el horario para este día de la semana
+      const daySchedule = partnerSchedule.find(s => s.day_of_week === dayOfWeek);
+      
+      if (!daySchedule) {
+        console.log('No schedule found for day:', dayOfWeek);
+        setAvailableTimeSlots([]);
+        return;
+      }
+      
+      console.log('Day schedule found:', daySchedule);
+      
+      // Generar slots de tiempo basados en el horario del negocio
+      const slots = generateTimeSlotsForDay(daySchedule);
+      
+      // Filtrar slots que ya están ocupados
+      const dateString = date.toISOString().split('T')[0];
+      const bookedTimes = existingBookings
+        .filter(booking => booking.date.startsWith(dateString))
+        .map(booking => booking.time);
+      
+      const availableSlots = slots.filter(slot => !bookedTimes.includes(slot));
+      
+      console.log('Generated slots:', slots.length);
+      console.log('Booked times:', bookedTimes);
+      console.log('Available slots:', availableSlots.length);
+      
+      setAvailableTimeSlots(availableSlots);
+    } catch (error) {
+      console.error('Error fetching time slots:', error);
+      setAvailableTimeSlots([]);
+    } finally {
+      setLoadingTimeSlots(false);
+    }
+  };
+
+  const generateTimeSlotsForDay = (daySchedule: any): string[] => {
     const slots = [];
-    for (let hour = 9; hour <= 18; hour++) {
-      const timeString = `${hour.toString().padStart(2, '0')}:00`;
+    const startTime = daySchedule.start_time; // "09:00"
+    const endTime = daySchedule.end_time; // "18:00"
+    const slotDuration = daySchedule.slot_duration || 60; // minutos
+    
+    const [startHour, startMinute] = startTime.split(':').map(Number);
+    const [endHour, endMinute] = endTime.split(':').map(Number);
+    
+    const startMinutes = startHour * 60 + startMinute;
+    const endMinutes = endHour * 60 + endMinute;
+    
+    for (let minutes = startMinutes; minutes < endMinutes; minutes += slotDuration) {
+      const hour = Math.floor(minutes / 60);
+      const minute = minutes % 60;
+      const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
       slots.push(timeString);
     }
-    setAvailableTimeSlots(slots);
     
-    // Set default time to first available slot
-    if (slots.length > 0) {
-      setSelectedTime(slots[0]);
-    }
+    return slots;
   };
 
-  const handleDateChange = (event: any, date?: Date) => {
-    setShowDatePicker(false);
-    if (date) {
-      setSelectedDate(date);
-      console.log('Fecha seleccionada:', date.toLocaleDateString());
-    }
+  const handleDateSelect = (date: Date) => {
+    console.log('Fecha seleccionada:', date.toDateString());
+    setSelectedDate(date);
+    setSelectedTime(''); // Reset selected time when date changes
   };
 
-  const handleTimeChange = (event: any, time?: Date) => {
-    setShowTimePicker(false);
-    if (time) {
-      const timeString = time.toLocaleTimeString('es-ES', { 
-        hour: '2-digit', 
-        minute: '2-digit',
-        hour12: false 
-      });
-      setSelectedTime(timeString);
-      console.log('Hora seleccionada:', timeString);
-    }
+  const handleTimeSelect = (time: string) => {
+    console.log('Hora seleccionada:', time);
+    setSelectedTime(time);
   };
 
   const formatDate = (date: Date) => {
@@ -146,6 +295,14 @@ export default function ServiceBooking() {
     });
   };
 
+  const formatDateShort = (date: Date) => {
+    return date.toLocaleDateString('es-ES', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short'
+    });
+  };
+
   const isDateValid = (date: Date) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -153,18 +310,15 @@ export default function ServiceBooking() {
     return date >= today;
   };
 
-  const isTimeSlotAvailable = (timeSlot: string) => {
-    // For now, all time slots are available
-    // In a real app, you would check against existing bookings
-    return true;
-  };
-
-  const getMinimumDate = () => {
-    return new Date(); // Today
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: 'ARS',
+    }).format(price);
   };
 
   const handleConfirmBooking = async () => {
-    if (!selectedDate || !selectedTime || !isDateValid(selectedDate)) {
+    if (!selectedDate || !selectedTime) {
       Alert.alert('Error', 'Por favor selecciona fecha y hora');
       return;
     }
@@ -271,82 +425,105 @@ export default function ServiceBooking() {
         <Card style={styles.dateCard}>
           <Text style={styles.sectionTitle}>Fecha y Hora</Text>
           
-          {/* Date Picker */}
-          <View style={styles.dateTimeContainer}>
-            <Text style={styles.inputLabel}>Fecha de la cita *</Text>
-            <TouchableOpacity 
-              style={styles.dateTimeButton}
-              onPress={() => setShowDatePicker(true)}
-            >
-              <Calendar size={20} color="#6B7280" />
-              <Text style={styles.dateTimeButtonText}>
-                {formatDate(selectedDate)}
-              </Text>
-              <ChevronDown size={20} color="#6B7280" />
-            </TouchableOpacity>
-            
-            {showDatePicker && (
-              <DateTimePicker
-                value={selectedDate}
-                mode="date"
-                display="default"
-                onChange={handleDateChange}
-                minimumDate={getMinimumDate()}
-              />
-            )}
-          </View>
-
-          {/* Time Picker */}
-          <View style={styles.dateTimeContainer}>
-            <Text style={styles.inputLabel}>Hora de la cita *</Text>
-            <TouchableOpacity 
-              style={styles.dateTimeButton}
-              onPress={() => setShowTimePicker(true)}
-            >
-              <Clock size={20} color="#6B7280" />
-              <Text style={styles.dateTimeButtonText}>
-                {selectedTime || 'Seleccionar hora'}
-              </Text>
-              <ChevronDown size={20} color="#6B7280" />
-            </TouchableOpacity>
-            
-            {showTimePicker && (
-              <DateTimePicker
-                value={new Date(`2000-01-01T${selectedTime || '09:00'}:00`)}
-                mode="time"
-                display="default"
-                onChange={handleTimeChange}
-                is24Hour={true}
-              />
-            )}
-          </View>
-
-          {/* Available Time Slots */}
-          {availableTimeSlots.length > 0 && (
-            <View style={styles.timeSlotsContainer}>
-              <Text style={styles.timeSlotsTitle}>Horarios disponibles:</Text>
-              <View style={styles.timeSlots}>
-                {availableTimeSlots.map((timeSlot) => (
-                  <TouchableOpacity
-                    key={timeSlot}
-                    style={[
-                      styles.timeSlot,
-                      selectedTime === timeSlot && styles.selectedTimeSlot,
-                      !isTimeSlotAvailable(timeSlot) && styles.unavailableTimeSlot
-                    ]}
-                    onPress={() => setSelectedTime(timeSlot)}
-                    disabled={!isTimeSlotAvailable(timeSlot)}
-                  >
-                    <Text style={[
-                      styles.timeSlotText,
-                      selectedTime === timeSlot && styles.selectedTimeSlotText,
-                      !isTimeSlotAvailable(timeSlot) && styles.unavailableTimeSlotText
-                    ]}>
-                      {timeSlot}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+          {/* Step 1: Date Selection */}
+          <View style={styles.dateSelectionContainer}>
+            <Text style={styles.stepTitle}>1. Selecciona una fecha</Text>
+            {availableDates.length === 0 ? (
+              <View style={styles.noAvailabilityContainer}>
+                <Text style={styles.noAvailabilityText}>
+                  No hay fechas disponibles en este momento
+                </Text>
               </View>
+            ) : (
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                style={styles.datesScroll}
+                contentContainerStyle={styles.datesScrollContent}
+              >
+                {availableDates.slice(0, 14).map((date, index) => {
+                  const isSelected = selectedDate && 
+                    date.toDateString() === selectedDate.toDateString();
+                  const isToday = date.toDateString() === new Date().toDateString();
+                  
+                  return (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.dateButton,
+                        isSelected && styles.selectedDateButton,
+                        isToday && styles.todayDateButton
+                      ]}
+                      onPress={() => handleDateSelect(date)}
+                    >
+                      <Text style={[
+                        styles.dateButtonDay,
+                        isSelected && styles.selectedDateButtonText,
+                        isToday && styles.todayDateButtonText
+                      ]}>
+                        {formatDateShort(date).split(' ')[0]}
+                      </Text>
+                      <Text style={[
+                        styles.dateButtonDate,
+                        isSelected && styles.selectedDateButtonText,
+                        isToday && styles.todayDateButtonText
+                      ]}>
+                        {date.getDate()}
+                      </Text>
+                      <Text style={[
+                        styles.dateButtonMonth,
+                        isSelected && styles.selectedDateButtonText,
+                        isToday && styles.todayDateButtonText
+                      ]}>
+                        {formatDateShort(date).split(' ')[1]}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            )}
+          </View>
+
+          {/* Step 2: Time Selection */}
+          {selectedDate && (
+            <View style={styles.timeSelectionContainer}>
+              <Text style={styles.stepTitle}>
+                2. Selecciona una hora para {formatDate(selectedDate)}
+              </Text>
+              
+              {loadingTimeSlots ? (
+                <View style={styles.loadingTimeSlotsContainer}>
+                  <Text style={styles.loadingTimeSlotsText}>
+                    Cargando horarios disponibles...
+                  </Text>
+                </View>
+              ) : availableTimeSlots.length === 0 ? (
+                <View style={styles.noTimeSlotsContainer}>
+                  <Text style={styles.noTimeSlotsText}>
+                    No hay horarios disponibles para esta fecha
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.timeSlots}>
+                  {availableTimeSlots.map((timeSlot) => (
+                    <TouchableOpacity
+                      key={timeSlot}
+                      style={[
+                        styles.timeSlot,
+                        selectedTime === timeSlot && styles.selectedTimeSlot
+                      ]}
+                      onPress={() => handleTimeSelect(timeSlot)}
+                    >
+                      <Text style={[
+                        styles.timeSlotText,
+                        selectedTime === timeSlot && styles.selectedTimeSlotText
+                      ]}>
+                        {timeSlot}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
             </View>
           )}
         </Card>
@@ -367,7 +544,7 @@ export default function ServiceBooking() {
           title={`Confirmar Reserva - ${service?.price ? formatPrice(service.price) : 'Gratis'}`}
           onPress={handleConfirmBooking}
           loading={booking}
-          disabled={!selectedDate || !selectedTime || !isDateValid(selectedDate)}
+          disabled={!selectedDate || !selectedTime}
           size="large"
         />
       </ScrollView>
@@ -431,6 +608,122 @@ const styles = StyleSheet.create({
   notesCard: {
     marginBottom: 24,
   },
+  dateSelectionContainer: {
+    marginBottom: 24,
+  },
+  timeSelectionContainer: {
+    marginBottom: 16,
+  },
+  stepTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#111827',
+    marginBottom: 16,
+  },
+  noAvailabilityContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  noAvailabilityText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  datesScroll: {
+    marginBottom: 8,
+  },
+  datesScrollContent: {
+    paddingHorizontal: 4,
+  },
+  dateButton: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    marginHorizontal: 4,
+    minWidth: 70,
+    alignItems: 'center',
+  },
+  selectedDateButton: {
+    backgroundColor: '#2D6A6F',
+    borderColor: '#2D6A6F',
+  },
+  todayDateButton: {
+    borderColor: '#3B82F6',
+    borderWidth: 2,
+  },
+  dateButtonDay: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+    marginBottom: 2,
+  },
+  dateButtonDate: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: '#111827',
+    marginBottom: 2,
+  },
+  dateButtonMonth: {
+    fontSize: 11,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+  },
+  selectedDateButtonText: {
+    color: '#FFFFFF',
+  },
+  todayDateButtonText: {
+    color: '#3B82F6',
+  },
+  loadingTimeSlotsContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  loadingTimeSlotsText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+  },
+  noTimeSlotsContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  noTimeSlotsText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  timeSlots: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  timeSlot: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  selectedTimeSlot: {
+    backgroundColor: '#2D6A6F',
+    borderColor: '#2D6A6F',
+  },
+  timeSlotText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+  },
+  selectedTimeSlotText: {
+    color: '#FFFFFF',
+  },
   sectionTitle: {
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
@@ -453,126 +746,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
-  },
-  partnerInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  partnerLogo: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 12,
-  },
-  partnerDetails: {
-    flex: 1,
-  },
-  partnerName: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  partnerAddress: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-  },
-  petInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  petPhoto: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 12,
-  },
-  petDetails: {
-    flex: 1,
-  },
-  petName: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  petBreed: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-  },
-  dateTimeContainer: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 15,
-    fontFamily: 'Inter-Medium',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  dateTimeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    minHeight: 50,
-  },
-  dateTimeButtonText: {
-    fontSize: 15,
-    fontFamily: 'Inter-Regular',
-    color: '#111827',
-    flex: 1,
-    marginLeft: 12,
-  },
-  timeSlotsContainer: {
-    marginTop: 16,
-  },
-  timeSlotsTitle: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    color: '#374151',
-    marginBottom: 12,
-  },
-  timeSlots: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  timeSlot: {
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    minWidth: 80,
-    alignItems: 'center',
-  },
-  selectedTimeSlot: {
-    backgroundColor: '#2D6A6F',
-    borderColor: '#2D6A6F',
-  },
-  unavailableTimeSlot: {
-    backgroundColor: '#F3F4F6',
-    borderColor: '#E5E7EB',
-    opacity: 0.5,
-  },
-  timeSlotText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#374151',
-  },
-  selectedTimeSlotText: {
-    color: '#FFFFFF',
-    fontFamily: 'Inter-SemiBold',
-  },
-  unavailableTimeSlotText: {
-    color: '#9CA3AF',
   },
 });
