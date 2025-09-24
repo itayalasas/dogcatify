@@ -275,26 +275,16 @@ export default function Services() {
           )}
           
           {!loading && !error && currentUser && filteredPartners.length > 0 && (
-            <FlatList
-              data={filteredPartners}
-              renderItem={({ item }) => (
+            <View style={styles.servicesGrid}>
+              {filteredPartners.map((item) => (
                 <ServiceCard
                   key={item.partnerId}
                   service={item}
                   onPress={() => handlePartnerPress(item.partnerId)}
                 />
-              )}
-              keyExtractor={(item) => item.partnerId}
-              onEndReached={loadMorePartners}
-              onEndReachedThreshold={0.3}
-              ListFooterComponent={renderFooter}
-              showsVerticalScrollIndicator={false}
-              initialNumToRender={INITIAL_LOAD}
-              maxToRenderPerBatch={ITEMS_PER_PAGE}
-              windowSize={10}
-              removeClippedSubviews={true}
-              scrollEventThrottle={16}
-            />
+              ))}
+              {renderFooter()}
+            </View>
           )}
         </View>
       </ScrollView>
@@ -361,6 +351,7 @@ const styles = StyleSheet.create({
   },
   servicesGrid: {
     flex: 1,
+    paddingBottom: 20,
   },
   loadingContainer: {
     flex: 1,

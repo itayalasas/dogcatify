@@ -73,10 +73,23 @@ export default function PetAppointments() {
       
       const bookingIds = completedAppointments.map(apt => apt.id);
       
+      // Validate that all booking IDs are valid UUIDs
+      const validBookingIds = bookingIds.filter(id => 
+        typeof id === 'string' && 
+        id.length > 0 && 
+        id !== 'booking' &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+      );
+      
+      if (validBookingIds.length === 0) {
+        console.log('No valid booking IDs found for reviews');
+        return;
+      }
+      
       const { data: reviews, error } = await supabaseClient
         .from('service_reviews')
         .select('*')
-        .in('booking_id', bookingIds);
+        .in('booking_id', validBookingIds);
       
       if (error) throw error;
       

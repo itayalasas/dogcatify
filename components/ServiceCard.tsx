@@ -67,7 +67,15 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service, onPress }) =>
       console.log('Fetching detailed reviews for partner:', service.partnerId);
       const { data: reviewsData, error } = await supabaseClient
         .from('service_reviews')
-        .select('*')
+        .select(`
+          id,
+          rating,
+          comment,
+          created_at,
+          customer_id,
+          service_id,
+          partner_id
+        `)
         .eq('partner_id', service.partnerId)
         .order('created_at', { ascending: false })
         .limit(50); // Load more reviews for the modal

@@ -89,22 +89,60 @@ export default function ServiceDetail() {
       const { data: reviewsData, error } = await supabaseClient
         .from('service_reviews')
         .select(`
-          *,
-          profiles:customer_id(display_name, photo_url),
-          pets:pet_id(name)
+          id,
+          rating,
+          comment,
+          created_at,
+          customer_id,
+          service_id,
+          pet_id
         `)
         .eq('service_id', id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      setReviews(reviewsData || []);
+      // Fetch user profiles and pet names for each review
+      const enrichedReviews = await Promise.all(
+        (reviewsData || []).map(async (review) => {
+          try {
+            // Fetch user profile
+            const { data: userProfile } = await supabaseClient
+              .from('profiles')
+              .select('display_name, photo_url')
+              .eq('id', review.customer_id)
+              .single();
+            
+            // Fetch pet name
+            const { data: petData } = await supabaseClient
+              .from('pets')
+              .select('name')
+              .eq('id', review.pet_id)
+              .single();
+            
+            return {
+              ...review,
+              profiles: userProfile,
+              pets: petData
+            };
+          } catch (error) {
+            console.error('Error enriching review:', error);
+            return {
+              ...review,
+              profiles: null,
+              pets: null
+            };
+          }
+        })
+      );
+      
+      setReviews(enrichedReviews);
       
       // Calculate average rating
-      if (reviewsData && reviewsData.length > 0) {
-        const avgRating = reviewsData.reduce((sum, review) => sum + review.rating, 0) / reviewsData.length;
+      if (enrichedReviews && enrichedReviews.length > 0) {
+        const avgRating = enrichedReviews.reduce((sum, review) => sum + review.rating, 0) / enrichedReviews.length;
         setAverageRating(avgRating);
-        setTotalReviews(reviewsData.length);
+        setTotalReviews(enrichedReviews.length);
       }
     } catch (error) {
       console.error('Error fetching service reviews:', error);

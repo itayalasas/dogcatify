@@ -300,7 +300,15 @@ export default function PartnerServices() {
       console.log('Fetching detailed reviews for partner:', partner?.id);
       const { data: reviewsData, error } = await supabaseClient
         .from('service_reviews')
-        .select('*')
+        .select(`
+          id,
+          rating,
+          comment,
+          created_at,
+          customer_id,
+          service_id,
+          partner_id
+        `)
         .eq('partner_id', partner?.id)
         .order('created_at', { ascending: false })
         .limit(50);

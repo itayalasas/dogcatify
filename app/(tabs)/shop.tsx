@@ -154,27 +154,24 @@ export default function Shop() {
           <View style={styles.emptyContainer}>
             <Package size={64} color="#9CA3AF" />
             <Text style={styles.emptyTitle}>{t('noProductsAvailable')}</Text> 
-            <Text style={styles.emptySubtitle}>
-              placeholder={t('search') + ' productos...'}
-                ? t('noProductsAvailable')
-                : t('noProductsInCategory')
+                {searchQuery 
+                  ? 'No se encontraron productos que coincidan con tu búsqueda'
+                  : t('noProductsInCategory')
+                }
               }
             </Text>
           </View>
-        ) : (
-          <FlatGrid
-            itemDimension={160}
-            data={filteredProducts}
-            spacing={8}
-            renderItem={({ item }) => (
-              <ProductCard
-                product={item}
-                onPress={() => handleProductPress(item.id)}
-                onAddToCart={() => handleAddToCart(item.id)}
-              />
-            )}
-            staticDimension={undefined}
-            maxItemsPerRow={2}
+            <View style={styles.productsGrid}>
+              {filteredProducts.map((item) => (
+                <View key={item.id} style={styles.productWrapper}>
+                  <ProductCard
+                    product={item}
+                    onPress={() => handleProductPress(item.id)}
+                    onAddToCart={() => handleAddToCart(item.id)}
+                  />
+                </View>
+              ))}
+            </View>
           />
         )}
       </View>
@@ -357,5 +354,15 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 24,
+  },
+  productsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+  },
+  productWrapper: {
+    width: '48%',
+    marginBottom: 16,
   },
 });
