@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, Image } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Calendar, Clock, MapPin, User, ChevronDown } from 'lucide-react-native';
+import { ArrowLeft, Calendar, Clock, MapPin, User, ChevronDown, CreditCard } from 'lucide-react-native';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { useAuth } from '../../../contexts/AuthContext';
 import { supabaseClient } from '@/lib/supabase';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { createServiceBookingOrder } from '../../../utils/mercadoPago';
 
 export default function ServiceBooking() {
   const { serviceId, partnerId, petId } = useLocalSearchParams<{
@@ -325,6 +326,48 @@ export default function ServiceBooking() {
 
     setBooking(true);
     try {
+      console.log('Creating booking with Mercado Pago payment...');
+      
+      // Create order and get Mercado Pago payment URL
+      const orderResult = await createServiceBookingOrder({
+        serviceId: serviceId!,
+        partnerId: partnerId!,
+        customerId: currentUser!.id,
+        petId: petId!,
+        date: selectedDate,
+        time: selectedTime,
+        notes: notes.trim() || null,
+        serviceName: service?.name || 'Servicio',
+        partnerName: partner?.business_name || 'Proveedor',
+        petName: pet?.name || 'Mascota',
+        totalAmount: service?.price || 0,
+        customerInfo: {
+          id: currentUser!.id,
+          email: currentUser!.email,
+          displayName: currentUser!.displayName || 'Cliente',
+          phone: currentUser!.phone || ''
+        }
+      });
+      
+      if (orderResult.success && orderResult.paymentUrl) {
+        console.log('Order created successfully, redirecting to payment...');
+        
+        // Redirect to Mercado Pago for payment
+        const { Linking } = require('react-native');
+        await Linking.openURL(orderResult.paymentUrl);
+        
+        // Navigate back to services after initiating payment
+        router.push('/(tabs)/services');
+      } else {
+        throw new Error(orderResult.error || 'No se pudo crear la orden de pago');
+      }
+    } catch (error) {
+      console.error('Error creating booking with payment:', error);
+      Alert.alert('Error', error.message || 'No se pudo procesar el pago de la reserva');
+    } finally {
+      setBooking(false);
+    }
+  };
       const bookingData = {
         service_id: serviceId,
         partner_id: partnerId,
@@ -397,8 +440,19 @@ export default function ServiceBooking() {
         <Card style={styles.partnerCard}>
           <Text style={styles.sectionTitle}>Proveedor</Text>
           <View style={styles.partnerInfo}>
-            {partner?.logo && (
+            {partner?.logo ? (
               <Image source={{ uri: partner.logo }} style={styles.partnerLogo} />
+            ) : (
+              <View style={styles.partnerLogoPlaceholder}>
+                <Text style={styles.partnerLogoPlaceholderText}>
+                  {partner?.business_type === 'veterinary' ? '🏥' : 
+                   partner?.business_type === 'grooming' ? '✂️' : 
+                   partner?.business_type === 'walking' ? '🚶' : 
+                   partner?.business_type === 'boarding' ? '🏠' : 
+                   partner?.business_type === 'shop' ? '🛍️' : 
+                   partner?.business_type === 'shelter' ? '🐾' : '🏢'}
+                </Text>
+              </View>
             )}
             <View style={styles.partnerDetails}>
               <Text style={styles.partnerName}>{partner?.business_name}</Text>
@@ -411,8 +465,15 @@ export default function ServiceBooking() {
         <Card style={styles.petCard}>
           <Text style={styles.sectionTitle}>Mascota</Text>
           <View style={styles.petInfo}>
-            {pet?.photo_url && (
+            {pet?.photo_url ? (
               <Image source={{ uri: pet.photo_url }} style={styles.petPhoto} />
+            ) : (
+              <View style={styles.petPhotoPlaceholder}>
+                <Text style={styles.petPhotoPlaceholderText}>
+                  {pet?.species === 'dog' ? '🐕' : 
+                   pet?.species === 'cat' ? '🐱' : '🐾'}
+                </Text>
+              </View>
             )}
             <View style={styles.petDetails}>
               <Text style={styles.petName}>{pet?.name}</Text>
@@ -543,8 +604,14 @@ export default function ServiceBooking() {
 
       {/* Fixed Bottom Button */}
       <View style={styles.bottomButtonContainer}>
+        <View style={styles.paymentInfo}>
+          <CreditCard size={16} color="#6B7280" />
+          <Text style={styles.paymentInfoText}>
+            Pago seguro con Mercado Pago
+          </Text>
+        </View>
         <Button
-          title={`Confirmar Reserva - ${service?.price ? formatPrice(service.price) : 'Gratis'}`}
+          title={`Pagar y Confirmar - ${service?.price ? formatPrice(service.price) : 'Gratis'}`}
           onPress={handleConfirmBooking}
           loading={booking}
           disabled={!selectedDate || !selectedTime}
