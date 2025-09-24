@@ -15,6 +15,15 @@ export default function ServiceBooking() {
     petId: string;
   }>();
   
+  // Logs detallados al montar el componente
+  console.log('=== ServiceBooking Component Mount ===');
+  console.log('📋 Parámetros recibidos:');
+  console.log('  - serviceId:', serviceId);
+  console.log('  - partnerId:', partnerId);
+  console.log('  - petId:', petId);
+  console.log('📍 Ruta actual:', router.pathname);
+  console.log('=== End ServiceBooking Mount ===');
+  
   const { currentUser } = useAuth();
   
   console.log('=== ServiceBooking Component Mount ===');

@@ -13,18 +13,13 @@ export default function ServiceDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { currentUser } = useAuth();
   
-  // Debug the received ID
-  useEffect(() => {
-    console.log('=== ServiceDetail Component Mount ===');
-    console.log('ServiceDetail - Received ID:', id);
-    console.log('ServiceDetail - ID type:', typeof id);
-    console.log('ServiceDetail - ID length:', id?.length);
-    console.log('ServiceDetail - Current route:', router.pathname);
-    console.log('ServiceDetail - All params:', useLocalSearchParams());
-    console.log('ServiceDetail - Stack trace for debugging:');
-    console.trace('ServiceDetail mount trace');
-    console.log('=== End ServiceDetail Debug ===');
-  }, [id]);
+  // Debug the received ID - MOVED OUTSIDE useEffect
+  console.log('=== ServiceDetail Component Render ===');
+  console.log('ServiceDetail - Received ID:', id);
+  console.log('ServiceDetail - ID type:', typeof id);
+  console.log('ServiceDetail - ID length:', id?.length);
+  console.log('ServiceDetail - Current user:', currentUser?.id);
+  console.log('=== End ServiceDetail Debug ===');
   
   const [service, setService] = useState<any>(null);
   const [partnerInfo, setPartnerInfo] = useState<any>(null);
@@ -221,37 +216,62 @@ export default function ServiceDetail() {
     console.log('Selected pet ID:', petId);
     console.log('Current service ID:', id);
     console.log('Current service partnerId:', service?.partnerId);
+    console.log('Cerrando modal...');
     console.log('About to close modal and navigate...');
     
     setSelectedPet(petId);
     
     // Validate all required data before navigation
-    if (!id || !service?.partnerId || !petId) {
-      console.error('Missing required data for booking:', { serviceId: id, partnerId: service?.partnerId, petId });
-      Alert.alert('Error', 'Información incompleta para la reserva');
-      return;
-    }
-    
-    // Validate UUIDs
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(id) || !uuidRegex.test(service.partnerId) || !uuidRegex.test(petId)) {
-      console.error('Invalid UUID format:', { serviceId: id, partnerId: service.partnerId, petId });
-      Alert.alert('Error', 'Datos de identificación inválidos');
-      return;
-    }
-    
-    console.log('=== NAVIGATION ATTEMPT ===');
-    console.log('Navigating to booking with validated data:', {
-      serviceId: id,
-      partnerId: service.partnerId,
-      petId: petId
-    });
-    console.log('Current router pathname before navigation:', router.pathname);
-    console.log('Target pathname will be: /services/booking/[serviceId]');
-    
-    // Close modal FIRST
-    console.log('Closing booking modal...');
     setShowBookingModal(false);
+    
+    console.log('Modal cerrado, esperando antes de navegar...');
+    
+    // Esperar un momento para que el modal se cierre completamente
+    setTimeout(() => {
+      console.log('=== INICIANDO NAVEGACIÓN DESPUÉS DEL DELAY ===');
+      console.log('Datos para navegación:', {
+        serviceId: id,
+        partnerId: service?.partnerId,
+        petId: petId
+      });
+      
+      // Validar datos antes de navegar
+      if (!id || !service?.partnerId || !petId) {
+        console.error('❌ Faltan datos requeridos:', { serviceId: id, partnerId: service?.partnerId, petId });
+        Alert.alert('Error', 'Información incompleta para la reserva');
+        return;
+      }
+      
+      // Validar formato UUID
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(id) || !uuidRegex.test(service.partnerId) || !uuidRegex.test(petId)) {
+        console.error('❌ Formato UUID inválido:', { serviceId: id, partnerId: service.partnerId, petId });
+        Alert.alert('Error', 'Datos de identificación inválidos');
+        return;
+      }
+      
+      console.log('✅ Validación exitosa, navegando...');
+      
+      try {
+        console.log('🚀 Ejecutando router.push...');
+        router.push({
+          pathname: '/services/booking/[serviceId]',
+          params: {
+            serviceId: id,
+            partnerId: service.partnerId,
+            petId: petId
+          }
+        });
+        console.log('✅ router.push ejecutado exitosamente');
+      } catch (navigationError) {
+        console.error('❌ Error en la navegación:', navigationError);
+        Alert.alert('Error', 'No se pudo navegar a la pantalla de reserva');
+      }
+      
+      console.log('=== FIN DE NAVEGACIÓN ===');
+    }, 500); // Esperar 500ms para que el modal se cierre
+    
+    console.log('=== handleSelectPet FIN ===');
   };
 
   const handleShowReviews = () => {
