@@ -66,7 +66,12 @@ export default function ServiceDetail() {
         setService({
           id: serviceData.id,
           name: serviceData.name,
-        router.push(`/services/booking/${id}?partnerId=${service.partnerId}&petId=${petId}`);
+          description: serviceData.description,
+          price: serviceData.price,
+          duration: serviceData.duration,
+          partnerId: serviceData.partner_id,
+          images: serviceData.images
+        });
         
         // Fetch partner info
         if (serviceData.partner_id) {
