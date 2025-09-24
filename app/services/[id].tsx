@@ -252,29 +252,6 @@ export default function ServiceDetail() {
     // Close modal FIRST
     console.log('Closing booking modal...');
     setShowBookingModal(false);
-    
-    // Add a small delay to ensure modal is closed
-    setTimeout(() => {
-      console.log('=== EXECUTING NAVIGATION ===');
-      console.log('About to call router.push with serviceId:', id);
-      
-      try {
-        // Navigate to booking screen with service and pet info
-        router.push({
-          pathname: '/services/booking',
-          params: { 
-            serviceId: id,
-            partnerId: service.partnerId,
-            petId: petId
-          }
-        });
-      } catch (navigationError) {
-        console.error('Navigation error:', navigationError);
-        Alert.alert('Error', 'No se pudo navegar a la pantalla de reserva');
-      }
-      
-      console.log('=== handleSelectPet END ===');
-    }, 100);
   };
 
   const handleShowReviews = () => {
