@@ -407,8 +407,19 @@ export default function ServiceBooking() {
         <Card style={styles.partnerCard}>
           <Text style={styles.sectionTitle}>Proveedor</Text>
           <View style={styles.partnerInfo}>
-            {partner?.logo && (
+            {partner?.logo ? (
               <Image source={{ uri: partner.logo }} style={styles.partnerLogo} />
+            ) : (
+              <View style={styles.partnerLogoPlaceholder}>
+                <Text style={styles.partnerLogoPlaceholderText}>
+                  {partner?.business_type === 'veterinary' ? '🏥' : 
+                   partner?.business_type === 'grooming' ? '✂️' : 
+                   partner?.business_type === 'walking' ? '🚶' : 
+                   partner?.business_type === 'boarding' ? '🏠' : 
+                   partner?.business_type === 'shop' ? '🛍️' : 
+                   partner?.business_type === 'shelter' ? '🐾' : '🏢'}
+                </Text>
+              </View>
             )}
             <View style={styles.partnerDetails}>
               <Text style={styles.partnerName}>{partner?.business_name}</Text>
@@ -421,8 +432,15 @@ export default function ServiceBooking() {
         <Card style={styles.petCard}>
           <Text style={styles.sectionTitle}>Mascota</Text>
           <View style={styles.petInfo}>
-            {pet?.photo_url && (
+            {pet?.photo_url ? (
               <Image source={{ uri: pet.photo_url }} style={styles.petPhoto} />
+            ) : (
+              <View style={styles.petPhotoPlaceholder}>
+                <Text style={styles.petPhotoPlaceholderText}>
+                  {pet?.species === 'dog' ? '🐕' : 
+                   pet?.species === 'cat' ? '🐱' : '🐾'}
+                </Text>
+              </View>
             )}
             <View style={styles.petDetails}>
               <Text style={styles.petName}>{pet?.name}</Text>
@@ -553,8 +571,14 @@ export default function ServiceBooking() {
 
       {/* Fixed Bottom Button */}
       <View style={styles.bottomButtonContainer}>
+        <View style={styles.paymentInfo}>
+          <CreditCard size={16} color="#6B7280" />
+          <Text style={styles.paymentInfoText}>
+            Pago seguro con Mercado Pago
+          </Text>
+        </View>
         <Button
-          title={`Confirmar Reserva - ${service?.price ? formatPrice(service.price) : 'Gratis'}`}
+          title={`Pagar y Confirmar - ${service?.price ? formatPrice(service.price) : 'Gratis'}`}
           onPress={handleConfirmBooking}
           loading={booking}
           disabled={!selectedDate || !selectedTime}
@@ -781,10 +805,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   partnerLogo: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 48,
+    height: 48,
+    borderRadius: 8,
     marginRight: 12,
+  },
+  partnerLogoPlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  partnerLogoPlaceholderText: {
+    fontSize: 20,
   },
   partnerDetails: {
     flex: 1,
@@ -793,7 +829,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
     color: '#111827',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   partnerAddress: {
     fontSize: 14,
@@ -805,10 +841,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   petPhoto: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     marginRight: 12,
+  },
+  petPhotoPlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  petPhotoPlaceholderText: {
+    fontSize: 20,
   },
   petDetails: {
     flex: 1,
@@ -817,11 +865,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
     color: '#111827',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   petBreed: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
+  },
+  paymentInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  paymentInfoText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginLeft: 4,
   },
 });
