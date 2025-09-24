@@ -15,9 +15,15 @@ export default function ServiceDetail() {
   
   // Debug the received ID
   useEffect(() => {
+    console.log('=== ServiceDetail Component Mount ===');
     console.log('ServiceDetail - Received ID:', id);
     console.log('ServiceDetail - ID type:', typeof id);
     console.log('ServiceDetail - ID length:', id?.length);
+    console.log('ServiceDetail - Current route:', router.pathname);
+    console.log('ServiceDetail - All params:', useLocalSearchParams());
+    console.log('ServiceDetail - Stack trace for debugging:');
+    console.trace('ServiceDetail mount trace');
+    console.log('=== End ServiceDetail Debug ===');
   }, [id]);
   
   const [service, setService] = useState<any>(null);
@@ -211,6 +217,12 @@ export default function ServiceDetail() {
   };
 
   const handleSelectPet = (petId: string) => {
+    console.log('=== handleSelectPet START ===');
+    console.log('Selected pet ID:', petId);
+    console.log('Current service ID:', id);
+    console.log('Current service partnerId:', service?.partnerId);
+    console.log('About to close modal and navigate...');
+    
     setSelectedPet(petId);
     
     // Validate all required data before navigation
@@ -228,12 +240,24 @@ export default function ServiceDetail() {
       return;
     }
     
+    console.log('=== NAVIGATION ATTEMPT ===');
     console.log('Navigating to booking with validated data:', {
       serviceId: id,
       partnerId: service.partnerId,
       petId: petId
     });
+    console.log('Current router pathname before navigation:', router.pathname);
+    console.log('Target pathname will be: /services/booking/[serviceId]');
     
+    // Close modal FIRST
+    console.log('Closing booking modal...');
+    setShowBookingModal(false);
+    
+    // Add a small delay to ensure modal is closed
+    setTimeout(() => {
+      console.log('=== EXECUTING NAVIGATION ===');
+      console.log('About to call router.push with serviceId:', id);
+      
     try {
       // Navigate to booking screen with service and pet info
       router.push({
@@ -251,22 +275,29 @@ export default function ServiceDetail() {
     
     setShowBookingModal(false);
   };
-
-  const handleShowReviews = () => {
-    setShowReviewsModal(true);
-  };
-
-  const calculateReviewPercentages = () => {
-    if (reviews.length === 0) return [];
-    
-    const counts = [0, 0, 0, 0, 0]; // For 1-5 stars
+        const navigationParams = {
+          pathname: '/services/booking/[serviceId]' as const,
+          params: { 
+            serviceId: id,
+            partnerId: service.partnerId,
+            petId: petId
+          }
+        };
+        
+        console.log('Navigation params object:', navigationParams);
+        console.log('Calling router.push...');
+        
+        router.push(navigationParams);
+        
+        console.log('router.push called successfully');
     reviews.forEach(review => {
-      if (review.rating >= 1 && review.rating <= 5) {
+        console.error('=== NAVIGATION ERROR ===', navigationError);
         counts[review.rating - 1]++;
       }
     });
-    
-    return counts.map((count, index) => ({
+      
+      console.log('=== handleSelectPet END ===');
+    }, 100);
       stars: index + 1,
       count,
       percentage: reviews.length > 0 ? (count / reviews.length) * 100 : 0

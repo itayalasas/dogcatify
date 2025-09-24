@@ -24,6 +24,12 @@ Notifications.setNotificationHandler({
 export default function RootLayout() {
   useFrameworkReady();
 
+  // Add navigation state logging
+  useEffect(() => {
+    console.log('=== RootLayout Mount ===');
+    console.log('Available routes being registered...');
+  }, []);
+
   // Prevent Supabase from showing automatic modals
   useEffect(() => {
     // Set up notification listeners for production
@@ -99,10 +105,13 @@ export default function RootLayout() {
                   <Stack.Screen name="services/[id]" />
                   <Stack.Screen name="services/partner/[id]" />
                   <Stack.Screen name="services/shelter/[id]" />
-                  <Stack.Screen name="services/booking/[serviceId]" options={{ 
-                    title: 'Reservar Servicio',
-                    headerShown: false 
-                  }} />
+                  <Stack.Screen 
+                    name="services/booking/[serviceId]" 
+                    options={{
+                      title: 'Reservar Servicio',
+                      headerShown: false 
+                    }} 
+                  />
                   <Stack.Screen name="products/[id]" />
                   <Stack.Screen name="cart/index" />
                   <Stack.Screen name="orders/index" />
