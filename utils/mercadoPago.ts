@@ -295,13 +295,13 @@ export const createPaymentPreference = async (
         title: item.name,
         quantity: item.quantity,
         unit_price: item.price,
-        currency_id: 'ARS'
+        currency_id: 'UYU'
       })).concat([{
         id: 'shipping',
         title: 'Envío',
         quantity: 1,
         unit_price: shippingCost,
-        currency_id: 'ARS'
+        currency_id: 'UYU'
       }]),
       payer: {
         name: customerInfo.displayName || 'Cliente',
@@ -536,13 +536,13 @@ export const createUnifiedPaymentPreference = async (
         title: item.name,
         quantity: item.quantity,
         unit_price: item.price,
-        currency_id: 'ARS'
+        currency_id: 'UYU'
       })).concat([{
         id: 'shipping',
         title: 'Envío',
         quantity: 1,
         unit_price: shippingCost,
-        currency_id: 'ARS'
+        currency_id: 'UYU'
       }]),
       payer: {
         name: customerInfo.displayName || 'Cliente',
