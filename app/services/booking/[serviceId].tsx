@@ -681,7 +681,7 @@ const styles = StyleSheet.create({
   bottomButtonContainer: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingTop: 12,
     paddingBottom: 20,
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
@@ -693,6 +693,18 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 10,
+  },
+  paymentInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  paymentInfoText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginLeft: 6,
   },
   dateSelectionContainer: {
     marginBottom: 24,
@@ -829,6 +841,80 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   serviceDuration: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+  },
+  partnerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  partnerLogo: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginRight: 12,
+  },
+  partnerLogoPlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#3B82F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  partnerLogoPlaceholderText: {
+    fontSize: 24,
+    color: '#FFFFFF',
+  },
+  partnerDetails: {
+    flex: 1,
+  },
+  partnerName: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  partnerAddress: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+  },
+  petInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  petPhoto: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 12,
+  },
+  petPhotoPlaceholder: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#10B981',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  petPhotoPlaceholderText: {
+    fontSize: 20,
+    color: '#FFFFFF',
+  },
+  petDetails: {
+    flex: 1,
+  },
+  petName: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#111827',
+    marginBottom: 2,
+  },
+  petBreed: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
