@@ -99,7 +99,7 @@ export default function RootLayout() {
                   <Stack.Screen name="services/[id]" />
                   <Stack.Screen name="services/partner/[id]" />
                   <Stack.Screen name="services/shelter/[id]" />
-                  <Stack.Screen name="services/booking" options={{ 
+                  <Stack.Screen name="services/booking/[serviceId]" options={{ 
                     title: 'Reservar Servicio',
                     headerShown: false 
                   }} />
