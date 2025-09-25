@@ -52,10 +52,10 @@ export default function ServiceBooking() {
   
   // Payment flow
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [showCardForm, setShowCardForm] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentStep, setPaymentStep] = useState<'methods' | 'card' | 'processing'>('methods');
   
-  // Card form data - TODAS LAS VARIABLES DEFINIDAS
+  // Card form data
   const [fullName, setFullName] = useState('');
   const [documentType, setDocumentType] = useState('CI');
   const [documentNumber, setDocumentNumber] = useState('');
@@ -220,10 +220,7 @@ export default function ServiceBooking() {
     if (method === 'mercadopago') {
       handleMercadoPagoPayment();
     } else if (method === 'card') {
-      setShowPaymentModal(false);
-      setTimeout(() => {
-        setShowCardForm(true);
-      }, 300);
+      setPaymentStep('card');
     }
   };
 
@@ -442,16 +439,15 @@ export default function ServiceBooking() {
               {formatCurrency(service?.price || 0)}
             </Text>
           </View>
-          <TouchableOpacity
-            style={styles.confirmButton}
+          <Button
+            title="Confirmar Reserva"
             onPress={handleConfirmBooking}
-          >
-            <Text style={styles.confirmButtonText}>Confirmar Reserva</Text>
-          </TouchableOpacity>
+            size="large"
+          />
         </View>
       )}
 
-      {/* Payment Method Modal */}
+      {/* Payment Modal - Single Modal with Steps */}
       <Modal
         visible={showPaymentModal}
         transparent
@@ -459,212 +455,208 @@ export default function ServiceBooking() {
         onRequestClose={() => setShowPaymentModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.paymentModalContent}>
-            <View style={styles.modalHeader}>
+          <View style={styles.modalContent}>
+                {paymentStep === 'methods' ? 'Método de Pago' : 
+                 paymentStep === 'card' ? 'Pago con Tarjeta' : 'Procesando...'}
               <Text style={styles.modalTitle}>Método de Pago</Text>
-              <TouchableOpacity onPress={() => setShowPaymentModal(false)}>
+              <TouchableOpacity onPress={() => {
+                setShowPaymentModal(false);
+                setPaymentStep('methods');
+              }}>
                 <X size={24} color="#6B7280" />
               </TouchableOpacity>
             </View>
 
-            <View style={styles.paymentMethods}>
-              <TouchableOpacity
-                style={styles.paymentMethod}
-                onPress={() => handlePaymentMethodSelect('mercadopago')}
-                disabled={paymentLoading}
-              >
-                <View style={styles.paymentMethodContent}>
-                  <Text style={styles.paymentMethodIcon}>💳</Text>
-                  <View style={styles.paymentMethodInfo}>
-                    <Text style={styles.paymentMethodTitle}>Mercado Pago</Text>
-                    <Text style={styles.paymentMethodDescription}>
-                      Pago seguro con tarjetas, transferencias y más
-                    </Text>
+            {/* Payment Methods Step */}
+            {paymentStep === 'methods' && (
+              <View style={styles.paymentMethods}>
+                <TouchableOpacity
+                  style={styles.paymentMethod}
+                  onPress={() => handlePaymentMethodSelect('mercadopago')}
+                  disabled={paymentLoading}
+                >
+                  <View style={styles.paymentMethodContent}>
+                    <Text style={styles.paymentMethodIcon}>💳</Text>
+                    <View style={styles.paymentMethodInfo}>
+                      <Text style={styles.paymentMethodTitle}>Mercado Pago</Text>
+                      <Text style={styles.paymentMethodDescription}>
+                        Pago seguro con tarjetas, transferencias y más
+                      </Text>
+                    </View>
                   </View>
-                </View>
-                {paymentLoading && <ActivityIndicator size="small" color="#00A650" />}
-              </TouchableOpacity>
+                  {paymentLoading && <ActivityIndicator size="small" color="#00A650" />}
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.paymentMethod}
-                onPress={() => handlePaymentMethodSelect('card')}
-              >
-                <View style={styles.paymentMethodContent}>
-                  <Text style={styles.paymentMethodIcon}>💳</Text>
-                  <View style={styles.paymentMethodInfo}>
-                    <Text style={styles.paymentMethodTitle}>Tarjeta de Crédito/Débito</Text>
-                    <Text style={styles.paymentMethodDescription}>
-                      Visa, Mastercard, American Express
-                    </Text>
+                <TouchableOpacity
+                  style={styles.paymentMethod}
+                  onPress={() => handlePaymentMethodSelect('card')}
+                >
+                  <View style={styles.paymentMethodContent}>
+                    <Text style={styles.paymentMethodIcon}>💳</Text>
+                    <View style={styles.paymentMethodInfo}>
+                      <Text style={styles.paymentMethodTitle}>Tarjeta de Crédito/Débito</Text>
+                      <Text style={styles.paymentMethodDescription}>
+                        Visa, Mastercard, American Express
+                      </Text>
+                    </View>
                   </View>
-                </View>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Card Payment Form Modal */}
-      <Modal
-        visible={showCardForm}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowCardForm(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.cardModalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Pago con Tarjeta</Text>
-              <TouchableOpacity onPress={() => setShowCardForm(false)}>
-                <X size={24} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.cardFormScroll} showsVerticalScrollIndicator={false}>
-              {/* Booking Summary */}
-              <View style={styles.bookingSummary}>
-                <Text style={styles.summaryTitle}>Resumen de la Reserva</Text>
-                <Text style={styles.summaryService}>{service?.name}</Text>
-                <Text style={styles.summaryDateTime}>
-                  {selectedDate?.toLocaleDateString()} a las {selectedTime}
-                </Text>
-                <Text style={styles.summaryTotal}>
-                  Total: {formatCurrency(service?.price || 0)}
-                </Text>
+                </TouchableOpacity>
               </View>
+            )}
 
-              {/* Personal Information */}
-              <View style={styles.formSection}>
-                <Text style={styles.formSectionTitle}>Información Personal</Text>
-                
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Nombre completo *</Text>
-                  <View style={styles.inputContainer}>
-                    <User size={20} color="#6B7280" />
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="Juan Pérez"
-                      value={fullName}
-                      onChangeText={setFullName}
-                      autoCapitalize="words"
-                      autoComplete="name"
-                    />
+            {/* Card Form Step */}
+            {paymentStep === 'card' && (
+              <ScrollView style={styles.cardFormScroll} showsVerticalScrollIndicator={false}>
+                {/* Booking Summary */}
+                <View style={styles.bookingSummary}>
+                  <Text style={styles.summaryTitle}>Resumen de la Reserva</Text>
+                  <Text style={styles.summaryService}>{service?.name}</Text>
+                  <Text style={styles.summaryDateTime}>
+                    {selectedDate?.toLocaleDateString()} a las {selectedTime}
+                  </Text>
+                  <Text style={styles.summaryTotal}>
+                    Total: {formatCurrency(service?.price || 0)}
+                  </Text>
+                </View>
+
+                {/* Personal Information */}
+                <View style={styles.formSection}>
+                  <Text style={styles.formSectionTitle}>Información Personal</Text>
+                  
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Nombre completo *</Text>
+                    <View style={styles.inputContainer}>
+                      <User size={20} color="#6B7280" />
+                      <TextInput
+                        style={styles.textInput}
+                        placeholder="Juan Pérez"
+                        value={fullName}
+                        onChangeText={setFullName}
+                        autoCapitalize="words"
+                        autoComplete="name"
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Tipo de documento *</Text>
+                    <TouchableOpacity
+                      style={styles.selectInput}
+                      onPress={() => setShowDocumentTypes(true)}
+                    >
+                      <FileText size={20} color="#6B7280" />
+                      <Text style={styles.selectText}>
+                        {documentTypes.find(type => type.value === documentType)?.label || 'Seleccionar'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Número de documento *</Text>
+                    <View style={styles.inputContainer}>
+                      <FileText size={20} color="#6B7280" />
+                      <TextInput
+                        style={styles.textInput}
+                        placeholder="12345678"
+                        value={documentNumber}
+                        onChangeText={setDocumentNumber}
+                        keyboardType="numeric"
+                      />
+                    </View>
                   </View>
                 </View>
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Tipo de documento *</Text>
-                  <TouchableOpacity
-                    style={styles.selectInput}
-                    onPress={() => setShowDocumentTypes(true)}
-                  >
-                    <FileText size={20} color="#6B7280" />
-                    <Text style={styles.selectText}>
-                      {documentTypes.find(type => type.value === documentType)?.label || 'Seleccionar'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Número de documento *</Text>
-                  <View style={styles.inputContainer}>
-                    <FileText size={20} color="#6B7280" />
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="12345678"
-                      value={documentNumber}
-                      onChangeText={setDocumentNumber}
-                      keyboardType="numeric"
-                    />
+                {/* Card Information */}
+                <View style={styles.formSection}>
+                  <Text style={styles.formSectionTitle}>Información de la Tarjeta</Text>
+                  
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Número de tarjeta *</Text>
+                    <View style={[styles.inputContainer, styles.cardInputContainer]}>
+                      <CreditCard size={20} color="#6B7280" />
+                      <TextInput
+                        style={styles.textInput}
+                        placeholder="1234 5678 9012 3456"
+                        value={cardNumber}
+                        onChangeText={handleCardNumberChange}
+                        keyboardType="numeric"
+                        maxLength={19}
+                        autoComplete="cc-number"
+                      />
+                      {detectedCardType && (
+                        <View style={[styles.cardTypeBadge, { backgroundColor: detectedCardType.color }]}>
+                          <Text style={styles.cardTypeText}>{detectedCardType.name}</Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
-                </View>
-              </View>
 
-              {/* Card Information */}
-              <View style={styles.formSection}>
-                <Text style={styles.formSectionTitle}>Información de la Tarjeta</Text>
-                
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Número de tarjeta *</Text>
-                  <View style={[styles.inputContainer, styles.cardInputContainer]}>
-                    <CreditCard size={20} color="#6B7280" />
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="1234 5678 9012 3456"
-                      value={cardNumber}
-                      onChangeText={handleCardNumberChange}
-                      keyboardType="numeric"
-                      maxLength={19}
-                      autoComplete="cc-number"
-                    />
-                    {detectedCardType && (
-                      <View style={[styles.cardTypeBadge, { backgroundColor: detectedCardType.color }]}>
-                        <Text style={styles.cardTypeText}>{detectedCardType.name}</Text>
+                  <View style={styles.cardDetailsRow}>
+                    <View style={styles.cardDetailInput}>
+                      <Text style={styles.inputLabel}>Vencimiento *</Text>
+                      <View style={styles.inputContainer}>
+                        <Calendar size={20} color="#6B7280" />
+                        <TextInput
+                          style={styles.textInput}
+                          placeholder="MM/AA"
+                          value={expiryDate}
+                          onChangeText={handleExpiryChange}
+                          keyboardType="numeric"
+                          maxLength={5}
+                          autoComplete="cc-exp"
+                        />
                       </View>
-                    )}
-                  </View>
-                </View>
-
-                <View style={styles.cardDetailsRow}>
-                  <View style={styles.cardDetailInput}>
-                    <Text style={styles.inputLabel}>Vencimiento *</Text>
-                    <View style={styles.inputContainer}>
-                      <Calendar size={20} color="#6B7280" />
-                      <TextInput
-                        style={styles.textInput}
-                        placeholder="MM/AA"
-                        value={expiryDate}
-                        onChangeText={handleExpiryChange}
-                        keyboardType="numeric"
-                        maxLength={5}
-                        autoComplete="cc-exp"
-                      />
                     </View>
-                  </View>
 
-                  <View style={styles.cardDetailInput}>
-                    <Text style={styles.inputLabel}>CVV *</Text>
-                    <View style={styles.inputContainer}>
-                      <Lock size={20} color="#6B7280" />
-                      <TextInput
-                        style={styles.textInput}
-                        placeholder="123"
-                        value={cvv}
-                        onChangeText={handleCvvChange}
-                        keyboardType="numeric"
-                        maxLength={4}
-                        secureTextEntry={true}
-                        autoComplete="cc-csc"
-                      />
+                    <View style={styles.cardDetailInput}>
+                      <Text style={styles.inputLabel}>CVV *</Text>
+                      <View style={styles.inputContainer}>
+                        <Lock size={20} color="#6B7280" />
+                        <TextInput
+                          style={styles.textInput}
+                          placeholder="123"
+                          value={cvv}
+                          onChangeText={handleCvvChange}
+                          keyboardType="numeric"
+                          maxLength={4}
+                          secureTextEntry={true}
+                          autoComplete="cc-csc"
+                        />
+                      </View>
                     </View>
                   </View>
                 </View>
-              </View>
 
-              {/* Security Notice */}
-              <View style={styles.securityNotice}>
-                <Lock size={16} color="#10B981" />
-                <Text style={styles.securityText}>
-                  Tu información está protegida con encriptación SSL de 256 bits
-                </Text>
-              </View>
-            </ScrollView>
 
-            <View style={styles.cardFormActions}>
-              <Button
-                title="Cancelar"
-                onPress={() => setShowCardForm(false)}
-                variant="outline"
-                size="large"
-              />
-              <Button
-                title={processing ? 'Procesando...' : `Pagar ${formatCurrency(service?.price || 0)}`}
-                onPress={handleCardPayment}
-                loading={processing}
-                disabled={!validateCardForm() || processing}
-                size="large"
-              />
-            </View>
+                {/* Security Notice */}
+                <View style={styles.securityNotice}>
+                  <Lock size={16} color="#10B981" />
+                  <Text style={styles.securityText}>
+                    Tu información está protegida con encriptación SSL de 256 bits
+                  </Text>
+                </View>
+              </ScrollView>
+            )}
+
+            {/* Actions */}
+            {paymentStep === 'card' && (
+              <View style={styles.cardFormActions}>
+                <Button
+                  title="Volver"
+                  onPress={() => setPaymentStep('methods')}
+                  variant="outline"
+                  size="large"
+                />
+                <Button
+                  title={processing ? 'Procesando...' : `Pagar ${formatCurrency(service?.price || 0)}`}
+                  onPress={handleCardPayment}
+                  loading={processing}
+                  disabled={!validateCardForm() || processing}
+                  size="large"
+                />
+              </View>
+            )}
           </View>
         </View>
 
@@ -975,8 +967,39 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
   },
+  documentModal: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 20,
+    margin: 20,
+  },
+  documentModalTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: '#111827',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  documentOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  selectedDocumentOption: {
+    backgroundColor: '#2D6A6F',
+  },
+  documentOptionText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#111827',
+  },
+  selectedDocumentOptionText: {
+    color: '#FFFFFF',
+  },
+  // Card form styles
   cardFormScroll: {
-    flex: 1,
+    maxHeight: 400,
   },
   bookingSummary: {
     backgroundColor: '#F0F9FF',
@@ -1105,35 +1128,5 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
-  },
-  documentModal: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 20,
-    margin: 20,
-  },
-  documentModalTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: '#111827',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  documentOption: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  selectedDocumentOption: {
-    backgroundColor: '#2D6A6F',
-  },
-  documentOptionText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#111827',
-  },
-  selectedDocumentOptionText: {
-    color: '#FFFFFF',
   },
 });
