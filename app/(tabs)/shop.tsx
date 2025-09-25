@@ -154,25 +154,25 @@ export default function Shop() {
           <View style={styles.emptyContainer}>
             <Package size={64} color="#9CA3AF" />
             <Text style={styles.emptyTitle}>{t('noProductsAvailable')}</Text> 
-                {searchQuery 
-                  ? 'No se encontraron productos que coincidan con tu búsqueda'
-                  : t('noProductsInCategory')
-                }
+            <Text style={styles.emptySubtitle}>
+              {searchQuery 
+                ? 'No se encontraron productos que coincidan con tu búsqueda'
+                : t('noProductsInCategory')
               }
             </Text>
           </View>
-            <View style={styles.productsGrid}>
-              {filteredProducts.map((item) => (
-                <View key={item.id} style={styles.productWrapper}>
-                  <ProductCard
-                    product={item}
-                    onPress={() => handleProductPress(item.id)}
-                    onAddToCart={() => handleAddToCart(item.id)}
-                  />
-                </View>
-              ))}
-            </View>
-          />
+        ) : (
+          <View style={styles.productsGrid}>
+            {filteredProducts.map((item) => (
+              <View key={item.id} style={styles.productWrapper}>
+                <ProductCard
+                  product={item}
+                  onPress={() => handleProductPress(item.id)}
+                  onAddToCart={() => handleAddToCart(item.id)}
+                />
+              </View>
+            ))}
+          </View>
         )}
       </View>
     </SafeAreaView>
