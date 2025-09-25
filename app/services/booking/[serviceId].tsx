@@ -456,9 +456,11 @@ export default function ServiceBooking() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
                 {paymentStep === 'methods' ? 'Método de Pago' : 
                  paymentStep === 'card' ? 'Pago con Tarjeta' : 'Procesando...'}
-              <Text style={styles.modalTitle}>Método de Pago</Text>
+              </Text>
               <TouchableOpacity onPress={() => {
                 setShowPaymentModal(false);
                 setPaymentStep('methods');
@@ -657,6 +659,8 @@ export default function ServiceBooking() {
                 />
               </View>
             )}
+          </View>
+        </View>
           </View>
         </View>
       </Modal>
