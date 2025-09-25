@@ -1,12 +1,66 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, Image, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, Image, TextInput, Modal } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Clock } from 'lucide-react-native';
-import { X, CircleCheck as CheckCircle } from 'lucide-react-native';
+import { ArrowLeft, Clock, CreditCard, X, CheckCircle } from 'lucide-react-native';
+import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
+import { Input } from '../../../components/ui/Input';
 import { useAuth } from '../../../contexts/AuthContext';
 import { supabaseClient } from '@/lib/supabase';
 import { createServiceBookingOrder } from '../../../utils/mercadoPago';
+
+interface PaymentMethod {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  color: string;
+}
+
+const paymentMethods: PaymentMethod[] = [
+  {
+    id: 'mercadopago',
+    name: 'Mercado Pago',
+    icon: 'MP',
+    description: 'Pago seguro con Mercado Pago',
+    color: '#00A650'
+  },
+  {
+    id: 'visa',
+    name: 'Visa',
+    icon: 'VISA',
+    description: 'Tarjeta de crédito o débito',
+    color: '#1A1F71'
+  },
+  {
+    id: 'mastercard',
+    name: 'Mastercard',
+    icon: 'MC',
+    description: 'Tarjeta de crédito o débito',
+    color: '#EB001B'
+  },
+  {
+    id: 'amex',
+    name: 'American Express',
+    icon: 'AMEX',
+    description: 'Tarjeta de crédito',
+    color: '#006FCF'
+  },
+  {
+    id: 'diners',
+    name: 'Diners Club',
+    icon: 'DC',
+    description: 'Tarjeta de crédito',
+    color: '#0079BE'
+  }
+];
+
+const documentTypes = [
+  { value: 'CI', label: 'Cédula de Identidad' },
+  { value: 'RUT', label: 'RUT' },
+  { value: 'PASSPORT', label: 'Pasaporte' },
+  { value: 'OTHER', label: 'Otro' }
+];
 
 export default function ServiceBooking() {
   const { serviceId, partnerId, petId } = useLocalSearchParams<{
@@ -30,6 +84,21 @@ export default function ServiceBooking() {
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState(false);
   const [loadingTimeSlots, setLoadingTimeSlots] = useState(false);
+
+  // Payment modal states
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('');
+  const [showCardForm, setShowCardForm] = useState(false);
+
+  // Card form states
+  const [cardNumber, setCardNumber] = useState('');
+  const [expiryDate, setExpiryDate] = useState('');
+  const [cvv, setCvv] = useState('');
+  const [cardholderName, setCardholderName] = useState('');
+  const [documentType, setDocumentType] = useState('CI');
+  const [documentNumber, setDocumentNumber] = useState('');
+  const [showDocumentTypes, setShowDocumentTypes] = useState(false);
+  const [processingPayment, setProcessingPayment] = useState(false);
 
   useEffect(() => {
     if (serviceId && partnerId && petId) {
@@ -270,7 +339,10 @@ export default function ServiceBooking() {
   };
 
   const formatPrice = (price: number) => {
-    return `$ ${price.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,')}`;
+    return new Intl.NumberFormat('es-UY', {
+      style: 'currency',
+      currency: 'UYU',
+    }).format(price);
   };
 
   const formatDateForDisplay = (date: Date) => {
@@ -289,13 +361,31 @@ export default function ServiceBooking() {
     return date.toDateString() === today.toDateString();
   };
 
-  const handleConfirmBooking = async () => {
+  const handleConfirmBooking = () => {
     if (!selectedDate || !selectedTime) {
       Alert.alert('Error', 'Por favor selecciona fecha y hora');
       return;
     }
+    setShowPaymentModal(true);
+  };
 
+  const handlePaymentMethodSelect = (methodId: string) => {
+    setSelectedPaymentMethod(methodId);
+    
+    if (methodId === 'mercadopago') {
+      // Proceder con Mercado Pago
+      handleMercadoPagoPayment();
+    } else {
+      // Mostrar formulario de tarjeta
+      setShowPaymentModal(false);
+      setShowCardForm(true);
+    }
+  };
+
+  const handleMercadoPagoPayment = async () => {
+    setShowPaymentModal(false);
     setBooking(true);
+    
     try {
       console.log('Creating booking with Mercado Pago payment...');
       
@@ -304,7 +394,7 @@ export default function ServiceBooking() {
         partnerId: partnerId!,
         customerId: currentUser!.id,
         petId: petId!,
-        date: selectedDate,
+        date: selectedDate!,
         time: selectedTime,
         notes: notes.trim() || null,
         serviceName: service?.name || 'Servicio',
@@ -337,6 +427,107 @@ export default function ServiceBooking() {
     }
   };
 
+  const formatCardNumber = (value: string) => {
+    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+    const matches = v.match(/\d{4,16}/g);
+    const match = matches && matches[0] || '';
+    const parts = [];
+
+    for (let i = 0, len = match.length; i < len; i += 4) {
+      parts.push(match.substring(i, i + 4));
+    }
+
+    if (parts.length) {
+      return parts.join(' ');
+    } else {
+      return v;
+    }
+  };
+
+  const formatExpiryDate = (value: string) => {
+    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+    if (v.length >= 2) {
+      return v.substring(0, 2) + '/' + v.substring(2, 4);
+    }
+    return v;
+  };
+
+  const handleCardNumberChange = (value: string) => {
+    const formatted = formatCardNumber(value);
+    if (formatted.replace(/\s/g, '').length <= 16) {
+      setCardNumber(formatted);
+    }
+  };
+
+  const handleExpiryChange = (value: string) => {
+    const formatted = formatExpiryDate(value);
+    if (formatted.length <= 5) {
+      setExpiryDate(formatted);
+    }
+  };
+
+  const handleCvvChange = (value: string) => {
+    const v = value.replace(/[^0-9]/gi, '');
+    if (v.length <= 4) {
+      setCvv(v);
+    }
+  };
+
+  const validateCardForm = () => {
+    if (!cardholderName.trim()) {
+      Alert.alert('Error', 'Por favor ingresa el nombre del titular');
+      return false;
+    }
+    if (!documentNumber.trim()) {
+      Alert.alert('Error', 'Por favor ingresa tu número de documento');
+      return false;
+    }
+    if (cardNumber.replace(/\s/g, '').length < 13) {
+      Alert.alert('Error', 'Por favor ingresa un número de tarjeta válido');
+      return false;
+    }
+    if (expiryDate.length !== 5) {
+      Alert.alert('Error', 'Por favor ingresa una fecha de vencimiento válida (MM/AA)');
+      return false;
+    }
+    if (cvv.length < 3) {
+      Alert.alert('Error', 'Por favor ingresa un CVV válido');
+      return false;
+    }
+    return true;
+  };
+
+  const handleCardPayment = async () => {
+    if (!validateCardForm()) return;
+
+    setProcessingPayment(true);
+    try {
+      // Simular procesamiento de pago
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      // Simular éxito/fallo (90% éxito)
+      const isSuccess = Math.random() > 0.1;
+
+      if (isSuccess) {
+        Alert.alert(
+          '¡Pago Exitoso!',
+          `Tu reserva ha sido confirmada.\n\nServicio: ${service?.name}\nFecha: ${selectedDate?.toLocaleDateString()}\nHora: ${selectedTime}\nTotal: ${formatPrice(service?.price || 0)}`,
+          [{ text: 'OK', onPress: () => router.push('/(tabs)/services') }]
+        );
+      } else {
+        Alert.alert(
+          'Pago Rechazado',
+          'Tu pago no pudo ser procesado. Por favor verifica los datos de tu tarjeta e intenta nuevamente.',
+          [{ text: 'Reintentar' }]
+        );
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Ocurrió un error procesando el pago. Intenta nuevamente.');
+    } finally {
+      setProcessingPayment(false);
+    }
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -349,13 +540,12 @@ export default function ServiceBooking() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ArrowLeft size={24} color="#000000" />
+          <ArrowLeft size={24} color="#111827" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Reservar Servicio</Text>
-        <View style={styles.headerSpacer} />
+        <Text style={styles.title}>Reservar Servicio</Text>
+        <View style={styles.placeholder} />
       </View>
 
       <ScrollView 
@@ -364,17 +554,17 @@ export default function ServiceBooking() {
         contentContainerStyle={styles.scrollContent}
       >
         {/* Service and Pet Info Card */}
-        <View style={styles.mainCard}>
+        <Card style={styles.serviceInfoCard}>
           {/* Service Info */}
           <View style={styles.serviceSection}>
             <View style={styles.serviceHeader}>
               <View style={styles.serviceLogo}>
                 <Text style={styles.serviceIcon}>✂️</Text>
               </View>
-              <View style={styles.serviceInfo}>
-                <Text style={styles.businessName}>{partner?.business_name || 'Peluquería Dinky'}</Text>
-                <Text style={styles.serviceName}>{service?.name || 'Baño completo'}</Text>
-                <Text style={styles.servicePrice}>{formatPrice(service?.price || 650)}</Text>
+              <View style={styles.serviceDetails}>
+                <Text style={styles.businessName}>{partner?.business_name}</Text>
+                <Text style={styles.serviceName}>{service?.name}</Text>
+                <Text style={styles.servicePrice}>{formatPrice(service?.price || 0)}</Text>
               </View>
             </View>
           </View>
@@ -395,15 +585,15 @@ export default function ServiceBooking() {
                 )}
               </View>
               <View style={styles.petDetails}>
-                <Text style={styles.petName}>{pet?.name || 'Roky'}</Text>
-                <Text style={styles.petBreed}>{pet?.breed || 'Egyptian Mau'}</Text>
+                <Text style={styles.petName}>{pet?.name}</Text>
+                <Text style={styles.petBreed}>{pet?.breed}</Text>
               </View>
             </View>
           </View>
-        </View>
+        </Card>
 
-        {/* Date Selection Card */}
-        <View style={styles.dateCard}>
+        {/* Date Selection */}
+        <Card style={styles.dateCard}>
           <Text style={styles.sectionTitle}>Selecciona una fecha</Text>
           
           {availableDates.length === 0 ? (
@@ -419,7 +609,7 @@ export default function ServiceBooking() {
               style={styles.datesScroll}
               contentContainerStyle={styles.datesScrollContent}
             >
-              {availableDates.slice(0, 7).map((date, index) => {
+              {availableDates.slice(0, 14).map((date, index) => {
                 const isSelected = selectedDate && 
                   date.toDateString() === selectedDate.toDateString();
                 const todayCheck = isToday(date);
@@ -430,8 +620,7 @@ export default function ServiceBooking() {
                     key={index}
                     style={[
                       styles.dateButton,
-                      isSelected && styles.selectedDateButton,
-                      todayCheck && !isSelected && styles.todayDateButton
+                      isSelected && styles.selectedDateButton
                     ]}
                     onPress={() => handleDateSelect(date)}
                   >
@@ -442,22 +631,19 @@ export default function ServiceBooking() {
                     )}
                     <Text style={[
                       styles.dateButtonDay,
-                      isSelected && styles.selectedDateButtonText,
-                      todayCheck && !isSelected && styles.todayDateButtonText
+                      isSelected && styles.selectedDateButtonText
                     ]}>
                       {dateInfo.dayName}
                     </Text>
                     <Text style={[
                       styles.dateButtonDate,
-                      isSelected && styles.selectedDateButtonText,
-                      todayCheck && !isSelected && styles.todayDateButtonText
+                      isSelected && styles.selectedDateButtonText
                     ]}>
                       {dateInfo.dayNumber}
                     </Text>
                     <Text style={[
                       styles.dateButtonMonth,
-                      isSelected && styles.selectedDateButtonText,
-                      todayCheck && !isSelected && styles.todayDateButtonText
+                      isSelected && styles.selectedDateButtonText
                     ]}>
                       {dateInfo.monthName}
                     </Text>
@@ -466,11 +652,11 @@ export default function ServiceBooking() {
               })}
             </ScrollView>
           )}
-        </View>
+        </Card>
 
-        {/* Time Selection Card */}
+        {/* Time Selection */}
         {selectedDate && (
-          <View style={styles.timeCard}>
+          <Card style={styles.timeCard}>
             <Text style={styles.sectionTitle}>Selecciona una hora</Text>
             
             {loadingTimeSlots ? (
@@ -498,7 +684,7 @@ export default function ServiceBooking() {
                   >
                     <Clock 
                       size={16} 
-                      color={selectedTime === timeSlot ? '#FFFFFF' : '#9CA3AF'} 
+                      color={selectedTime === timeSlot ? '#FFFFFF' : '#6B7280'} 
                     />
                     <Text style={[
                       styles.timeSlotText,
@@ -510,39 +696,238 @@ export default function ServiceBooking() {
                 ))}
               </View>
             )}
-          </View>
+          </Card>
         )}
 
         {/* Notes Section */}
-        <View style={styles.notesSection}>
-          <Text style={styles.notesSectionTitle}>Notas para el proveedor</Text>
-          <View style={styles.notesInputContainer}>
-            <TextInput
-              style={styles.notesInput}
-              placeholder="Agrega cualquier información adicional para el proveedor"
-              placeholderTextColor="#9CA3AF"
-              value={notes}
-              onChangeText={setNotes}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-            />
-          </View>
-        </View>
+        <Card style={styles.notesCard}>
+          <Text style={styles.sectionTitle}>Notas para el proveedor</Text>
+          <TextInput
+            style={styles.notesInput}
+            placeholder="Agrega cualquier información adicional para el proveedor"
+            placeholderTextColor="#9CA3AF"
+            value={notes}
+            onChangeText={setNotes}
+            multiline
+            numberOfLines={4}
+            textAlignVertical="top"
+          />
+        </Card>
       </ScrollView>
 
-      {/* Bottom Action */}
+      {/* Bottom Action Button */}
       {selectedDate && selectedTime && (
         <View style={styles.bottomAction}>
           <Button
-            title={booking ? "Procesando pago..." : "Confirmar y Pagar"}
+            title="Confirmar Reserva"
             onPress={handleConfirmBooking}
-            loading={booking}
-            disabled={booking}
-            size="large"
+            style={styles.confirmButton}
           />
         </View>
       )}
+
+      {/* Payment Method Selection Modal */}
+      <Modal
+        visible={showPaymentModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowPaymentModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.paymentModalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Selecciona método de pago</Text>
+              <TouchableOpacity onPress={() => setShowPaymentModal(false)}>
+                <X size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.paymentSummary}>
+              <Text style={styles.summaryTitle}>Resumen de la reserva</Text>
+              <Text style={styles.summaryService}>{service?.name}</Text>
+              <Text style={styles.summaryProvider}>{partner?.business_name}</Text>
+              <Text style={styles.summaryDateTime}>
+                {selectedDate?.toLocaleDateString()} a las {selectedTime}
+              </Text>
+              <Text style={styles.summaryTotal}>{formatPrice(service?.price || 0)}</Text>
+            </View>
+
+            <View style={styles.paymentMethods}>
+              {paymentMethods.map((method) => (
+                <TouchableOpacity
+                  key={method.id}
+                  style={styles.paymentMethodCard}
+                  onPress={() => handlePaymentMethodSelect(method.id)}
+                >
+                  <View style={[styles.paymentMethodIcon, { backgroundColor: method.color }]}>
+                    <Text style={styles.paymentMethodIconText}>{method.icon}</Text>
+                  </View>
+                  <View style={styles.paymentMethodInfo}>
+                    <Text style={styles.paymentMethodName}>{method.name}</Text>
+                    <Text style={styles.paymentMethodDescription}>{method.description}</Text>
+                  </View>
+                  <Text style={styles.paymentMethodArrow}>→</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Card Payment Form Modal */}
+      <Modal
+        visible={showCardForm}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCardForm(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.cardFormModalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Pago con Tarjeta</Text>
+              <TouchableOpacity onPress={() => setShowCardForm(false)}>
+                <X size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.cardFormScroll} showsVerticalScrollIndicator={false}>
+              {/* Payment Summary */}
+              <View style={styles.cardPaymentSummary}>
+                <Text style={styles.cardSummaryTitle}>Total a pagar</Text>
+                <Text style={styles.cardSummaryAmount}>{formatPrice(service?.price || 0)}</Text>
+              </View>
+
+              {/* Card Information */}
+              <View style={styles.cardSection}>
+                <Text style={styles.cardSectionTitle}>Información de la tarjeta</Text>
+                
+                <View style={styles.cardInputGroup}>
+                  <Text style={styles.cardInputLabel}>Número de tarjeta *</Text>
+                  <TextInput
+                    style={styles.cardInput}
+                    placeholder="1234 5678 9012 3456"
+                    value={cardNumber}
+                    onChangeText={handleCardNumberChange}
+                    keyboardType="numeric"
+                    maxLength={19}
+                  />
+                </View>
+
+                <View style={styles.cardRow}>
+                  <View style={styles.cardInputHalf}>
+                    <Text style={styles.cardInputLabel}>Vencimiento *</Text>
+                    <TextInput
+                      style={styles.cardInput}
+                      placeholder="MM/AA"
+                      value={expiryDate}
+                      onChangeText={handleExpiryChange}
+                      keyboardType="numeric"
+                      maxLength={5}
+                    />
+                  </View>
+                  <View style={styles.cardInputHalf}>
+                    <Text style={styles.cardInputLabel}>CVV *</Text>
+                    <TextInput
+                      style={styles.cardInput}
+                      placeholder="123"
+                      value={cvv}
+                      onChangeText={handleCvvChange}
+                      keyboardType="numeric"
+                      maxLength={4}
+                      secureTextEntry
+                    />
+                  </View>
+                </View>
+              </View>
+
+              {/* Personal Information */}
+              <View style={styles.personalSection}>
+                <Text style={styles.cardSectionTitle}>Información personal</Text>
+                
+                <View style={styles.cardInputGroup}>
+                  <Text style={styles.cardInputLabel}>Nombre del titular *</Text>
+                  <TextInput
+                    style={styles.cardInput}
+                    placeholder="Juan Pérez"
+                    value={cardholderName}
+                    onChangeText={setCardholderName}
+                    autoCapitalize="words"
+                  />
+                </View>
+
+                <View style={styles.cardInputGroup}>
+                  <Text style={styles.cardInputLabel}>Tipo de documento *</Text>
+                  <TouchableOpacity
+                    style={styles.documentTypeSelector}
+                    onPress={() => setShowDocumentTypes(true)}
+                  >
+                    <Text style={styles.documentTypeText}>
+                      {documentTypes.find(type => type.value === documentType)?.label || 'Seleccionar'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.cardInputGroup}>
+                  <Text style={styles.cardInputLabel}>Número de documento *</Text>
+                  <TextInput
+                    style={styles.cardInput}
+                    placeholder="12345678"
+                    value={documentNumber}
+                    onChangeText={setDocumentNumber}
+                    keyboardType="numeric"
+                  />
+                </View>
+              </View>
+            </ScrollView>
+
+            <View style={styles.cardFormActions}>
+              <Button
+                title={processingPayment ? "Procesando..." : "Pagar"}
+                onPress={handleCardPayment}
+                loading={processingPayment}
+                style={styles.payButton}
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* Document Type Selection Modal */}
+        <Modal
+          visible={showDocumentTypes}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowDocumentTypes(false)}
+        >
+          <View style={styles.documentModalOverlay}>
+            <View style={styles.documentModal}>
+              <Text style={styles.documentModalTitle}>Tipo de Documento</Text>
+              {documentTypes.map((type) => (
+                <TouchableOpacity
+                  key={type.value}
+                  style={[
+                    styles.documentOption,
+                    documentType === type.value && styles.selectedDocumentOption
+                  ]}
+                  onPress={() => {
+                    setDocumentType(type.value);
+                    setShowDocumentTypes(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.documentOptionText,
+                    documentType === type.value && styles.selectedDocumentOptionText
+                  ]}>
+                    {type.label}
+                  </Text>
+                  {documentType === type.value && (
+                    <CheckCircle size={16} color="#4285F4" />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </Modal>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -558,20 +943,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 12,
     backgroundColor: '#FFFFFF',
   },
   backButton: {
-    padding: 4,
+    padding: 8,
   },
-  headerTitle: {
+  title: {
     fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
-    color: '#000000',
-    textAlign: 'center',
+    fontWeight: '600',
+    color: '#111827',
   },
-  headerSpacer: {
-    width: 32,
+  placeholder: {
+    width: 40,
   },
   content: {
     flex: 1,
@@ -587,21 +971,17 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    fontFamily: 'Inter-Regular',
     color: '#6B7280',
   },
-  
-  // Main service card
-  mainCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
+
+  // Service Info Card
+  serviceInfoCard: {
     marginBottom: 16,
+    padding: 20,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
@@ -626,24 +1006,23 @@ const styles = StyleSheet.create({
     fontSize: 28,
     color: '#FFFFFF',
   },
-  serviceInfo: {
+  serviceDetails: {
     flex: 1,
   },
   businessName: {
     fontSize: 20,
-    fontFamily: 'Inter-Bold',
-    color: '#000000',
+    fontWeight: '600',
+    color: '#111827',
     marginBottom: 4,
   },
   serviceName: {
     fontSize: 16,
-    fontFamily: 'Inter-Regular',
     color: '#4285F4',
     marginBottom: 8,
   },
   servicePrice: {
     fontSize: 20,
-    fontFamily: 'Inter-Bold',
+    fontWeight: '600',
     color: '#34A853',
   },
   petSection: {
@@ -653,7 +1032,6 @@ const styles = StyleSheet.create({
   },
   petSectionTitle: {
     fontSize: 14,
-    fontFamily: 'Inter-Regular',
     color: '#9CA3AF',
     marginBottom: 12,
   },
@@ -685,35 +1063,31 @@ const styles = StyleSheet.create({
   },
   petName: {
     fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: '#000000',
+    fontWeight: '600',
+    color: '#111827',
     marginBottom: 4,
   },
   petBreed: {
     fontSize: 14,
-    fontFamily: 'Inter-Regular',
     color: '#9CA3AF',
   },
-  
-  // Date selection card
+
+  // Date Card
   dateCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
     marginBottom: 16,
+    padding: 20,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
   },
   sectionTitle: {
     fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
-    color: '#000000',
+    fontWeight: '600',
+    color: '#111827',
     marginBottom: 16,
   },
   noAvailabilityContainer: {
@@ -722,7 +1096,6 @@ const styles = StyleSheet.create({
   },
   noAvailabilityText: {
     fontSize: 14,
-    fontFamily: 'Inter-Regular',
     color: '#9CA3AF',
     textAlign: 'center',
   },
@@ -735,22 +1108,18 @@ const styles = StyleSheet.create({
   dateButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
+    paddingVertical: 12,
     paddingHorizontal: 12,
     marginHorizontal: 4,
     borderRadius: 16,
     backgroundColor: '#F8F9FA',
     borderWidth: 1,
     borderColor: '#E8EAED',
-    minWidth: 70,
+    minWidth: 65,
     position: 'relative',
   },
   selectedDateButton: {
     backgroundColor: '#4285F4',
-    borderColor: '#4285F4',
-  },
-  todayDateButton: {
-    backgroundColor: '#F8F9FA',
     borderColor: '#4285F4',
   },
   todayBadge: {
@@ -763,44 +1132,36 @@ const styles = StyleSheet.create({
   },
   todayBadgeText: {
     fontSize: 10,
-    fontFamily: 'Inter-SemiBold',
+    fontWeight: '600',
     color: '#FFFFFF',
   },
   dateButtonDay: {
     fontSize: 12,
-    fontFamily: 'Inter-Regular',
     color: '#9CA3AF',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   dateButtonDate: {
-    fontSize: 20,
-    fontFamily: 'Inter-Bold',
+    fontSize: 18,
+    fontWeight: '600',
     color: '#4285F4',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   dateButtonMonth: {
     fontSize: 12,
-    fontFamily: 'Inter-Regular',
     color: '#9CA3AF',
   },
   selectedDateButtonText: {
     color: '#FFFFFF',
   },
-  todayDateButtonText: {
-    color: '#4285F4',
-  },
-  
-  // Time selection card
+
+  // Time Card
   timeCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
     marginBottom: 16,
+    padding: 20,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
@@ -811,7 +1172,6 @@ const styles = StyleSheet.create({
   },
   loadingTimeSlotsText: {
     fontSize: 14,
-    fontFamily: 'Inter-Regular',
     color: '#9CA3AF',
   },
   noTimeSlotsContainer: {
@@ -820,7 +1180,6 @@ const styles = StyleSheet.create({
   },
   noTimeSlotsText: {
     fontSize: 14,
-    fontFamily: 'Inter-Regular',
     color: '#9CA3AF',
     textAlign: 'center',
   },
@@ -833,8 +1192,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderRadius: 12,
     backgroundColor: '#F8F9FA',
     borderWidth: 1,
@@ -847,46 +1206,35 @@ const styles = StyleSheet.create({
   },
   timeSlotText: {
     fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
+    fontWeight: '500',
     color: '#5F6368',
     marginLeft: 6,
   },
   selectedTimeSlotText: {
     color: '#FFFFFF',
   },
-  
-  // Notes section
-  notesSection: {
+
+  // Notes Card
+  notesCard: {
     marginBottom: 16,
-  },
-  notesSectionTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
-    color: '#000000',
-    marginBottom: 16,
-  },
-  notesInputContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
     padding: 20,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
   },
   notesInput: {
     fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#000000',
+    color: '#111827',
     minHeight: 80,
     textAlignVertical: 'top',
+    padding: 0,
   },
-  
-  // Bottom action
+
+  // Bottom Action
   bottomAction: {
     position: 'absolute',
     bottom: 0,
@@ -897,12 +1245,243 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#E8EAED',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
+    shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 10,
+  },
+  confirmButton: {
+    backgroundColor: '#4285F4',
+    borderRadius: 12,
+    paddingVertical: 16,
+  },
+
+  // Payment Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  paymentModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  paymentSummary: {
+    backgroundColor: '#F8F9FA',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  summaryTitle: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginBottom: 8,
+  },
+  summaryService: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  summaryProvider: {
+    fontSize: 14,
+    color: '#4285F4',
+    marginBottom: 4,
+  },
+  summaryDateTime: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginBottom: 8,
+  },
+  summaryTotal: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#34A853',
+  },
+  paymentMethods: {
+    gap: 12,
+  },
+  paymentMethodCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E8EAED',
+  },
+  paymentMethodIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  paymentMethodIconText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  paymentMethodInfo: {
+    flex: 1,
+  },
+  paymentMethodName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 2,
+  },
+  paymentMethodDescription: {
+    fontSize: 14,
+    color: '#9CA3AF',
+  },
+  paymentMethodArrow: {
+    fontSize: 18,
+    color: '#9CA3AF',
+  },
+
+  // Card Form Modal
+  cardFormModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: '90%',
+  },
+  cardFormScroll: {
+    flex: 1,
+  },
+  cardPaymentSummary: {
+    backgroundColor: '#F0FDF4',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  cardSummaryTitle: {
+    fontSize: 14,
+    color: '#166534',
+    marginBottom: 4,
+  },
+  cardSummaryAmount: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#34A853',
+  },
+  cardSection: {
+    marginBottom: 20,
+  },
+  personalSection: {
+    marginBottom: 20,
+  },
+  cardSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 16,
+  },
+  cardInputGroup: {
+    marginBottom: 16,
+  },
+  cardInputLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  cardInput: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: '#111827',
+    backgroundColor: '#FFFFFF',
+  },
+  cardRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  cardInputHalf: {
+    flex: 1,
+  },
+  documentTypeSelector: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#FFFFFF',
+  },
+  documentTypeText: {
+    fontSize: 16,
+    color: '#111827',
+  },
+  cardFormActions: {
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#E8EAED',
+  },
+  payButton: {
+    backgroundColor: '#34A853',
+    borderRadius: 12,
+    paddingVertical: 16,
+  },
+
+  // Document Type Modal
+  documentModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  documentModal: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 20,
+    width: '100%',
+    maxWidth: 300,
+  },
+  documentModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  documentOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  selectedDocumentOption: {
+    backgroundColor: '#EBF8FF',
+  },
+  documentOptionText: {
+    fontSize: 16,
+    color: '#111827',
+  },
+  selectedDocumentOptionText: {
+    color: '#4285F4',
+    fontWeight: '500',
   },
 });
