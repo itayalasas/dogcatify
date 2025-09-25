@@ -89,6 +89,7 @@ export default function ServiceBooking() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('');
   const [showCardForm, setShowCardForm] = useState(false);
+  const [detectedCardType, setDetectedCardType] = useState<any>(null);
 
   // Card form states
   const [cardNumber, setCardNumber] = useState('');
@@ -99,6 +100,37 @@ export default function ServiceBooking() {
   const [documentNumber, setDocumentNumber] = useState('');
   const [showDocumentTypes, setShowDocumentTypes] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
+
+  // Card types for detection
+  const cardTypes = [
+    {
+      name: 'Visa',
+      pattern: /^4/,
+      color: '#1A1F71'
+    },
+    {
+      name: 'Mastercard', 
+      pattern: /^5[1-5]/,
+      color: '#EB001B'
+    },
+    {
+      name: 'American Express',
+      pattern: /^3[47]/,
+      color: '#006FCF'
+    },
+    {
+      name: 'Diners Club',
+      pattern: /^3[0689]/,
+      color: '#0079BE'
+    }
+  ];
+
+  // Detect card type based on number
+  useEffect(() => {
+    const cleanNumber = cardNumber.replace(/\s/g, '');
+    const detected = cardTypes.find(type => type.pattern.test(cleanNumber));
+    setDetectedCardType(detected || null);
+  }, [cardNumber]);
 
   useEffect(() => {
     if (serviceId && partnerId && petId) {
