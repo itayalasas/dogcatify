@@ -293,7 +293,7 @@ export default function ServiceBooking() {
         setFullName('');
         setDocumentNumber('');
         
-        setShowCardForm(false);
+        setShowPaymentModal(false);
         
         Alert.alert(
           '¡Pago Exitoso! 🎉',
@@ -660,6 +660,7 @@ export default function ServiceBooking() {
               </View>
             )}
           </View>
+        </View>
       </Modal>
 
       {/* Document Type Modal */}
@@ -903,6 +904,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: '90%',
   },
   paymentModalContent: {
     backgroundColor: '#FFFFFF',
