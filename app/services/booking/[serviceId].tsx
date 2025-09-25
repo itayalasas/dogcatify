@@ -2,13 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, Image, TextInput } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Clock } from 'lucide-react-native';
-import { X, CheckCircle } from 'lucide-react-native';
-import { Card } from '../../../components/ui/Card';
-import { Button } from '../../../components/ui/Button';
+import { X, CircleCheck as CheckCircle } from 'lucide-react-native'import { Button } from '../../../components/ui/Button';
 import { useAuth } from '../../../contexts/AuthContext';
 import { supabaseClient } from '@/lib/supabase';
 import { createServiceBookingOrder } from '../../../utils/mercadoPago';
-import { Modal, TextInput } from 'react-native';
 
 export default function ServiceBooking() {
   const { serviceId, partnerId, petId } = useLocalSearchParams<{
@@ -32,21 +29,6 @@ export default function ServiceBooking() {
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState(false);
   const [loadingTimeSlots, setLoadingTimeSlots] = useState(false);
-  
-  // Payment modal states
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'card' | 'mercadopago' | null>(null);
-  const [showCardForm, setShowCardForm] = useState(false);
-  
-  // Card form states
-  const [cardNumber, setCardNumber] = useState('');
-  const [expiryDate, setExpiryDate] = useState('');
-  const [cvv, setCvv] = useState('');
-  const [cardholderName, setCardholderName] = useState('');
-  const [documentType, setDocumentType] = useState('CI');
-  const [documentNumber, setDocumentNumber] = useState('');
-  const [processingPayment, setProcessingPayment] = useState(false);
-  const [showDocumentModal, setShowDocumentModal] = useState(false);
 
   useEffect(() => {
     if (serviceId && partnerId && petId) {
@@ -312,23 +294,6 @@ export default function ServiceBooking() {
       return;
     }
 
-    // Show payment method selection modal
-    setShowPaymentModal(true);
-  };
-
-  const handlePaymentMethodSelect = (method: 'card' | 'mercadopago') => {
-    setSelectedPaymentMethod(method);
-    setShowPaymentModal(false);
-    
-    if (method === 'card') {
-      setShowCardForm(true);
-    } else {
-      // Process with Mercado Pago
-      processMercadoPagoPayment();
-    }
-  };
-
-  const processMercadoPagoPayment = async () => {
     setBooking(true);
     try {
       console.log('Creating booking with Mercado Pago payment...');
@@ -338,7 +303,7 @@ export default function ServiceBooking() {
         partnerId: partnerId!,
         customerId: currentUser!.id,
         petId: petId!,
-        date: selectedDate!,
+        date: selectedDate,
         time: selectedTime,
         notes: notes.trim() || null,
         serviceName: service?.name || 'Servicio',
@@ -368,94 +333,6 @@ export default function ServiceBooking() {
       Alert.alert('Error', error.message || 'No se pudo procesar el pago de la reserva');
     } finally {
       setBooking(false);
-    }
-  };
-
-  const formatCardNumber = (value: string) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    const matches = v.match(/\d{4,16}/g);
-    const match = matches && matches[0] || '';
-    const parts = [];
-
-    for (let i = 0, len = match.length; i < len; i += 4) {
-      parts.push(match.substring(i, i + 4));
-    }
-
-    if (parts.length) {
-      return parts.join(' ');
-    } else {
-      return v;
-    }
-  };
-
-  const formatExpiryDate = (value: string) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    if (v.length >= 2) {
-      return v.substring(0, 2) + '/' + v.substring(2, 4);
-    }
-    return v;
-  };
-
-  const handleCardNumberChange = (value: string) => {
-    const formatted = formatCardNumber(value);
-    if (formatted.replace(/\s/g, '').length <= 16) {
-      setCardNumber(formatted);
-    }
-  };
-
-  const handleExpiryChange = (value: string) => {
-    const formatted = formatExpiryDate(value);
-    if (formatted.length <= 5) {
-      setExpiryDate(formatted);
-    }
-  };
-
-  const handleCvvChange = (value: string) => {
-    const v = value.replace(/[^0-9]/gi, '');
-    if (v.length <= 4) {
-      setCvv(v);
-    }
-  };
-
-  const getCardType = (number: string) => {
-    const cleanNumber = number.replace(/\s/g, '');
-    if (cleanNumber.startsWith('4')) return 'visa';
-    if (cleanNumber.startsWith('5') || cleanNumber.startsWith('2')) return 'mastercard';
-    if (cleanNumber.startsWith('3')) return 'amex';
-    return null;
-  };
-
-  const processCardPayment = async () => {
-    if (!cardNumber || !expiryDate || !cvv || !cardholderName || !documentNumber) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
-      return;
-    }
-
-    setProcessingPayment(true);
-    try {
-      // Simulate payment processing
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // Simulate success (90% success rate)
-      const isSuccess = Math.random() > 0.1;
-      
-      if (isSuccess) {
-        setShowCardForm(false);
-        Alert.alert(
-          '¡Pago Exitoso!',
-          'Tu reserva ha sido confirmada y el pago procesado correctamente.',
-          [{ text: 'OK', onPress: () => router.push('/(tabs)/services') }]
-        );
-      } else {
-        Alert.alert(
-          'Pago Rechazado',
-          'Tu pago no pudo ser procesado. Por favor verifica los datos de tu tarjeta e intenta nuevamente.'
-        );
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Ocurrió un error procesando el pago');
-    } finally {
-      setProcessingPayment(false);
     }
   };
 
@@ -651,257 +528,20 @@ export default function ServiceBooking() {
             />
           </View>
         </View>
-
-        {/* Bottom Action */}
-        {selectedDate && selectedTime && (
-          <View style={styles.bottomAction}>
-            <Button
-              title="Confirmar y Pagar"
-              onPress={handleConfirmBooking}
-              size="large"
-            />
-          </View>
-        )}
-
-        {/* Payment Method Selection Modal */}
-        <Modal
-          visible={showPaymentModal}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShowPaymentModal(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.paymentModalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Selecciona método de pago</Text>
-                <TouchableOpacity onPress={() => setShowPaymentModal(false)}>
-                  <X size={24} color="#6B7280" />
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.paymentMethods}>
-                {/* Mercado Pago Option */}
-                <TouchableOpacity
-                  style={styles.paymentMethod}
-                  onPress={() => handlePaymentMethodSelect('mercadopago')}
-                >
-                  <View style={styles.mercadoPagoLogo}>
-                    <Text style={styles.mercadoPagoText}>MP</Text>
-                  </View>
-                  <View style={styles.paymentMethodInfo}>
-                    <Text style={styles.paymentMethodTitle}>Mercado Pago</Text>
-                    <Text style={styles.paymentMethodSubtitle}>Pago seguro y rápido</Text>
-                  </View>
-                </TouchableOpacity>
-
-                {/* Card Payment Option */}
-                <TouchableOpacity
-                  style={styles.paymentMethod}
-                  onPress={() => handlePaymentMethodSelect('card')}
-                >
-                  <View style={styles.cardLogos}>
-                    <View style={[styles.cardLogo, styles.visaLogo]}>
-                      <Text style={styles.cardLogoText}>VISA</Text>
-                    </View>
-                    <View style={[styles.cardLogo, styles.mastercardLogo]}>
-                      <Text style={styles.cardLogoText}>MC</Text>
-                    </View>
-                    <View style={[styles.cardLogo, styles.amexLogo]}>
-                      <Text style={styles.cardLogoText}>AE</Text>
-                    </View>
-                  </View>
-                  <View style={styles.paymentMethodInfo}>
-                    <Text style={styles.paymentMethodTitle}>Tarjeta de Crédito/Débito</Text>
-                    <Text style={styles.paymentMethodSubtitle}>Visa, Mastercard, American Express</Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
-
-        {/* Card Payment Form Modal */}
-        <Modal
-          visible={showCardForm}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShowCardForm(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.cardFormModal}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Pago con Tarjeta</Text>
-                <TouchableOpacity onPress={() => setShowCardForm(false)}>
-                  <X size={24} color="#6B7280" />
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView style={styles.cardFormContent} showsVerticalScrollIndicator={false}>
-                {/* Service Summary */}
-                <View style={styles.paymentSummary}>
-                  <Text style={styles.summaryTitle}>Resumen del pago</Text>
-                  <View style={styles.summaryRow}>
-                    <Text style={styles.summaryLabel}>{service?.name}</Text>
-                    <Text style={styles.summaryAmount}>{formatPrice(service?.price || 0)}</Text>
-                  </View>
-                  <View style={styles.summaryDivider} />
-                  <View style={styles.summaryRow}>
-                    <Text style={styles.summaryTotal}>Total</Text>
-                    <Text style={styles.summaryTotalAmount}>{formatPrice(service?.price || 0)}</Text>
-                  </View>
-                </View>
-
-                {/* Card Information */}
-                <View style={styles.cardSection}>
-                  <Text style={styles.cardSectionTitle}>Información de la tarjeta</Text>
-                  
-                  <View style={styles.cardInputGroup}>
-                    <Text style={styles.inputLabel}>Número de tarjeta</Text>
-                    <View style={styles.cardNumberContainer}>
-                      <TextInput
-                        style={styles.cardInput}
-                        placeholder="1234 5678 9012 3456"
-                        value={cardNumber}
-                        onChangeText={handleCardNumberChange}
-                        keyboardType="numeric"
-                        maxLength={19}
-                      />
-                      {getCardType(cardNumber) && (
-                        <View style={styles.cardTypeIndicator}>
-                          <Text style={styles.cardTypeText}>
-                            {getCardType(cardNumber)?.toUpperCase()}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-
-                  <View style={styles.cardRow}>
-                    <View style={styles.cardInputHalf}>
-                      <Text style={styles.inputLabel}>Vencimiento</Text>
-                      <TextInput
-                        style={styles.cardInput}
-                        placeholder="MM/AA"
-                        value={expiryDate}
-                        onChangeText={handleExpiryChange}
-                        keyboardType="numeric"
-                        maxLength={5}
-                      />
-                    </View>
-                    <View style={styles.cardInputHalf}>
-                      <Text style={styles.inputLabel}>CVV</Text>
-                      <TextInput
-                        style={styles.cardInput}
-                        placeholder="123"
-                        value={cvv}
-                        onChangeText={handleCvvChange}
-                        keyboardType="numeric"
-                        maxLength={4}
-                        secureTextEntry
-                      />
-                    </View>
-                  </View>
-                </View>
-
-                {/* Personal Information */}
-                <View style={styles.personalSection}>
-                  <Text style={styles.cardSectionTitle}>Información personal</Text>
-                  
-                  <View style={styles.cardInputGroup}>
-                    <Text style={styles.inputLabel}>Nombre del titular</Text>
-                    <TextInput
-                      style={styles.cardInput}
-                      placeholder="Juan Pérez"
-                      value={cardholderName}
-                      onChangeText={setCardholderName}
-                      autoCapitalize="words"
-                    />
-                  </View>
-
-                  <View style={styles.cardInputGroup}>
-                    <Text style={styles.inputLabel}>Tipo de documento</Text>
-                    <TouchableOpacity
-                      style={styles.documentTypeSelector}
-                      onPress={() => setShowDocumentModal(true)}
-                    >
-                      <Text style={styles.documentTypeText}>
-                        {documentType === 'CI' ? 'Cédula de Identidad' :
-                         documentType === 'RUT' ? 'RUT' :
-                         documentType === 'PASSPORT' ? 'Pasaporte' : 'Otro'}
-                      </Text>
-                      <Text style={styles.documentTypeCode}>({documentType})</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  <View style={styles.cardInputGroup}>
-                    <Text style={styles.inputLabel}>Número de documento</Text>
-                    <TextInput
-                      style={styles.cardInput}
-                      placeholder="12345678"
-                      value={documentNumber}
-                      onChangeText={setDocumentNumber}
-                      keyboardType="numeric"
-                    />
-                  </View>
-                </View>
-              </ScrollView>
-
-              <View style={styles.cardFormActions}>
-                <Button
-                  title={processingPayment ? "Procesando..." : "Pagar"}
-                  onPress={processCardPayment}
-                  loading={processingPayment}
-                  disabled={!cardNumber || !expiryDate || !cvv || !cardholderName || !documentNumber}
-                  style={styles.payButton}
-                />
-              </View>
-            </View>
-          </View>
-        </Modal>
-
-        {/* Document Type Selection Modal */}
-        <Modal
-          visible={showDocumentModal}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowDocumentModal(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.documentModal}>
-              <Text style={styles.documentModalTitle}>Tipo de documento</Text>
-              
-              {[
-                { code: 'CI', name: 'Cédula de Identidad' },
-                { code: 'RUT', name: 'RUT' },
-                { code: 'PASSPORT', name: 'Pasaporte' },
-                { code: 'OTHER', name: 'Otro' }
-              ].map((doc) => (
-                <TouchableOpacity
-                  key={doc.code}
-                  style={[
-                    styles.documentOption,
-                    documentType === doc.code && styles.selectedDocumentOption
-                  ]}
-                  onPress={() => {
-                    setDocumentType(doc.code);
-                    setShowDocumentModal(false);
-                  }}
-                >
-                  <Text style={[
-                    styles.documentOptionText,
-                    documentType === doc.code && styles.selectedDocumentOptionText
-                  ]}>
-                    {doc.name}
-                  </Text>
-                  {documentType === doc.code && (
-                    <CheckCircle size={16} color="#4285F4" />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        </Modal>
       </ScrollView>
+
+      {/* Bottom Action */}
+      {selectedDate && selectedTime && (
+        <View style={styles.bottomAction}>
+          <Button
+            title={booking ? "Procesando pago..." : "Confirmar y Pagar"}
+            onPress={handleConfirmBooking}
+            loading={booking}
+            disabled={booking}
+            size="large"
+          />
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -1089,19 +729,19 @@ const styles = StyleSheet.create({
     marginHorizontal: -8,
   },
   datesScrollContent: {
-    paddingHorizontal: 4,
+    paddingHorizontal: 8,
   },
   dateButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
+    paddingVertical: 16,
     paddingHorizontal: 12,
     marginHorizontal: 4,
-    borderRadius: 12,
-    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    backgroundColor: '#F8F9FA',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    minWidth: 65,
+    borderColor: '#E8EAED',
+    minWidth: 70,
     position: 'relative',
   },
   selectedDateButton: {
@@ -1113,7 +753,7 @@ const styles = StyleSheet.create({
     borderColor: '#4285F4',
   },
   todayBadge: {
-    position: 'absolute', 
+    position: 'absolute',
     top: -8,
     backgroundColor: '#4285F4',
     paddingHorizontal: 8,
@@ -1127,18 +767,20 @@ const styles = StyleSheet.create({
   },
   dateButtonDay: {
     fontSize: 12,
-    color: '#6B7280',
-    marginBottom: 1,
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
+    marginBottom: 4,
   },
   dateButtonDate: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 1,
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
+    color: '#4285F4',
+    marginBottom: 4,
   },
   dateButtonMonth: {
-    fontSize: 11,
-    color: '#6B7280',
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
   },
   selectedDateButtonText: {
     color: '#FFFFFF',
@@ -1261,268 +903,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 10,
-  },
-  
-  // Payment Modal Styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  paymentModalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 24,
-    paddingBottom: 40,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  paymentMethods: {
-    gap: 16,
-  },
-  paymentMethod: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  mercadoPagoLogo: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#00A650',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  mercadoPagoText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  cardLogos: {
-    flexDirection: 'row',
-    marginRight: 16,
-    gap: 4,
-  },
-  cardLogo: {
-    width: 32,
-    height: 20,
-    borderRadius: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  visaLogo: {
-    backgroundColor: '#1A1F71',
-  },
-  mastercardLogo: {
-    backgroundColor: '#EB001B',
-  },
-  amexLogo: {
-    backgroundColor: '#006FCF',
-  },
-  cardLogoText: {
-    fontSize: 8,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  paymentMethodInfo: {
-    flex: 1,
-  },
-  paymentMethodTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 2,
-  },
-  paymentMethodSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  
-  // Card Form Modal Styles
-  cardFormModal: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    flex: 1,
-    marginTop: 100,
-  },
-  cardFormContent: {
-    flex: 1,
-    padding: 24,
-  },
-  paymentSummary: {
-    backgroundColor: '#F8FAFC',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 24,
-  },
-  summaryTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 12,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  summaryLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  summaryAmount: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#111827',
-  },
-  summaryDivider: {
-    height: 1,
-    backgroundColor: '#E5E7EB',
-    marginVertical: 8,
-  },
-  summaryTotal: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  summaryTotalAmount: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#10B981',
-  },
-  cardSection: {
-    marginBottom: 24,
-  },
-  cardSectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 16,
-  },
-  cardInputGroup: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  cardInput: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    color: '#111827',
-    backgroundColor: '#FFFFFF',
-  },
-  cardNumberContainer: {
-    position: 'relative',
-  },
-  cardTypeIndicator: {
-    position: 'absolute',
-    right: 12,
-    top: 12,
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  cardTypeText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#6B7280',
-  },
-  cardRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  cardInputHalf: {
-    flex: 1,
-  },
-  personalSection: {
-    marginBottom: 24,
-  },
-  documentTypeSelector: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    padding: 12,
-    backgroundColor: '#FFFFFF',
-  },
-  documentTypeText: {
-    fontSize: 16,
-    color: '#111827',
-    flex: 1,
-  },
-  documentTypeCode: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  cardFormActions: {
-    padding: 24,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  payButton: {
-    backgroundColor: '#4285F4',
-  },
-  
-  // Document Modal Styles
-  documentModal: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 20,
-    margin: 20,
-    maxHeight: 400,
-  },
-  documentModalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  documentOption: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  selectedDocumentOption: {
-    backgroundColor: '#EBF8FF',
-  },
-  documentOptionText: {
-    fontSize: 16,
-    color: '#111827',
-    flex: 1,
-  },
-  selectedDocumentOptionText: {
-    color: '#4285F4',
-    fontWeight: '500',
   },
 });
