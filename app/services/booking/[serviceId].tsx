@@ -738,17 +738,6 @@ export default function ServiceBooking() {
         </View>
       )}
 
-      {/* Bottom Action Button */}
-      {selectedDate && selectedTime && (
-        <View style={styles.bottomAction}>
-          <Button
-            title="Confirmar Reserva"
-            onPress={handleConfirmBooking}
-            style={styles.confirmButton}
-          />
-        </View>
-      )}
-
       {/* Payment Method Selection Modal */}
       <Modal
         visible={showPaymentModal}
