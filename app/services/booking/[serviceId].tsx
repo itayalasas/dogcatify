@@ -430,6 +430,7 @@ export default function ServiceBooking() {
   };
 
   const formatCardNumber = (value: string) => {
+    // Secure card number formatting - no logging of actual values
     const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
     const matches = v.match(/\d{4,16}/g);
     const match = matches && matches[0] || '';
@@ -447,6 +448,7 @@ export default function ServiceBooking() {
   };
 
   const formatExpiryDate = (value: string) => {
+    // Secure expiry formatting - no logging
     const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
     if (v.length >= 2) {
       return v.substring(0, 2) + '/' + v.substring(2, 4);
@@ -469,6 +471,7 @@ export default function ServiceBooking() {
   };
 
   const handleCvvChange = (value: string) => {
+    // Secure CVV handling - no logging
     const v = value.replace(/[^0-9]/gi, '');
     if (v.length <= 4) {
       setCvv(v);
@@ -504,6 +507,9 @@ export default function ServiceBooking() {
 
     setProcessingPayment(true);
     try {
+      // Secure payment processing - no sensitive data logging
+      console.log('Processing secure payment...');
+      
       // Simular procesamiento de pago
       await new Promise(resolve => setTimeout(resolve, 3000));
 
@@ -511,6 +517,14 @@ export default function ServiceBooking() {
       const isSuccess = Math.random() > 0.1;
 
       if (isSuccess) {
+        // Clear sensitive data immediately after processing
+        setCardNumber('');
+        setExpiryDate('');
+        setCvv('');
+        setCardholderName('');
+        setDocumentNumber('');
+        setShowCardForm(false);
+        
         Alert.alert(
           '¡Pago Exitoso!',
           `Tu reserva ha sido confirmada.\n\nServicio: ${service?.name}\nFecha: ${selectedDate?.toLocaleDateString()}\nHora: ${selectedTime}\nTotal: ${formatPrice(service?.price || 0)}`,
@@ -1008,6 +1022,43 @@ export default function ServiceBooking() {
             </View>
           </View>
         </View>
+
+        {/* Document Type Selection Modal */}
+        <Modal
+          visible={showDocumentTypes}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowDocumentTypes(false)}
+        >
+          <View style={styles.documentModalOverlay}>
+            <View style={styles.documentModal}>
+              <Text style={styles.documentModalTitle}>Tipo de Documento</Text>
+              {documentTypes.map((type) => (
+                <TouchableOpacity
+                  key={type.value}
+                  style={[
+                    styles.documentOption,
+                    documentType === type.value && styles.selectedDocumentOption
+                  ]}
+                  onPress={() => {
+                    setDocumentType(type.value);
+                    setShowDocumentTypes(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.documentOptionText,
+                    documentType === type.value && styles.selectedDocumentOptionText
+                  ]}>
+                    {type.label}
+                  </Text>
+                  {documentType === type.value && (
+                    <CheckCircle size={16} color="#4285F4" />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </Modal>
 
         {/* Document Type Selection Modal */}
         <Modal
@@ -1575,6 +1626,49 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     borderTopWidth: 1,
     borderTopColor: '#E8EAED',
+  },
+
+  // Document Type Modal
+  documentModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  documentModal: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 20,
+    width: '100%',
+    maxWidth: 300,
+  },
+  documentModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  documentOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  selectedDocumentOption: {
+    backgroundColor: '#EBF8FF',
+  },
+  documentOptionText: {
+    fontSize: 16,
+    color: '#111827',
+  },
+  selectedDocumentOptionText: {
+    color: '#4285F4',
+    fontWeight: '500',
   },
   cardPaymentSummary: {
     backgroundColor: '#F0FDF4',
