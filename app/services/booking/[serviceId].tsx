@@ -659,40 +659,40 @@ export default function ServiceBooking() {
             )}
           </View>
         </View>
+      </Modal>
 
-        {/* Document Type Modal */}
-        <Modal
-          visible={showDocumentTypes}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowDocumentTypes(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.documentModal}>
-              <Text style={styles.documentModalTitle}>Tipo de Documento</Text>
-              {documentTypes.map((type) => (
-                <TouchableOpacity
-                  key={type.value}
-                  style={[
-                    styles.documentOption,
-                    documentType === type.value && styles.selectedDocumentOption
-                  ]}
-                  onPress={() => {
-                    setDocumentType(type.value);
-                    setShowDocumentTypes(false);
-                  }}
-                >
-                  <Text style={[
-                    styles.documentOptionText,
-                    documentType === type.value && styles.selectedDocumentOptionText
-                  ]}>
-                    {type.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+      {/* Document Type Modal */}
+      <Modal
+        visible={showDocumentTypes}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDocumentTypes(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.documentModal}>
+            <Text style={styles.documentModalTitle}>Tipo de Documento</Text>
+            {documentTypes.map((type) => (
+              <TouchableOpacity
+                key={type.value}
+                style={[
+                  styles.documentOption,
+                  documentType === type.value && styles.selectedDocumentOption
+                ]}
+                onPress={() => {
+                  setDocumentType(type.value);
+                  setShowDocumentTypes(false);
+                }}
+              >
+                <Text style={[
+                  styles.documentOptionText,
+                  documentType === type.value && styles.selectedDocumentOptionText
+                ]}>
+                  {type.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
-        </Modal>
+        </View>
       </Modal>
     </SafeAreaView>
   );
