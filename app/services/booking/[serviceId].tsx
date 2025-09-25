@@ -378,7 +378,9 @@ export default function ServiceBooking() {
     } else {
       // Mostrar formulario de tarjeta
       setShowPaymentModal(false);
-      setShowCardForm(true);
+      setTimeout(() => {
+        setShowCardForm(true);
+      }, 300);
     }
   };
 
@@ -807,6 +809,110 @@ export default function ServiceBooking() {
               <View style={styles.cardPaymentSummary}>
                 <Text style={styles.cardSummaryTitle}>Total a pagar</Text>
                 <Text style={styles.cardSummaryAmount}>{formatPrice(service?.price || 0)}</Text>
+                <Text style={styles.cardSummaryService}>{service?.name}</Text>
+                <Text style={styles.cardSummaryDate}>
+                  {selectedDate?.toLocaleDateString()} a las {selectedTime}
+                </Text>
+              </View>
+
+              {/* Card Information */}
+              <View style={styles.cardSection}>
+                <Text style={styles.cardSectionTitle}>Información de la tarjeta</Text>
+                
+                <View style={styles.cardInputGroup}>
+                  <Text style={styles.cardInputLabel}>Número de tarjeta *</Text>
+                  <TextInput
+                    style={styles.cardInput}
+                    placeholder="1234 5678 9012 3456"
+                    value={cardNumber}
+                    onChangeText={handleCardNumberChange}
+                    keyboardType="numeric"
+                    maxLength={19}
+                    secureTextEntry={false}
+                    autoComplete="cc-number"
+                  />
+                </View>
+
+                <View style={styles.cardRow}>
+                  <View style={styles.cardInputHalf}>
+                    <Text style={styles.cardInputLabel}>Vencimiento *</Text>
+                    <TextInput
+                      style={styles.cardInput}
+                      placeholder="MM/AA"
+                      value={expiryDate}
+                      onChangeText={handleExpiryChange}
+                      keyboardType="numeric"
+                      maxLength={5}
+                      autoComplete="cc-exp"
+                    />
+                  </View>
+                  <View style={styles.cardInputHalf}>
+                    <Text style={styles.cardInputLabel}>CVV *</Text>
+                    <TextInput
+                      style={styles.cardInput}
+                      placeholder="123"
+                      value={cvv}
+                      onChangeText={handleCvvChange}
+                      keyboardType="numeric"
+                      maxLength={4}
+                      secureTextEntry={true}
+                      autoComplete="cc-csc"
+                    />
+                  </View>
+                </View>
+              </View>
+
+              {/* Personal Information */}
+              <View style={styles.personalSection}>
+                <Text style={styles.cardSectionTitle}>Información personal</Text>
+                
+                <View style={styles.cardInputGroup}>
+                  <Text style={styles.cardInputLabel}>Nombre del titular *</Text>
+                  <TextInput
+                    style={styles.cardInput}
+                    placeholder="Juan Pérez"
+                    value={cardholderName}
+                    onChangeText={setCardholderName}
+                    autoCapitalize="words"
+                    autoComplete="name"
+                  />
+                </View>
+
+                <View style={styles.cardInputGroup}>
+                  <Text style={styles.cardInputLabel}>Tipo de documento *</Text>
+                  <TouchableOpacity
+                    style={styles.documentTypeSelector}
+                    onPress={() => setShowDocumentTypes(true)}
+                  >
+                    <Text style={styles.documentTypeText}>
+                      {documentTypes.find(type => type.value === documentType)?.label || 'Seleccionar'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.cardInputGroup}>
+                  <Text style={styles.cardInputLabel}>Número de documento *</Text>
+                  <TextInput
+                    style={styles.cardInput}
+                    placeholder="12345678"
+                    value={documentNumber}
+                    onChangeText={setDocumentNumber}
+                    keyboardType="numeric"
+                    secureTextEntry={false}
+                  />
+                </View>
+              </View>
+
+              {/* Security Notice */}
+              <View style={styles.securityNotice}>
+                <Text style={styles.securityText}>
+                  🔒 Tu información está protegida con encriptación SSL de 256 bits
+                </Text>
+              </View>
+              {/* Payment Summary */}
+              <View style={styles.cardPaymentSummary}>
+                <Text style={styles.cardSummaryTitle}>Total a pagar</Text>
+                <Text style={styles.cardSummaryAmount}>{formatPrice(service?.price || 0)}</Text>
               </View>
 
               {/* Card Information */}
@@ -897,7 +1003,7 @@ export default function ServiceBooking() {
                 title={processingPayment ? "Procesando..." : "Pagar"}
                 onPress={handleCardPayment}
                 loading={processingPayment}
-                style={styles.payButton}
+                size="large"
               />
             </View>
           </View>
@@ -1470,10 +1576,98 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#E8EAED',
   },
-  payButton: {
-    backgroundColor: '#34A853',
+  cardPaymentSummary: {
+    backgroundColor: '#F0FDF4',
+    padding: 16,
     borderRadius: 12,
-    paddingVertical: 16,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  cardSummaryTitle: {
+    fontSize: 14,
+    color: '#166534',
+    marginBottom: 4,
+  },
+  cardSummaryAmount: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#34A853',
+    marginBottom: 4,
+  },
+  cardSummaryService: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#111827',
+    marginBottom: 2,
+  },
+  cardSummaryDate: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  cardSection: {
+    marginBottom: 20,
+  },
+  personalSection: {
+    marginBottom: 20,
+  },
+  cardSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 16,
+  },
+  cardInputGroup: {
+    marginBottom: 16,
+  },
+  cardInputLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  cardInput: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 16,
+    color: '#111827',
+    backgroundColor: '#FFFFFF',
+    minHeight: 48,
+  },
+  cardRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  cardInputHalf: {
+    flex: 1,
+  },
+  documentTypeSelector: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+    padding: 12,
+    backgroundColor: '#FFFFFF',
+    minHeight: 48,
+    justifyContent: 'center',
+  },
+  documentTypeText: {
+    fontSize: 16,
+    color: '#111827',
+  },
+  securityNotice: {
+    backgroundColor: '#F0FDF4',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#10B981',
+  },
+  securityText: {
+    fontSize: 12,
+    color: '#166534',
+    textAlign: 'center',
+    fontWeight: '500',
   },
 
   // Document Type Modal
