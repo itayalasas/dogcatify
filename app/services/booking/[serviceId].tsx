@@ -661,6 +661,7 @@ export default function ServiceBooking() {
             )}
           </View>
         </View>
+        </View>
       </Modal>
 
       {/* Document Type Modal */}
