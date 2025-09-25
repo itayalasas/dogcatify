@@ -715,6 +715,29 @@ export default function ServiceBooking() {
         </Card>
       </ScrollView>
 
+      {/* Bottom Action Button - Solo aparece cuando fecha y hora están seleccionadas */}
+      {selectedDate && selectedTime && (
+        <View style={styles.bottomAction}>
+          <Card style={styles.bottomCard}>
+            <View style={styles.confirmationSummary}>
+              <Text style={styles.confirmationText}>
+                {selectedDate.toLocaleDateString()} a las {selectedTime}
+              </Text>
+              <Text style={styles.confirmationPrice}>
+                {formatPrice(service?.price || 0)}
+              </Text>
+            </View>
+            <Button
+              title="Confirmar Reserva"
+              onPress={handleConfirmBooking}
+              loading={booking}
+              size="large"
+              style={styles.confirmButton}
+            />
+          </Card>
+        </View>
+      )}
+
       {/* Bottom Action Button */}
       {selectedDate && selectedTime && (
         <View style={styles.bottomAction}>
@@ -1236,24 +1259,46 @@ const styles = StyleSheet.create({
 
   // Bottom Action
   bottomAction: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     backgroundColor: '#FFFFFF',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderTopWidth: 1,
-    borderTopColor: '#E8EAED',
+    borderTopColor: '#E5E7EB',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 10,
   },
+  bottomCard: {
+    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  confirmationSummary: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  confirmationText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+  },
+  confirmationPrice: {
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
+    color: '#34A853',
+  },
   confirmButton: {
     backgroundColor: '#4285F4',
-    borderRadius: 12,
-    paddingVertical: 16,
+    borderRadius: 16,
   },
 
   // Payment Modal
