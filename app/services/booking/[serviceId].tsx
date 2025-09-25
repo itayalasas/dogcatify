@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, Image, TextInput } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Calendar, Clock, MapPin, User, Phone, CreditCard } from 'lucide-react-native';
+import { ArrowLeft, Clock } from 'lucide-react-native';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
-import { Input } from '../../../components/ui/Input';
 import { useAuth } from '../../../contexts/AuthContext';
 import { supabaseClient } from '@/lib/supabase';
 import { createServiceBookingOrder } from '../../../utils/mercadoPago';
@@ -271,10 +270,7 @@ export default function ServiceBooking() {
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('es-UY', {
-      style: 'currency',
-      currency: 'UYU',
-    }).format(price);
+    return `$ ${price.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,')}`;
   };
 
   const formatDateForDisplay = (date: Date) => {
@@ -353,12 +349,13 @@ export default function ServiceBooking() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ArrowLeft size={24} color="#111827" />
+          <ArrowLeft size={24} color="#000000" />
         </TouchableOpacity>
-        <Text style={styles.title}>Reservar Servicio</Text>
-        <View style={styles.placeholder} />
+        <Text style={styles.headerTitle}>Reservar Servicio</Text>
+        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView 
@@ -367,17 +364,17 @@ export default function ServiceBooking() {
         contentContainerStyle={styles.scrollContent}
       >
         {/* Service and Pet Info Card */}
-        <Card style={styles.serviceInfoCard}>
+        <View style={styles.mainCard}>
           {/* Service Info */}
           <View style={styles.serviceSection}>
             <View style={styles.serviceHeader}>
               <View style={styles.serviceLogo}>
                 <Text style={styles.serviceIcon}>✂️</Text>
               </View>
-              <View style={styles.serviceDetails}>
-                <Text style={styles.serviceName}>{service?.name}</Text>
-                <Text style={styles.serviceProvider}>{partner?.business_name}</Text>
-                <Text style={styles.servicePrice}>{formatPrice(service?.price || 0)}</Text>
+              <View style={styles.serviceInfo}>
+                <Text style={styles.businessName}>{partner?.business_name || 'Peluquería Dinky'}</Text>
+                <Text style={styles.serviceName}>{service?.name || 'Baño completo'}</Text>
+                <Text style={styles.servicePrice}>{formatPrice(service?.price || 650)}</Text>
               </View>
             </View>
           </View>
@@ -398,15 +395,15 @@ export default function ServiceBooking() {
                 )}
               </View>
               <View style={styles.petDetails}>
-                <Text style={styles.petName}>{pet?.name}</Text>
-                <Text style={styles.petBreed}>{pet?.breed}</Text>
+                <Text style={styles.petName}>{pet?.name || 'Roky'}</Text>
+                <Text style={styles.petBreed}>{pet?.breed || 'Egyptian Mau'}</Text>
               </View>
             </View>
           </View>
-        </Card>
+        </View>
 
-        {/* Date Selection */}
-        <Card style={styles.dateCard}>
+        {/* Date Selection Card */}
+        <View style={styles.dateCard}>
           <Text style={styles.sectionTitle}>Selecciona una fecha</Text>
           
           {availableDates.length === 0 ? (
@@ -422,7 +419,7 @@ export default function ServiceBooking() {
               style={styles.datesScroll}
               contentContainerStyle={styles.datesScrollContent}
             >
-              {availableDates.slice(0, 14).map((date, index) => {
+              {availableDates.slice(0, 7).map((date, index) => {
                 const isSelected = selectedDate && 
                   date.toDateString() === selectedDate.toDateString();
                 const todayCheck = isToday(date);
@@ -433,7 +430,8 @@ export default function ServiceBooking() {
                     key={index}
                     style={[
                       styles.dateButton,
-                      isSelected && styles.selectedDateButton
+                      isSelected && styles.selectedDateButton,
+                      todayCheck && !isSelected && styles.todayDateButton
                     ]}
                     onPress={() => handleDateSelect(date)}
                   >
@@ -444,19 +442,22 @@ export default function ServiceBooking() {
                     )}
                     <Text style={[
                       styles.dateButtonDay,
-                      isSelected && styles.selectedDateButtonText
+                      isSelected && styles.selectedDateButtonText,
+                      todayCheck && !isSelected && styles.todayDateButtonText
                     ]}>
                       {dateInfo.dayName}
                     </Text>
                     <Text style={[
                       styles.dateButtonDate,
-                      isSelected && styles.selectedDateButtonText
+                      isSelected && styles.selectedDateButtonText,
+                      todayCheck && !isSelected && styles.todayDateButtonText
                     ]}>
                       {dateInfo.dayNumber}
                     </Text>
                     <Text style={[
                       styles.dateButtonMonth,
-                      isSelected && styles.selectedDateButtonText
+                      isSelected && styles.selectedDateButtonText,
+                      todayCheck && !isSelected && styles.todayDateButtonText
                     ]}>
                       {dateInfo.monthName}
                     </Text>
@@ -465,11 +466,11 @@ export default function ServiceBooking() {
               })}
             </ScrollView>
           )}
-        </Card>
+        </View>
 
-        {/* Time Selection */}
+        {/* Time Selection Card */}
         {selectedDate && (
-          <Card style={styles.timeCard}>
+          <View style={styles.timeCard}>
             <Text style={styles.sectionTitle}>Selecciona una hora</Text>
             
             {loadingTimeSlots ? (
@@ -486,44 +487,48 @@ export default function ServiceBooking() {
               </View>
             ) : (
               <View style={styles.timeSlots}>
-                {availableTimeSlots.map((timeSl, index) => (
+                {availableTimeSlots.map((timeSlot, index) => (
                   <TouchableOpacity
                     key={index}
                     style={[
                       styles.timeSlot,
-                      selectedTime === timeSl && styles.selectedTimeSlot
+                      selectedTime === timeSlot && styles.selectedTimeSlot
                     ]}
-                    onPress={() => handleTimeSelect(timeSl)}
+                    onPress={() => handleTimeSelect(timeSlot)}
                   >
                     <Clock 
                       size={16} 
-                      color={selectedTime === timeSl ? '#FFFFFF' : '#6B7280'} 
+                      color={selectedTime === timeSlot ? '#FFFFFF' : '#9CA3AF'} 
                     />
                     <Text style={[
                       styles.timeSlotText,
-                      selectedTime === timeSl && styles.selectedTimeSlotText
+                      selectedTime === timeSlot && styles.selectedTimeSlotText
                     ]}>
-                      {timeSl}
+                      {timeSlot}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
             )}
-          </Card>
+          </View>
         )}
 
         {/* Notes Section */}
-        <Card style={styles.notesCard}>
-          <Text style={styles.sectionTitle}>Notas para el proveedor</Text>
-          <Input
-            placeholder="Agrega cualquier información adicional para el proveedor"
-            value={notes}
-            onChangeText={setNotes}
-            multiline
-            numberOfLines={4}
-            style={styles.notesInput}
-          />
-        </Card>
+        <View style={styles.notesSection}>
+          <Text style={styles.notesSectionTitle}>Notas para el proveedor</Text>
+          <View style={styles.notesInputContainer}>
+            <TextInput
+              style={styles.notesInput}
+              placeholder="Agrega cualquier información adicional para el proveedor"
+              placeholderTextColor="#9CA3AF"
+              value={notes}
+              onChangeText={setNotes}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+            />
+          </View>
+        </View>
       </ScrollView>
 
       {/* Bottom Action */}
@@ -532,8 +537,9 @@ export default function ServiceBooking() {
           <Button
             title={booking ? "Procesando pago..." : "Confirmar y Pagar"}
             onPress={handleConfirmBooking}
+            loading={booking}
             disabled={booking}
-            style={styles.confirmButton}
+            size="large"
           />
         </View>
       )}
@@ -544,28 +550,28 @@ export default function ServiceBooking() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F5F5F5',
+    paddingTop: 50,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 16,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   backButton: {
-    padding: 8,
+    padding: 4,
   },
-  title: {
+  headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
+    fontFamily: 'Inter-SemiBold',
+    color: '#000000',
+    textAlign: 'center',
   },
-  placeholder: {
-    width: 40,
+  headerSpacer: {
+    width: 32,
   },
   content: {
     flex: 1,
@@ -581,58 +587,74 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
+    fontFamily: 'Inter-Regular',
     color: '#6B7280',
   },
-  serviceInfoCard: {
+  
+  // Main service card
+  mainCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
     marginBottom: 16,
-    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   serviceSection: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   serviceHeader: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   serviceLogo: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#3B82F6',
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#4285F4',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
   },
   serviceIcon: {
-    fontSize: 24,
+    fontSize: 28,
+    color: '#FFFFFF',
   },
-  serviceDetails: {
+  serviceInfo: {
     flex: 1,
   },
-  serviceName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
+  businessName: {
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
+    color: '#000000',
     marginBottom: 4,
   },
-  serviceProvider: {
-    fontSize: 14,
-    color: '#3B82F6',
-    marginBottom: 4,
+  serviceName: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#4285F4',
+    marginBottom: 8,
   },
   servicePrice: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#10B981',
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
+    color: '#34A853',
   },
   petSection: {
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    paddingTop: 16,
+    borderTopColor: '#F0F0F0',
+    paddingTop: 20,
   },
   petSectionTitle: {
     fontSize: 14,
-    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
     marginBottom: 12,
   },
   petInfo: {
@@ -640,45 +662,58 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   petPhotoContainer: {
-    marginRight: 12,
+    marginRight: 16,
   },
   petPhoto: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
   },
   petPhotoPlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#10B981',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#34A853',
     justifyContent: 'center',
     alignItems: 'center',
   },
   petPhotoPlaceholderText: {
-    fontSize: 24,
+    fontSize: 20,
   },
   petDetails: {
     flex: 1,
   },
   petName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: '#000000',
     marginBottom: 4,
   },
   petBreed: {
     fontSize: 14,
-    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
   },
+  
+  // Date selection card
   dateCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
     marginBottom: 16,
-    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#000000',
     marginBottom: 16,
   },
   noAvailabilityContainer: {
@@ -687,66 +722,88 @@ const styles = StyleSheet.create({
   },
   noAvailabilityText: {
     fontSize: 14,
-    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
     textAlign: 'center',
   },
   datesScroll: {
-    marginHorizontal: -4,
+    marginHorizontal: -8,
   },
   datesScrollContent: {
-    paddingHorizontal: 4,
+    paddingHorizontal: 8,
   },
   dateButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
     marginHorizontal: 4,
-    borderRadius: 12,
-    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    backgroundColor: '#F8F9FA',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    minWidth: 80,
+    borderColor: '#E8EAED',
+    minWidth: 70,
     position: 'relative',
   },
   selectedDateButton: {
-    backgroundColor: '#3B82F6',
-    borderColor: '#3B82F6',
+    backgroundColor: '#4285F4',
+    borderColor: '#4285F4',
+  },
+  todayDateButton: {
+    backgroundColor: '#F8F9FA',
+    borderColor: '#4285F4',
   },
   todayBadge: {
     position: 'absolute',
-    top: -6,
-    backgroundColor: '#3B82F6',
+    top: -8,
+    backgroundColor: '#4285F4',
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 10,
+    borderRadius: 8,
   },
   todayBadgeText: {
     fontSize: 10,
+    fontFamily: 'Inter-SemiBold',
     color: '#FFFFFF',
-    fontWeight: '600',
   },
   dateButtonDay: {
     fontSize: 12,
-    color: '#6B7280',
-    marginBottom: 2,
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
+    marginBottom: 4,
   },
   dateButtonDate: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 2,
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
+    color: '#4285F4',
+    marginBottom: 4,
   },
   dateButtonMonth: {
     fontSize: 12,
-    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
   },
   selectedDateButtonText: {
     color: '#FFFFFF',
   },
+  todayDateButtonText: {
+    color: '#4285F4',
+  },
+  
+  // Time selection card
   timeCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
     marginBottom: 16,
-    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   loadingTimeSlotsContainer: {
     padding: 20,
@@ -754,7 +811,8 @@ const styles = StyleSheet.create({
   },
   loadingTimeSlotsText: {
     fontSize: 14,
-    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
   },
   noTimeSlotsContainer: {
     padding: 20,
@@ -762,7 +820,8 @@ const styles = StyleSheet.create({
   },
   noTimeSlotsText: {
     fontSize: 14,
-    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
     textAlign: 'center',
   },
   timeSlots: {
@@ -773,36 +832,61 @@ const styles = StyleSheet.create({
   timeSlot: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    minWidth: 100,
     justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: '#F8F9FA',
+    borderWidth: 1,
+    borderColor: '#E8EAED',
+    minWidth: 100,
   },
   selectedTimeSlot: {
-    backgroundColor: '#3B82F6',
-    borderColor: '#3B82F6',
+    backgroundColor: '#4285F4',
+    borderColor: '#4285F4',
   },
   timeSlotText: {
     fontSize: 14,
-    color: '#6B7280',
+    fontFamily: 'Inter-SemiBold',
+    color: '#5F6368',
     marginLeft: 6,
-    fontWeight: '500',
   },
   selectedTimeSlotText: {
     color: '#FFFFFF',
   },
-  notesCard: {
+  
+  // Notes section
+  notesSection: {
     marginBottom: 16,
-    padding: 16,
+  },
+  notesSectionTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#000000',
+    marginBottom: 16,
+  },
+  notesInputContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   notesInput: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#000000',
     minHeight: 80,
     textAlignVertical: 'top',
   },
+  
+  // Bottom action
   bottomAction: {
     position: 'absolute',
     bottom: 0,
@@ -811,9 +895,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     padding: 16,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  confirmButton: {
-    backgroundColor: '#3B82F6',
+    borderTopColor: '#E8EAED',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 10,
   },
 });
