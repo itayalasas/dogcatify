@@ -198,7 +198,8 @@ export default function ServiceBooking() {
 
   // Card formatting functions
   const formatCardNumber = (value: string) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+    flex: 1,
+    paddingBottom: 20,
     const matches = v.match(/\d{4,16}/g);
     const match = matches && matches[0] || '';
     const parts = [];
@@ -552,8 +553,7 @@ export default function ServiceBooking() {
 
             {/* Card Form Step */}
             {paymentStep === 'card' && (
-              <View style={styles.cardFormContainer}>
-                <ScrollView style={styles.cardFormScroll} showsVerticalScrollIndicator={false}>
+              <ScrollView style={styles.cardFormContainer} showsVerticalScrollIndicator={false}>
                 {/* Booking Summary */}
                 <View style={styles.bookingSummary}>
                   <Text style={styles.summaryTitle}>Resumen de la Reserva</Text>
@@ -683,9 +683,8 @@ export default function ServiceBooking() {
                     Tu información está protegida con encriptación SSL de 256 bits
                   </Text>
                 </View>
-                </ScrollView>
                 
-                {/* Actions - Fixed at bottom */}
+                {/* Actions */}
                 <View style={styles.cardFormActions}>
                   <Button
                     title="Volver"
@@ -701,7 +700,7 @@ export default function ServiceBooking() {
                     size="large"
                   />
                 </View>
-              </View>
+              </ScrollView>
             )}
           </View>
         </View>
@@ -1061,10 +1060,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   // Card form styles
-  cardFormScroll: {
-    flex: 1,
-    maxHeight: '70%',
-  },
   bookingSummary: {
     backgroundColor: '#F0F9FF',
     padding: 16,
@@ -1188,12 +1183,10 @@ const styles = StyleSheet.create({
   },
   cardFormActions: {
     flexDirection: 'column',
-    gap: 12,
+    gap: 16,
+    marginTop: 32,
     paddingTop: 20,
-    paddingBottom: 20,
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
-    marginTop: 0,
   },
 });
