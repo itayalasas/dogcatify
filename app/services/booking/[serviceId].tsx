@@ -883,6 +883,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#4285F4',
     borderColor: '#4285F4',
   },
+  bookedTimeOption: {
+    backgroundColor: '#F3F4F6',
+    borderColor: '#E5E7EB',
+    opacity: 0.6,
+  },
   timeText: {
     fontSize: 16,
     fontFamily: 'Inter-Medium',
@@ -891,6 +896,10 @@ const styles = StyleSheet.create({
   },
   selectedTimeText: {
     color: '#FFFFFF',
+  },
+  bookedTimeText: {
+    color: '#9CA3AF',
+    textDecorationLine: 'line-through',
   },
   notesCard: {
     marginBottom: 16,

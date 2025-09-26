@@ -782,9 +782,9 @@ export const createServicePaymentPreference = async (
         }
       },
       back_urls: {
-        success: `exp://192.168.1.100:8081/--/payment/success?order_id=${orderId}&type=booking`,
-        failure: `exp://192.168.1.100:8081/--/payment/failure?order_id=${orderId}&type=booking`,
-        pending: `exp://192.168.1.100:8081/--/payment/pending?order_id=${orderId}&type=booking`
+        success: `${process.env.EXPO_PUBLIC_APP_URL || 'https://dogcatify.com'}/payment/success?order_id=${orderId}&type=booking`,
+        failure: `${process.env.EXPO_PUBLIC_APP_URL || 'https://dogcatify.com'}/payment/failure?order_id=${orderId}&type=booking`,
+        pending: `${process.env.EXPO_PUBLIC_APP_URL || 'https://dogcatify.com'}/payment/pending?order_id=${orderId}&type=booking`
       },
       auto_return: 'approved',
       external_reference: orderId,
