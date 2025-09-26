@@ -782,9 +782,9 @@ export const createServicePaymentPreference = async (
         }
       },
       back_urls: {
-        success: `dogcatify://payment/success?order_id=${orderId}&type=booking`,
-        failure: `dogcatify://payment/failure?order_id=${orderId}&type=booking`,
-        pending: `dogcatify://payment/pending?order_id=${orderId}&type=booking`
+        success: `exp://192.168.1.100:8081/--/payment/success?order_id=${orderId}&type=booking`,
+        failure: `exp://192.168.1.100:8081/--/payment/failure?order_id=${orderId}&type=booking`,
+        pending: `exp://192.168.1.100:8081/--/payment/pending?order_id=${orderId}&type=booking`
       },
       auto_return: 'approved',
       external_reference: orderId,
