@@ -149,7 +149,8 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   logoContainer: {
-    marginBottom: 40,
+    marginTop: 60,
+    marginBottom: 50,
   },
   logo: {
     width: 80,
@@ -161,11 +162,11 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     color: '#2D6A6F',
     textAlign: 'center',
-    marginBottom: 80,
+    marginBottom: 60,
   },
   biometricSection: {
     alignItems: 'center',
-    marginBottom: 80,
+    marginBottom: 50,
   },
   biometricIconContainer: {
     width: 140,
@@ -196,7 +197,7 @@ const styles = StyleSheet.create({
   actions: {
     width: '100%',
     gap: 16,
-    marginBottom: 32,
+    marginBottom: 20,
   },
   primaryButton: {
     backgroundColor: '#2D6A6F',
@@ -216,7 +217,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#BBF7D0',
     width: '100%',
-    marginBottom: 20,
+    marginBottom: 40,
   },
   securityText: {
     fontSize: 13,
