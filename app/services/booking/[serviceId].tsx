@@ -49,6 +49,7 @@ export default function ServiceBooking() {
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
+  const [bookedTimes, setBookedTimes] = useState<string[]>([]);
   
   // Payment flow
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -112,7 +113,7 @@ export default function ServiceBooking() {
       setPet(petData);
 
       // Generate available times
-      generateAvailableTimes();
+      await generateAvailableTimes();
     } catch (error) {
       console.error('Error fetching booking data:', error);
       Alert.alert('Error', 'No se pudo cargar la información de la reserva');
@@ -121,13 +122,47 @@ export default function ServiceBooking() {
     }
   };
 
-  const generateAvailableTimes = () => {
+  const generateAvailableTimes = async () => {
     const times = [];
     for (let hour = 9; hour <= 17; hour++) {
       times.push(`${hour.toString().padStart(2, '0')}:00`);
     }
     setAvailableTimes(times);
   };
+
+  const fetchBookedTimes = async (date: Date) => {
+    if (!partnerId) return;
+    
+    try {
+      console.log('Fetching booked times for date:', date.toDateString());
+      
+      // Get bookings for the selected date and partner
+      const { data: bookings, error } = await supabaseClient
+        .from('bookings')
+        .select('time, status')
+        .eq('partner_id', partnerId)
+        .eq('date', date.toISOString().split('T')[0])
+        .in('status', ['pending', 'confirmed', 'pending_payment']);
+      
+      if (error) {
+        console.error('Error fetching booked times:', error);
+        return;
+      }
+      
+      const bookedTimeSlots = bookings?.map(booking => booking.time) || [];
+      console.log('Booked times for date:', bookedTimeSlots);
+      setBookedTimes(bookedTimeSlots);
+    } catch (error) {
+      console.error('Error fetching booked times:', error);
+    }
+  };
+
+  // Fetch booked times when date changes
+  useEffect(() => {
+    if (selectedDate && partnerId) {
+      fetchBookedTimes(selectedDate);
+    }
+  }, [selectedDate, partnerId]);
 
   const generateAvailableDates = () => {
     const dates = [];
@@ -390,24 +425,33 @@ export default function ServiceBooking() {
           <Card style={styles.timeCard}>
             <Text style={styles.sectionTitle}>Selecciona una hora</Text>
             <View style={styles.timesGrid}>
-              {availableTimes.map((time) => (
+              {availableTimes.map((time) => {
+                const isBooked = bookedTimes.includes(time);
+                return (
                 <TouchableOpacity
                   key={time}
                   style={[
                     styles.timeOption,
-                    selectedTime === time && styles.selectedTimeOption
+                    selectedTime === time && styles.selectedTimeOption,
+                    isBooked && styles.bookedTimeOption
                   ]}
-                  onPress={() => setSelectedTime(time)}
+                  onPress={() => !isBooked && setSelectedTime(time)}
+                  disabled={isBooked}
                 >
-                  <Clock size={16} color={selectedTime === time ? "#FFFFFF" : "#6B7280"} />
+                  <Clock size={16} color={
+                    isBooked ? "#9CA3AF" :
+                    selectedTime === time ? "#FFFFFF" : "#6B7280"
+                  } />
                   <Text style={[
                     styles.timeText,
-                    selectedTime === time && styles.selectedTimeText
+                    selectedTime === time && styles.selectedTimeText,
+                    isBooked && styles.bookedTimeText
                   ]}>
-                    {time}
+                    {isBooked ? `${time} (Ocupado)` : time}
                   </Text>
                 </TouchableOpacity>
-              ))}
+                );
+              })}
             </View>
           </Card>
         )}
