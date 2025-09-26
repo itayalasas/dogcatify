@@ -552,7 +552,8 @@ export default function ServiceBooking() {
 
             {/* Card Form Step */}
             {paymentStep === 'card' && (
-              <ScrollView style={styles.cardFormScroll} showsVerticalScrollIndicator={false}>
+              <View style={styles.cardFormContainer}>
+                <ScrollView style={styles.cardFormScroll} showsVerticalScrollIndicator={false}>
                 {/* Booking Summary */}
                 <View style={styles.bookingSummary}>
                   <Text style={styles.summaryTitle}>Resumen de la Reserva</Text>
@@ -682,25 +683,24 @@ export default function ServiceBooking() {
                     Tu información está protegida con encriptación SSL de 256 bits
                   </Text>
                 </View>
-              </ScrollView>
-            )}
-
-            {/* Actions */}
-            {paymentStep === 'card' && (
-              <View style={styles.cardFormActions}>
-                <Button
-                  title="Volver"
-                  onPress={() => setPaymentStep('methods')}
-                  variant="outline"
-                  size="large"
-                />
-                <Button
-                  title={processing ? 'Procesando...' : `Pagar ${formatCurrency(service?.price || 0)}`}
-                  onPress={handleCardPayment}
-                  loading={processing}
-                  disabled={!validateCardForm() || processing}
-                  size="large"
-                />
+                </ScrollView>
+                
+                {/* Actions - Fixed at bottom */}
+                <View style={styles.cardFormActions}>
+                  <Button
+                    title="Volver"
+                    onPress={() => setPaymentStep('methods')}
+                    variant="outline"
+                    size="large"
+                  />
+                  <Button
+                    title={processing ? 'Procesando...' : `Pagar ${formatCurrency(service?.price || 0)}`}
+                    onPress={handleCardPayment}
+                    loading={processing}
+                    disabled={!validateCardForm() || processing}
+                    size="large"
+                  />
+                </View>
               </View>
             )}
           </View>
@@ -1187,13 +1187,13 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   cardFormActions: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: 12,
-    paddingTop: 16,
-    paddingBottom: 8,
+    paddingTop: 20,
+    paddingBottom: 20,
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
     backgroundColor: '#FFFFFF',
-    marginTop: 'auto',
+    marginTop: 0,
   },
 });
