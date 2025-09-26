@@ -198,8 +198,7 @@ export default function ServiceBooking() {
 
   // Card formatting functions
   const formatCardNumber = (value: string) => {
-    flex: 1,
-    paddingBottom: 20,
+    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
     const matches = v.match(/\d{4,16}/g);
     const match = matches && matches[0] || '';
     const parts = [];
