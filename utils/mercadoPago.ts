@@ -1093,5 +1093,3 @@ export const disconnectPartnerMercadoPago = async (partnerId: string): Promise<v
     throw error;
   }
 };
-  }
-};
