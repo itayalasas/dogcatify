@@ -77,18 +77,6 @@ export default function BiometricSetup() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Skip button - moved to top right corner */}
-      <View style={styles.topBar}>
-        <View style={styles.spacer} />
-        <Button
-          title="Omitir"
-          onPress={handleSkip}
-          variant="outline"
-          size="small"
-          style={styles.skipButton}
-        />
-      </View>
-
       <View style={styles.content}>
         {/* Logo */}
         <View style={styles.logoContainer}>
@@ -152,103 +140,88 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     paddingTop: 30,
   },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    height: 60,
-  },
-  spacer: {
-    flex: 1,
-  },
-  skipButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderColor: '#E5E7EB',
-  },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: 32,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingTop: 40,
+    paddingBottom: 60,
   },
   logoContainer: {
-    marginBottom: 24,
+    marginBottom: 32,
   },
   logo: {
-    width: 80,
-    height: 80,
+    width: 100,
+    height: 100,
     resizeMode: 'contain',
   },
   welcomeText: {
-    fontSize: 24,
+    fontSize: 28,
     fontFamily: 'Inter-SemiBold',
     color: '#2D6A6F',
     textAlign: 'center',
-    marginBottom: 48,
+    marginBottom: 60,
   },
   biometricSection: {
     alignItems: 'center',
-    marginBottom: 48,
+    marginBottom: 60,
   },
   biometricIconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
     backgroundColor: '#F0F9FF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 32,
+    marginBottom: 40,
     borderWidth: 1,
     borderColor: '#E0F2FE',
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontFamily: 'Inter-Bold',
     color: '#111827',
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 24,
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
   },
   actions: {
     width: '100%',
-    gap: 16,
-    marginBottom: 32,
+    gap: 20,
+    marginBottom: 40,
   },
   primaryButton: {
     backgroundColor: '#2D6A6F',
-    borderRadius: 16,
-    paddingVertical: 16,
+    borderRadius: 20,
+    paddingVertical: 18,
   },
   secondaryButton: {
     borderColor: '#E5E7EB',
-    borderRadius: 16,
-    paddingVertical: 16,
+    borderRadius: 20,
+    paddingVertical: 18,
   },
   securityNote: {
     backgroundColor: '#F0FDF4',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#BBF7D0',
     width: '100%',
   },
   securityText: {
-    fontSize: 13,
+    fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#166534',
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 20,
   },
 });
